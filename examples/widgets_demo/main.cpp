@@ -4,6 +4,8 @@
 #include <QHBoxLayout>
 #include <QGridLayout>
 #include <QLabel>
+#include <QDockWidget>
+#include <QTabBar>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QtAdvancedUI/Core/StyledWidget.h>
 #include <QtAdvancedUI/Inputs/PushButton.h>
@@ -26,6 +28,9 @@
 #include "pages/ViewsPage.h"
 #include "pages/DialogsPage.h"
 #include "pages/ToolBoxPage.h"
+#include "pages/DashboardPage.h"
+#include "pages/PagedTablePage.h"
+#include "pages/ChartsPage.h"
 #include <QMenu>
 #include <QActionGroup>
 #include <QToolButton>
@@ -155,13 +160,20 @@ int main(int argc, char *argv[])
     central->setObjectName("central");
     central->setAttribute(Qt::WA_StyledBackground, true);
     central->setAutoFillBackground(true);
-    QGridLayout* grid = new QGridLayout(central);
+    QVBoxLayout* centralLayout = new QVBoxLayout(central);
+    centralLayout->setContentsMargins(12, 12, 12, 12);
+    centralLayout->setSpacing(8);
 
-    // 顶部：主题切换 + 背景配置
+    // 右侧 Dock：主题切换 + 背景配置（参考 full_features 的 Dock 布局）
+    auto* themeDock = new QDockWidget("外观", &win);
+    themeDock->setObjectName("ThemeDock");
+    themeDock->setAllowedAreas(Qt::RightDockWidgetArea | Qt::LeftDockWidgetArea);
+    StyledWidget* dockWidget = new StyledWidget(themeDock);
+    QVBoxLayout* dockLayout = new QVBoxLayout(dockWidget);
+    dockLayout->setContentsMargins(10, 10, 10, 10);
+    dockLayout->setSpacing(10);
     auto* themeLabel = new Label("主题：");
     auto* themeCombo = new ComboBox();
-    auto* bgLabel = new Label("背景：");
-    auto* bgCombo = new ComboBox();
 
     auto* mgr = StyleManagerAdapter::instance();
     const QStringList themes = mgr->themes();
@@ -169,135 +181,49 @@ int main(int argc, char *argv[])
     int curIndex = themes.indexOf(mgr->currentTheme());
     if (curIndex >= 0) themeCombo->setCurrentIndex(curIndex);
     QObject::connect(themeCombo, static_cast<void(ComboBox::*)(int)>(&ComboBox::currentIndexChanged),
-        [mgr, themeCombo, bgCombo](int index){
+        [mgr, themeCombo](int index){
             const QString theme = themeCombo->itemText(index);
             mgr->setCurrentTheme(theme);
-            // 如果当前存在背景配置项，切换主题后继续应用该值
-            const QString color = bgCombo->itemData(bgCombo->currentIndex()).toString();
-            if (!color.isEmpty()) {
-                mgr->setThemeVariableValue("central.background", color);
-            }
             mgr->updateStylesheet();
         }
     );
-
-    // 背景配置选项：默认（跟随主题），以及常用暗色与浅灰
-    bgCombo->addItem("默认", QVariant());
-    bgCombo->addItem("#2b2d31", QString("#2b2d31"));
-    bgCombo->addItem("#1e1e1e", QString("#1e1e1e"));
-    bgCombo->addItem("#e6e6e6", QString("#e6e6e6"));
-    QObject::connect(bgCombo, static_cast<void(ComboBox::*)(int)>(&ComboBox::currentIndexChanged),
-        [mgr, bgCombo]() {
-            const QString color = bgCombo->itemData(bgCombo->currentIndex()).toString();
-            mgr->setThemeVariableValue("central.background", color);
-            mgr->updateStylesheet();
-        }
-    );
-
-    // 设置默认背景变量：若未配置，深色主题用 #2b2d31，浅色主题用 #e6e6e6
-    if (mgr->themeVariableValue("central.background").isEmpty()) {
-        mgr->setThemeVariableValue("central.background", mgr->isCurrentThemeDark() ? "#2b2d31" : "#e6e6e6");
-    }
-
-    // 初始与动态应用背景与文本颜色：优先使用主题变量 central.background / central.foreground
-    auto applyCentralBg = [central, &win, mgr]() {
-        QString bg = mgr->themeVariableValue("central.background");
-        if (bg.isEmpty()) {
-            bg = mgr->isCurrentThemeDark() ? "#2b2d31" : "#e6e6e6";
-        }
-        QString fg = mgr->themeVariableValue("central.foreground");
-        if (fg.isEmpty()) {
-            fg = mgr->isCurrentThemeDark() ? "#e8e8e8" : "#222222";
-        }
-        const QString patch = "\nQMainWindow { background-color: " + bg + "; }\n#central { background-color: " + bg + "; color: " + fg + "; }\n";
-        // 将补丁样式应用到主窗口（避免 StyledWidget 覆盖顺序问题）
-        win.setStyleSheet(mgr->styleSheet() + patch);
-    };
-    applyCentralBg();
-    QObject::connect(mgr, &acss::QtAdvancedStylesheet::stylesheetChanged, central, applyCentralBg, Qt::QueuedConnection);
-
-    // Buttons
-    auto* btn1 = new PushButton("主按钮");
-    auto* btn2 = new PushButton("次按钮");
-    auto* toolBtn = new ToolButton();
-    toolBtn->setText("工具");
-    toolBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
-
-    // Label + LineEdit + SpinBox
-    auto* label = new Label("名称：");
-    auto* edit = new LineEdit();
-    edit->setPlaceholderText("请输入内容...");
-
-    auto* spinLabel = new Label("数量：");
-    auto* spin = new SpinBox();
-    spin->setRange(0, 100);
-    spin->setValue(10);
-
-    // CheckBox
-    auto* chk = new CheckBox("启用功能");
-
-    // RadioButtons
-    auto* radio1 = new RadioButton("选项 A");
-    auto* radio2 = new RadioButton("选项 B");
-    QHBoxLayout* radioRow = new QHBoxLayout();
-    radioRow->addWidget(radio1);
-    radioRow->addWidget(radio2);
-    radioRow->addStretch();
-
-    // ComboBox 示例
-    auto* combo = new ComboBox();
-    combo->addItems({"项目 1", "项目 2", "项目 3"});
-
-    // Slider with label
-    auto* sliderLabel = new Label("滑块：50");
-    auto* slider = new Slider(Qt::Horizontal);
-    slider->setRange(0, 100);
-    slider->setValue(50);
-    QObject::connect(slider, &Slider::valueChanged, [sliderLabel](int v){
-        sliderLabel->setText(QString("滑块：%1").arg(v));
-    });
-
-    // TabWidget 组合页（拆分为独立页面）
+    
+    // 直接跟随当前样式表，不再单独设置主界面背景颜色
+    win.setStyleSheet(mgr->styleSheet());
+    
+    // TabWidget 组合页（左侧侧边栏式标签页，参考 full_features 的 East/West 标签布局）
     auto* tabs = new TabWidget();
-    tabs->addTab(new FormPage(), "表单");
-    tabs->addTab(new ContainersPage(), "容器");
+    tabs->setTabPosition(QTabWidget::North);
+    tabs->setDocumentMode(true);
+    tabs->setIconSize(QSize(20, 20));
+    // 添加页面并设置图标
+    tabs->addTab(new DashboardPage(), QApplication::style()->standardIcon(QStyle::SP_ComputerIcon), "概览");
+    // 将“图表”页面提前，避免被标签数量挤到滚动区
+    tabs->addTab(new ChartsPage(), QApplication::style()->standardIcon(QStyle::SP_BrowserStop), "图表");
+    tabs->addTab(new FormPage(), QApplication::style()->standardIcon(QStyle::SP_FileIcon), "表单");
+    tabs->addTab(new ContainersPage(), QApplication::style()->standardIcon(QStyle::SP_DirIcon), "容器");
+    tabs->addTab(new ViewsPage(), QApplication::style()->standardIcon(QStyle::SP_DesktopIcon), "视图");
+    tabs->addTab(new DialogsPage(), QApplication::style()->standardIcon(QStyle::SP_MessageBoxInformation), "对话框");
+    tabs->addTab(new ToolBoxPage(), QApplication::style()->standardIcon(QStyle::SP_ToolBarHorizontalExtensionButton), "工具箱");
+    tabs->addTab(new PagedTablePage(), QApplication::style()->standardIcon(QStyle::SP_DirHomeIcon), "高级表格");
+    // 调整侧边栏宽度以获得更好的视觉效果
+    if (tabs->tabBar()) {
+        tabs->tabBar()->setUsesScrollButtons(true);
+    }
+    centralLayout->addWidget(tabs);
 
-    // 独立页面：视图、对话框、工具箱
-    tabs->addTab(new ViewsPage(), "视图");
-    tabs->addTab(new DialogsPage(), "对话框");
-    tabs->addTab(new ToolBoxPage(), "工具箱");
+    // 将主题/背景控件放入 Dock
+    dockLayout->addWidget(themeLabel);
+    dockLayout->addWidget(themeCombo);
+    dockLayout->addSpacing(6);
+    dockLayout->addStretch();
+    themeDock->setWidget(dockWidget);
+    win.addDockWidget(Qt::RightDockWidgetArea, themeDock);
 
-    // 网格布局排布
-    grid->setContentsMargins(12, 12, 12, 12);
-    grid->setHorizontalSpacing(12);
-    grid->setVerticalSpacing(10);
-
-    int row = 0;
-    grid->addWidget(themeLabel, row, 0);
-    grid->addWidget(themeCombo, row, 1);
-    grid->addWidget(bgLabel, row, 2);
-    grid->addWidget(bgCombo, row, 3);
-
-    row++;
-    grid->addWidget(btn1, row, 0);
-    grid->addWidget(btn2, row, 1);
-
-    row++;
-    grid->addWidget(new Label("选择："), row, 0);
-    grid->addWidget(combo, row, 1);
-    grid->addWidget(chk, row, 2);
-
-    row++;
-    grid->addWidget(new Label("选项："), row, 0);
-    grid->addLayout(radioRow, row, 1, 1, 3);
-
-    row++;
-    grid->addWidget(tabs, row, 0, 1, 4);
-
-    central->setLayout(grid);
+    central->setLayout(centralLayout);
     win.setCentralWidget(central);
     win.setWindowTitle("QtAdvancedUI 组件演示");
-    win.resize(900, 620);
+    win.resize(1360, 900);
     win.show();
 
     return app.exec();

@@ -17,6 +17,9 @@ FormPage::FormPage(QWidget* parent)
 {
     auto* formGroup = new GroupBox("表单", this);
     auto* formLayout = new QGridLayout(formGroup);
+    // 列伸缩：标签列不扩展，输入列按比例扩展
+    formLayout->setColumnStretch(0, 0);
+    formLayout->setColumnStretch(1, 1);
 
     int fr = 0;
     auto* nameLabel = new Label("名称：", formGroup);
@@ -49,5 +52,7 @@ FormPage::FormPage(QWidget* parent)
 
     auto* pageLayout = new QVBoxLayout(this);
     pageLayout->addWidget(formGroup);
+    // 页面底部加入弹簧，避免表单控件被垂直方向拉伸过长
+    pageLayout->addStretch();
     setLayout(pageLayout);
 }

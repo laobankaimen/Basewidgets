@@ -19,6 +19,7 @@
 #include <QAbstractButton>
 #include <QGroupBox>
 #include <QEvent>
+#include <QCheckBox>
 
 using namespace acss;
 
@@ -103,6 +104,81 @@ protected:
     }
 private:
     QColorDialog* cd = nullptr;
+};
+
+// 额外本地化 QFontDialog 内部英文标签与控件
+static void localizeFontDialogInternals(QFontDialog* fd)
+{
+    if (!fd) return;
+
+    auto normalize = [](QString s) {
+        s.replace('&', "");
+        s.replace('_', "");
+        return s.trimmed();
+    };
+
+    // 组标题或标签：Font / Font style / Style / Size / Writing System / Sample / Effects
+    const auto groups = fd->findChildren<QGroupBox*>();
+    for (auto* g : groups) {
+        const QString t = normalize(g->title());
+        const QString tn = t.toLower();
+        if (tn.contains("font style")) g->setTitle(QObject::tr("字体样式"));
+        else if (tn.contains("font")) g->setTitle(QObject::tr("字体"));
+        else if (tn.contains("style")) g->setTitle(QObject::tr("样式"));
+        else if (tn.contains("size") || tn.contains("point size")) g->setTitle(QObject::tr("大小"));
+        else if (tn.contains("writing system")) g->setTitle(QObject::tr("书写系统"));
+        else if (tn.contains("sample") || tn.contains("preview")) g->setTitle(QObject::tr("示例"));
+        else if (tn.contains("effects")) g->setTitle(QObject::tr("效果"));
+    }
+
+    const auto labels = fd->findChildren<QLabel*>();
+    for (auto* l : labels) {
+        const QString t = normalize(l->text());
+        const QString tn = t.toLower();
+        // 注意顺序：先匹配 "font style"，避免被 "font" 误伤
+        if (tn.startsWith("font style")) l->setText(QObject::tr("字体样式"));
+        else if (tn.startsWith("font")) l->setText(QObject::tr("字体"));
+        else if (tn.startsWith("family")) l->setText(QObject::tr("字体"));
+        else if (tn.startsWith("style")) l->setText(QObject::tr("样式"));
+        else if (tn.startsWith("point size") || tn.startsWith("size")) l->setText(QObject::tr("大小"));
+        else if (tn.startsWith("writing system")) l->setText(QObject::tr("书写系统"));
+        else if (tn.startsWith("effects")) l->setText(QObject::tr("效果"));
+        else if (tn.startsWith("sample") || tn.startsWith("preview")) l->setText(QObject::tr("示例"));
+    }
+
+    const auto checks = fd->findChildren<QCheckBox*>();
+    for (auto* c : checks) {
+        const QString t = normalize(c->text());
+        if (t.contains("Bold", Qt::CaseInsensitive)) c->setText(QObject::tr("粗体"));
+        else if (t.contains("Italic", Qt::CaseInsensitive)) c->setText(QObject::tr("斜体"));
+        else if (t.contains("Underline", Qt::CaseInsensitive) || t.contains("Underlined", Qt::CaseInsensitive)) c->setText(QObject::tr("下划线"));
+        else if (t.contains("Strikeout", Qt::CaseInsensitive) || t.contains("Strikethrough", Qt::CaseInsensitive)) c->setText(QObject::tr("删除线"));
+        else if (t.contains("Kerning", Qt::CaseInsensitive)) c->setText(QObject::tr("字距"));
+    }
+}
+
+// 事件过滤器：在字体对话框显示/布局后再次本地化
+class FontDialogLocalizer : public QObject {
+public:
+    explicit FontDialogLocalizer(QFontDialog* d) : QObject(d), fd(d) {}
+protected:
+    bool eventFilter(QObject* obj, QEvent* e) override {
+        if (obj == fd) {
+            switch (e->type()) {
+            case QEvent::Show:
+            case QEvent::Polish:
+            case QEvent::LayoutRequest:
+            case QEvent::LanguageChange:
+                localizeFontDialogInternals(fd);
+                break;
+            default:
+                break;
+            }
+        }
+        return QObject::eventFilter(obj, e);
+    }
+private:
+    QFontDialog* fd = nullptr;
 };
 
 // ===== QFileDialog 中文本地化：定义提前放在使用前 =====
@@ -317,6 +393,7 @@ QFont DialogUtils::pickFont(QWidget* parent, const QFont& initial, bool* okOut, 
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择字体") : title);
 
     auto* fd = new QFontDialog(initial, &dlg);
+    fd->setOption(QFontDialog::DontUseNativeDialog, true);
     fd->setWindowFlags(Qt::Widget);
 
     QObject::connect(fd, &QFontDialog::accepted, &dlg, &QDialog::accept);
@@ -328,6 +405,12 @@ QFont DialogUtils::pickFont(QWidget* parent, const QFont& initial, bool* okOut, 
         if (auto* cancelBtn = box->button(QDialogButtonBox::Cancel)) cancelBtn->setText(QObject::tr("取消"));
         if (auto* applyBtn = box->button(QDialogButtonBox::Apply)) applyBtn->setText(QObject::tr("应用"));
     }
+
+    // 额外本地化内部英文控件（立即尝试一次）
+    localizeFontDialogInternals(fd);
+    // 安装事件过滤器，确保显示后也能本地化
+    auto* localizer = new FontDialogLocalizer(fd);
+    fd->installEventFilter(localizer);
 
     dlg.setContentWidget(makeContent(&dlg, fd, nullptr));
 

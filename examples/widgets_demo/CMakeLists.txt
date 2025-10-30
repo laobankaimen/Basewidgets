@@ -12,6 +12,9 @@ add_executable(widgets_demo
     pages/ViewsPage.cpp
     pages/DialogsPage.cpp
     pages/ToolBoxPage.cpp
+    pages/DashboardPage.cpp
+    pages/PagedTablePage.cpp
+    pages/ChartsPage.cpp
 )
 
 target_link_libraries(widgets_demo

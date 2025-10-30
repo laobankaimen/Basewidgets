@@ -16,6 +16,9 @@ ContainersPage::ContainersPage(QWidget* parent)
 {
     auto* panel = new Frame(this);
     auto* panelLayout = new QGridLayout(panel);
+    // 列伸缩：左侧标签固定，右侧控件扩展
+    panelLayout->setColumnStretch(0, 0);
+    panelLayout->setColumnStretch(1, 1);
 
     auto* sliderLabel = new Label("滑块：50", panel);
     auto* slider = new Slider(Qt::Horizontal, panel);
@@ -46,5 +49,7 @@ ContainersPage::ContainersPage(QWidget* parent)
     auto* pageLayout = new QVBoxLayout(this);
     pageLayout->addWidget(panel);
     pageLayout->addWidget(scrollArea);
+    // 页面底部加入弹簧，避免容器控件被垂直方向拉伸过长
+    pageLayout->addStretch();
     setLayout(pageLayout);
 }

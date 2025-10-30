@@ -36,6 +36,8 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Inputs/FilePicker.h
     include/QtAdvancedUI/Inputs/ColorPicker.h
     include/QtAdvancedUI/Inputs/FontPicker.h
+    include/QtAdvancedUI/Inputs/ToggleSwitch.h
+    include/QtAdvancedUI/Inputs/BusyIndicator.h
     include/QtAdvancedUI/Containers/GroupBox.h
     include/QtAdvancedUI/Containers/Frame.h
     include/QtAdvancedUI/Containers/TabWidget.h
@@ -51,6 +53,18 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Views/ListView.h
     include/QtAdvancedUI/Views/TreeView.h
     include/QtAdvancedUI/Views/TableView.h
+    include/QtAdvancedUI/Views/PagedProxyModel.h
+    include/QtAdvancedUI/Views/AdvancedTable.h
+    
+    include/QtAdvancedUI/Views/CircularGauge.h
+    
+    # Charts
+    include/QtAdvancedUI/Charts/ChartBase.h
+    include/QtAdvancedUI/Charts/LineChart.h
+    include/QtAdvancedUI/Charts/HistogramChart.h
+    include/QtAdvancedUI/Charts/JourneyChart.h
+    include/QtAdvancedUI/Charts/WaterfallChart.h
+    include/QtAdvancedUI/Charts/PieChart.h
 )
 
 set(UI_SOURCES
@@ -74,6 +88,8 @@ set(UI_SOURCES
     src/Inputs/FilePicker.cpp
     src/Inputs/ColorPicker.cpp
     src/Inputs/FontPicker.cpp
+    src/Inputs/ToggleSwitch.cpp
+    src/Inputs/BusyIndicator.cpp
     src/Containers/GroupBox.cpp
     src/Containers/Frame.cpp
     src/Containers/TabWidget.cpp
@@ -89,6 +105,18 @@ set(UI_SOURCES
     src/Views/ListView.cpp
     src/Views/TreeView.cpp
     src/Views/TableView.cpp
+    src/Views/PagedProxyModel.cpp
+    src/Views/AdvancedTable.cpp
+    src/Views/CircularGauge.cpp
+    
+    # Charts
+    src/Charts/ChartBase.cpp
+    src/Charts/LineChart.cpp
+    src/Charts/HistogramChart.cpp
+    src/Charts/JourneyChart.cpp
+    src/Charts/WaterfallChart.cpp
+    src/Charts/PieChart.cpp
+    src/Charts/QCustomplot.cpp
 )
 
 add_library(qtadvancedui_widgets

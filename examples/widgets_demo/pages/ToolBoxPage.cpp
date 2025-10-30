@@ -28,5 +28,7 @@ ToolBoxPage::ToolBoxPage(QWidget* parent)
     toolbox->addItem(pageB, "页面 B");
 
     layout->addWidget(toolbox);
+    // 页面底部加入弹簧，避免工具箱控件纵向被过度拉伸
+    layout->addStretch();
     setLayout(layout);
 }
