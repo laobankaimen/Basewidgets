@@ -4,7 +4,6 @@ cmake_minimum_required(VERSION 3.16)
 
 # Options
 option(UI_BUILD_WIDGETS "Build Qt Advanced UI widgets library" ON)
-option(UI_BUILD_EXAMPLES "Build Qt Advanced UI examples" ON)
 
 if(NOT UI_BUILD_WIDGETS)
     return()
@@ -141,8 +140,3 @@ install(TARGETS qtadvancedui_widgets
 )
 
 install(DIRECTORY include/QtAdvancedUI DESTINATION include)
-
-# Examples
-if(UI_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
