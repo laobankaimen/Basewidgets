@@ -37,6 +37,7 @@ private:
     qreal offset() const { return m_offset; }
     void setOffset(qreal v);
     void animateTo(bool checked);
+    void initSwitch();
 
 private:
     acss::QtAdvancedStylesheet* m_manager = nullptr;

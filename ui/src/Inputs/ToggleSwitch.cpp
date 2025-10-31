@@ -10,10 +10,7 @@ namespace QtAdvancedUI {
 ToggleSwitch::ToggleSwitch(QWidget* parent)
     : QAbstractButton(parent)
 {
-    setCheckable(true);
-    setCursor(Qt::PointingHandCursor);
-    m_anim = new QPropertyAnimation(this, "offset");
-    m_anim->setDuration(120);
+    initSwitch();
     setStyleManager(StyleManagerAdapter::instance());
 }
 
@@ -21,20 +18,14 @@ ToggleSwitch::ToggleSwitch(const QString& text, QWidget* parent)
     : QAbstractButton(parent)
 {
     setText(text);
-    setCheckable(true);
-    setCursor(Qt::PointingHandCursor);
-    m_anim = new QPropertyAnimation(this, "offset");
-    m_anim->setDuration(120);
+    initSwitch();
     setStyleManager(StyleManagerAdapter::instance());
 }
 
 ToggleSwitch::ToggleSwitch(acss::QtAdvancedStylesheet* manager, QWidget* parent)
     : QAbstractButton(parent)
 {
-    setCheckable(true);
-    setCursor(Qt::PointingHandCursor);
-    m_anim = new QPropertyAnimation(this, "offset");
-    m_anim->setDuration(120);
+    initSwitch();
     setStyleManager(manager ? manager : StyleManagerAdapter::instance());
 }
 
@@ -84,7 +75,7 @@ void ToggleSwitch::paintEvent(QPaintEvent* e)
     qreal knobR = m_h/2.0 - 3;
     qreal leftX = knobR + 3;
     qreal rightX = m_w - knobR - 3;
-    qreal x = leftX + (rightX - leftX) * (isChecked() ? m_offset : (1.0 - m_offset));
+    qreal x = leftX + (rightX - leftX) * m_offset;
     QPointF center(x, m_h/2.0);
     p.setBrush(m_knob);
     p.drawEllipse(center, knobR, knobR);
@@ -101,9 +92,16 @@ void ToggleSwitch::mouseReleaseEvent(QMouseEvent* e)
 void ToggleSwitch::animateTo(bool checked)
 {
     m_anim->stop();
-    m_anim->setStartValue(checked ? 0.0 : 1.0);
-    m_anim->setEndValue(checked ? 1.0 : 0.0);
+    m_anim->setStartValue(m_offset);
+    m_anim->setEndValue(checked ? 0.0 : 1.0);
     m_anim->start();
 }
 
+void ToggleSwitch::initSwitch() {
+    setCheckable(true);
+    setOffset(isChecked() ? 0.0 : 1.0);
+    setCursor(Qt::PointingHandCursor);
+    m_anim = new QPropertyAnimation(this, "offset");
+    m_anim->setDuration(120);
+}
 } // namespace QtAdvancedUI
