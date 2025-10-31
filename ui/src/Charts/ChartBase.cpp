@@ -1,4 +1,4 @@
-#include "QCustomplot.h"
+#include <QtAdvancedUI/Charts/QCustomplot.h>
 #include <QtAdvancedUI/Charts/ChartBase.h>
 #include <QVBoxLayout>
 #include <QMouseEvent>

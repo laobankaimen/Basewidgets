@@ -104,7 +104,7 @@
 #  include <QtCore/QTimeZone>
 #endif
 
-namespace dc_opengl {
+namespace QtAdvancedUI {
 
 class QCPPainter;
 class QCustomPlot;
@@ -7725,83 +7725,83 @@ private:
 // and at the start of the namespace in the fake moc-run class
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
-Q_DECLARE_METATYPE(dc_opengl::QCP::ExportPen)
-Q_DECLARE_METATYPE(dc_opengl::QCP::ResolutionUnit)
-Q_DECLARE_METATYPE(dc_opengl::QCP::SignDomain)
-Q_DECLARE_METATYPE(dc_opengl::QCP::MarginSide)
-Q_DECLARE_METATYPE(dc_opengl::QCP::AntialiasedElement)
-Q_DECLARE_METATYPE(dc_opengl::QCP::PlottingHint)
-Q_DECLARE_METATYPE(dc_opengl::QCP::Interaction)
-Q_DECLARE_METATYPE(dc_opengl::QCP::SelectionRectMode)
-Q_DECLARE_METATYPE(dc_opengl::QCP::SelectionType)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::ExportPen)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::ResolutionUnit)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::SignDomain)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::MarginSide)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::AntialiasedElement)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::PlottingHint)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::Interaction)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::SelectionRectMode)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCP::SelectionType)
 #endif
 
-Q_DECLARE_OPERATORS_FOR_FLAGS(dc_opengl::QCPPainter::PainterModes)
-Q_DECLARE_METATYPE(dc_opengl::QCPPainter::PainterMode)
+Q_DECLARE_OPERATORS_FOR_FLAGS(QtAdvancedUI::QCPPainter::PainterModes)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPPainter::PainterMode)
 
-Q_DECLARE_METATYPE(dc_opengl::QCPLayer::LayerMode)
-Q_DECLARE_METATYPE(dc_opengl::QCPDataSelection)
-Q_DECLARE_METATYPE(dc_opengl::QCPLayoutElement::UpdatePhase)
-Q_DECLARE_METATYPE(dc_opengl::QCPLayoutGrid::FillOrder)
-Q_DECLARE_METATYPE(dc_opengl::QCPLayoutInset::InsetPlacement)
-Q_DECLARE_METATYPE(dc_opengl::QCPLineEnding::EndingStyle)
-Q_DECLARE_METATYPE(dc_opengl::QCPLabelPainterPrivate::AnchorMode)
-Q_DECLARE_METATYPE(dc_opengl::QCPLabelPainterPrivate::AnchorSide)
-Q_DECLARE_METATYPE(dc_opengl::QCPAxisTicker::TickStepStrategy)
-Q_DECLARE_METATYPE(dc_opengl::QCPAxisTickerTime::TimeUnit)
-Q_DECLARE_METATYPE(dc_opengl::QCPAxisTickerFixed::ScaleStrategy)
-Q_DECLARE_METATYPE(dc_opengl::QCPAxisTickerPi::FractionStyle)
-Q_DECLARE_METATYPE(dc_opengl::QCPAxis::AxisType)
-Q_DECLARE_METATYPE(dc_opengl::QCPAxis::LabelSide)
-Q_DECLARE_METATYPE(dc_opengl::QCPAxis::ScaleType)
-Q_DECLARE_METATYPE(dc_opengl::QCPAxis::SelectablePart)
-Q_DECLARE_METATYPE(dc_opengl::QCPScatterStyle::ScatterProperty)
-Q_DECLARE_METATYPE(dc_opengl::QCPScatterStyle::ScatterShape)
-Q_DECLARE_METATYPE(dc_opengl::QCPSelectionDecorator*)
-Q_DECLARE_METATYPE(dc_opengl::QCPItemPosition::PositionType)
-Q_DECLARE_METATYPE(dc_opengl::QCPColorGradient::ColorInterpolation)
-Q_DECLARE_METATYPE(dc_opengl::QCPColorGradient::NanHandling)
-Q_DECLARE_METATYPE(dc_opengl::QCPColorGradient::GradientPreset)
-Q_DECLARE_METATYPE(dc_opengl::QCPSelectionDecoratorBracket::BracketStyle)
-Q_DECLARE_METATYPE(dc_opengl::QCPGraph::LineStyle)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPLayer::LayerMode)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPDataSelection)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPLayoutElement::UpdatePhase)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPLayoutGrid::FillOrder)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPLayoutInset::InsetPlacement)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPLineEnding::EndingStyle)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPLabelPainterPrivate::AnchorMode)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPLabelPainterPrivate::AnchorSide)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPAxisTicker::TickStepStrategy)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPAxisTickerTime::TimeUnit)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPAxisTickerFixed::ScaleStrategy)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPAxisTickerPi::FractionStyle)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPAxis::AxisType)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPAxis::LabelSide)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPAxis::ScaleType)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPAxis::SelectablePart)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPScatterStyle::ScatterProperty)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPScatterStyle::ScatterShape)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPSelectionDecorator*)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPItemPosition::PositionType)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPColorGradient::ColorInterpolation)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPColorGradient::NanHandling)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPColorGradient::GradientPreset)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPSelectionDecoratorBracket::BracketStyle)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPGraph::LineStyle)
   
-Q_DECLARE_METATYPE(dc_opengl::QCPCurve::LineStyle)
-Q_DECLARE_METATYPE(dc_opengl::QCPLegend::SelectablePart)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPCurve::LineStyle)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPLegend::SelectablePart)
 
-Q_DECLARE_METATYPE(dc_opengl::QCustomPlot::LayerInsertMode)
-Q_DECLARE_METATYPE(dc_opengl::QCustomPlot::RefreshPriority)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCustomPlot::LayerInsertMode)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCustomPlot::RefreshPriority)
 
-Q_DECLARE_METATYPE(dc_opengl::QCPBarsGroup::SpacingType)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPBarsGroup::SpacingType)
 
-Q_DECLARE_METATYPE(dc_opengl::QCPBars::WidthType)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPBars::WidthType)
 
-Q_DECLARE_METATYPE(dc_opengl::QCPFinancial::ChartStyle)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPFinancial::ChartStyle)
 
-Q_DECLARE_METATYPE(dc_opengl::QCPItemTracer::TracerStyle)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPItemTracer::TracerStyle)
 
-Q_DECLARE_METATYPE(dc_opengl::QCPItemBracket::BracketStyle)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPItemBracket::BracketStyle)
 
-Q_DECLARE_OPERATORS_FOR_FLAGS(dc_opengl::QCPPolarAxisRadial::SelectableParts)
-Q_DECLARE_METATYPE(dc_opengl::QCPPolarAxisRadial::AngleReference)
-Q_DECLARE_METATYPE(dc_opengl::QCPPolarAxisRadial::ScaleType)
-Q_DECLARE_METATYPE(dc_opengl::QCPPolarAxisRadial::SelectablePart)
+Q_DECLARE_OPERATORS_FOR_FLAGS(QtAdvancedUI::QCPPolarAxisRadial::SelectableParts)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPPolarAxisRadial::AngleReference)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPPolarAxisRadial::ScaleType)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPPolarAxisRadial::SelectablePart)
 
-Q_DECLARE_OPERATORS_FOR_FLAGS(dc_opengl::QCPPolarAxisAngular::SelectableParts)
-Q_DECLARE_METATYPE(dc_opengl::QCPPolarAxisAngular::SelectablePart)
-Q_DECLARE_OPERATORS_FOR_FLAGS(dc_opengl::QCPPolarGrid::GridTypes)
-Q_DECLARE_METATYPE(dc_opengl::QCPPolarGrid::GridType)
+Q_DECLARE_OPERATORS_FOR_FLAGS(QtAdvancedUI::QCPPolarAxisAngular::SelectableParts)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPPolarAxisAngular::SelectablePart)
+Q_DECLARE_OPERATORS_FOR_FLAGS(QtAdvancedUI::QCPPolarGrid::GridTypes)
+Q_DECLARE_METATYPE(QtAdvancedUI::QCPPolarGrid::GridType)
 
-Q_DECLARE_TYPEINFO(dc_opengl::QCPVector2D, Q_MOVABLE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPRange, Q_MOVABLE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPDataRange, Q_MOVABLE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPLineEnding, Q_MOVABLE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPScatterStyle, Q_MOVABLE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPGraphData, Q_PRIMITIVE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPCurveData, Q_PRIMITIVE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPBarsData, Q_PRIMITIVE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPStatisticalBoxData, Q_MOVABLE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPFinancialData, Q_PRIMITIVE_TYPE);
-Q_DECLARE_TYPEINFO(dc_opengl::QCPErrorBarsData, Q_PRIMITIVE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPVector2D, Q_MOVABLE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPRange, Q_MOVABLE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPDataRange, Q_MOVABLE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPLineEnding, Q_MOVABLE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPScatterStyle, Q_MOVABLE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPGraphData, Q_PRIMITIVE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPCurveData, Q_PRIMITIVE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPBarsData, Q_PRIMITIVE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPStatisticalBoxData, Q_MOVABLE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPFinancialData, Q_PRIMITIVE_TYPE);
+Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPErrorBarsData, Q_PRIMITIVE_TYPE);
 
 
 #endif // GL_QCUSTOMPLOT_H

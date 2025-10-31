@@ -188,17 +188,13 @@ int main(int argc, char *argv[])
         }
     );
     
-    // 直接跟随当前样式表，不再单独设置主界面背景颜色
-    win.setStyleSheet(mgr->styleSheet());
-    
-    // TabWidget 组合页（左侧侧边栏式标签页，参考 full_features 的 East/West 标签布局）
+    // TabWidget 组合页（左侧侧边栏式标签页）
     auto* tabs = new TabWidget();
     tabs->setTabPosition(QTabWidget::North);
     tabs->setDocumentMode(true);
     tabs->setIconSize(QSize(20, 20));
     // 添加页面并设置图标
     tabs->addTab(new DashboardPage(), QApplication::style()->standardIcon(QStyle::SP_ComputerIcon), "概览");
-    // 将“图表”页面提前，避免被标签数量挤到滚动区
     tabs->addTab(new ChartsPage(), QApplication::style()->standardIcon(QStyle::SP_BrowserStop), "图表");
     tabs->addTab(new FormPage(), QApplication::style()->standardIcon(QStyle::SP_FileIcon), "表单");
     tabs->addTab(new ContainersPage(), QApplication::style()->standardIcon(QStyle::SP_DirIcon), "容器");

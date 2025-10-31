@@ -1,4 +1,4 @@
-#include "QCustomplot.h"
+#include <QtAdvancedUI/Charts/QCustomplot.h>
 #include <QtAdvancedUI/Charts/WaterfallChart.h>
 
 using namespace QtAdvancedUI;

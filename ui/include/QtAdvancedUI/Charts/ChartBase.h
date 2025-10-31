@@ -2,7 +2,7 @@
 
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 #include <QtAdvancedUI/Core/StyledWidget.h>
-#include <QtAdvancedUI/Charts/QCPCompat.h>
+#include <QtAdvancedUI/Charts/QCustomplot.h>
 #include <QPointer>
 #include <QTimer>
 

@@ -10,8 +10,8 @@ if(NOT UI_BUILD_WIDGETS)
 endif()
 
 # Find Qt
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
 
 # Sources
 set(UI_PUBLIC_HEADERS
@@ -65,6 +65,7 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Charts/JourneyChart.h
     include/QtAdvancedUI/Charts/WaterfallChart.h
     include/QtAdvancedUI/Charts/PieChart.h
+    include/QtAdvancedUI/Charts/QCustomplot.h
 )
 
 set(UI_SOURCES
@@ -144,6 +145,7 @@ target_link_libraries(qtadvancedui_widgets
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Gui
         Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::PrintSupport
         qtadvancedcss
 )
 

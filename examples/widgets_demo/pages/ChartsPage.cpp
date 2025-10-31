@@ -117,8 +117,8 @@ ChartsPage::ChartsPage(QWidget* parent)
     grid->addWidget(gbPie,     row, 0, 1, 2);
 
     content->setLayout(grid);
-    scrollArea->setWidget(content);
-    outerLayout->addWidget(scrollArea);
+    //scrollArea->setWidget(content);
+    outerLayout->addWidget(content);
     outerLayout->addStretch();
     setLayout(outerLayout);
 }

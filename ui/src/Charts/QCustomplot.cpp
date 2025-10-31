@@ -23,9 +23,9 @@
 **          Version: 2.1.1                                                **
 ****************************************************************************/
 
-#include "QCustomplot.h"
+#include <QtAdvancedUI/Charts/QCustomplot.h>
 
-namespace dc_opengl {
+namespace QtAdvancedUI {
 
 /* including file 'src/vector2d.cpp'       */
 /* modified 2022-11-06T12:45:56, size 7973 */
