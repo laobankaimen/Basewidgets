@@ -1,5 +1,3 @@
-![ukraine](doc/ukraine.jpg)
-
 ![logo](doc/ass_logo.svg)
 
 ------------------
