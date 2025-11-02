@@ -2,12 +2,10 @@
 
 #include <QtAdvancedUI/Inputs/Label.h>
 #include <QtAdvancedUI/Inputs/LineEdit.h>
-#include <QtAdvancedUI/Views/ListWidget.h>
-#include <QtAdvancedUI/Views/TreeWidget.h>
-#include <QtAdvancedUI/Views/TableWidget.h>
 #include <QtAdvancedUI/Views/ListView.h>
-#include <QtAdvancedUI/Views/TreeView.h>
+#include <QtAdvancedUI/Views/TreeWidget.h>
 #include <QtAdvancedUI/Views/TableView.h>
+#include <QtAdvancedUI/Views/TreeView.h>
 #include <QtAdvancedUI/Containers/GroupBox.h>
 #include <QtAdvancedUI/Containers/ScrollArea.h>
 
@@ -39,11 +37,12 @@ ViewsPage::ViewsPage(QWidget* parent)
     grid->setColumnStretch(0, 1);
     grid->setColumnStretch(1, 1);
 
-    // ListWidget
-    auto* listWidget = new ListWidget(content);
-    listWidget->addItems({"一", "二", "三"});
-    listWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    listWidget->setMinimumHeight(180);
+    // ListView（替代 ListWidget）
+    auto* listViewSimple = new ListView(content);
+    auto* listViewSimpleModel = new QStringListModel(QStringList{ "一", "二", "三" }, this);
+    listViewSimple->setModel(listViewSimpleModel);
+    listViewSimple->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    listViewSimple->setMinimumHeight(180);
 
     // TreeWidget
     auto* treeWidget = new TreeWidget(content);
@@ -55,17 +54,17 @@ ViewsPage::ViewsPage(QWidget* parent)
     treeWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     treeWidget->setMinimumHeight(200);
 
-    // TableWidget
-    auto* tableWidget = new TableWidget(content);
-    tableWidget->setRowCount(3);
-    tableWidget->setColumnCount(3);
+    // TableView（替代 TableWidget）
+    auto* tableViewBasic = new TableView(content);
+    auto* tvBasicModel = new QStandardItemModel(3, 3, this);
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {
-            tableWidget->setItem(r, c, new QTableWidgetItem(QString("%1,%2").arg(r).arg(c)));
+            tvBasicModel->setItem(r, c, new QStandardItem(QString("%1,%2").arg(r).arg(c)));
         }
     }
-    tableWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    tableWidget->setMinimumHeight(200);
+    tableViewBasic->setModel(tvBasicModel);
+    tableViewBasic->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    tableViewBasic->setMinimumHeight(200);
 
     // ListView
     auto* listView = new ListView(content);
@@ -161,9 +160,9 @@ ViewsPage::ViewsPage(QWidget* parent)
     grid->addWidget(filterEdit, 0, 1);
 
     // 左右两列分区，减少纵向堆叠
-    auto* gbListWidget = new GroupBox("ListWidget：", content);
+    auto* gbListWidget = new GroupBox("ListView（基础）：", content);
     auto* v1 = new QVBoxLayout(gbListWidget);
-    v1->addWidget(listWidget);
+    v1->addWidget(listViewSimple);
     gbListWidget->setLayout(v1);
 
     auto* gbTreeWidget = new GroupBox("TreeWidget：", content);
@@ -171,9 +170,9 @@ ViewsPage::ViewsPage(QWidget* parent)
     v2->addWidget(treeWidget);
     gbTreeWidget->setLayout(v2);
 
-    auto* gbTableWidget = new GroupBox("TableWidget：", content);
+    auto* gbTableWidget = new GroupBox("TableView（基础）：", content);
     auto* v3 = new QVBoxLayout(gbTableWidget);
-    v3->addWidget(tableWidget);
+    v3->addWidget(tableViewBasic);
     gbTableWidget->setLayout(v3);
 
     auto* gbListView = new GroupBox("ListView：", content);

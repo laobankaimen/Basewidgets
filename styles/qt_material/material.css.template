@@ -1180,13 +1180,15 @@ QDialog QToolButton,
 QDialog QToolButton:hover,
 QDialog QToolButton:pressed,
 QDialog QToolButton:checked {
-  background-color: unset;
+  /* 强制覆盖全局 QToolButton 的黑色背景与左右 10px 边框 */
+  background: transparent;
+  background-color: transparent;
   border: 0px;
-  height: unset;
-  margin: unset;
-  padding: unset;
-  border-right: unset;
-  border-left: unset;
+  height: auto;
+  margin: 0px;
+  padding: 0px;
+  border-right: 0px;
+  border-left: 0px;
 }
 
 /*  ------------------------------------------------------------------------  */

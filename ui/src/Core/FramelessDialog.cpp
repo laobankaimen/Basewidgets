@@ -51,29 +51,15 @@ void FramelessDialog::initUI()
     auto* closeBtn = new ToolButton(m_titleBar);
     closeBtn->setObjectName("FramelessDialogCloseButton");
     closeBtn->setToolTip(tr("关闭"));
-    closeBtn->setAutoRaise(true);
+    closeBtn->setAutoRaise(false);
     closeBtn->setCursor(Qt::PointingHandCursor);
     closeBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    // 使用自绘“X”图标，避免样式返回最小化图标
+    closeBtn->setFixedSize(QSize(28, 28));
+    // 使用 qtadvancedcss 提供的主题图标：icon:/primary/close.svg
     {
         const QSize iconSz(18, 18);
-        const qreal dpr = qApp->devicePixelRatio();
-        QPixmap pm(iconSz * dpr);
-        pm.setDevicePixelRatio(dpr);
-        pm.fill(Qt::transparent);
-        QPainter p(&pm);
-        p.setRenderHint(QPainter::Antialiasing, true);
-        const bool darkTheme = StyleManagerAdapter::instance()->isCurrentThemeDark();
-        const QColor xColor = darkTheme ? QColor("#ffffff") : QColor("#000000");
-        QPen pen(xColor, 1.8 * dpr, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-        p.setPen(pen);
-        const int m = int(4 * dpr);
-        const int w = iconSz.width() * dpr;
-        const int h = iconSz.height() * dpr;
-        p.drawLine(QPoint(m, m), QPoint(w - m, h - m));
-        p.drawLine(QPoint(m, h - m), QPoint(w - m, m));
-        p.end();
-        closeBtn->setIcon(QIcon(pm));
+        QIcon icon(QStringLiteral("icon:/primary/close.svg"));
+        closeBtn->setIcon(icon);
         closeBtn->setIconSize(iconSz);
     }
     QObject::connect(closeBtn, &ToolButton::clicked, this, [this]() { reject(); });
@@ -110,14 +96,34 @@ void FramelessDialog::initUI()
     // Visual differentiation for title bar vs content
     const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
     const QString titleBg = dark ? QString("#1f1f1f") : QString("#f2f2f2");
-    const QString closeHover = QString("#E81123"); // Windows-like hover red
-    const QString closePressed = QString("#C50F1F"); // Windows-like pressed red
+    const QString closeHover = QString("#3A3A3A"); // Light gray for dark background
+    const QString closePressed = QString("#555555"); // Slightly darker gray when pressed
     m_titleBar->setStyleSheet(QString(
         "QWidget#FramelessDialogTitleBar { background-color: %1; }\n"
-        "QToolButton#FramelessDialogCloseButton { border-radius: 4px; padding: 2px; icon-size: 18px; }\n"
-        "QToolButton#FramelessDialogCloseButton:hover { background-color: %2; }\n"
-        "QToolButton#FramelessDialogCloseButton:pressed { background-color: %3; }\n"
-    ).arg(titleBg, closeHover, closePressed));
+    ).arg(titleBg));
+
+    // 强制覆盖全局 QToolButton 样式，移除黑色背景与左右 10px 边框
+    closeBtn->setStyleSheet(QString(
+        "QToolButton#FramelessDialogCloseButton {\n"
+        "  background: transparent;\n"
+        "  background-color: transparent;\n"
+        "  border: 0px;\n"
+        "  border-left: 0px;\n"
+        "  border-right: 0px;\n"
+        "  border-radius: 6px;\n"
+        "  margin: 0;\n"
+        "  padding: 4px;\n"
+        "  qproperty-iconSize: 20px;\n"
+        "}\n"
+        "QToolButton#FramelessDialogCloseButton:hover {\n"
+        "  background: %1;\n"
+        "  background-color: %1;\n"
+        "}\n"
+        "QToolButton#FramelessDialogCloseButton:pressed {\n"
+        "  background: %2;\n"
+        "  background-color: %2;\n"
+        "}\n"
+    ).arg(closeHover, closePressed));
     m_contentHost->setStyleSheet(QString(
         "QWidget#FramelessDialogContentHost { background-color: %1; }\n"
     ).arg(dark ? QString("#2b2d31") : QString("#ffffff")));

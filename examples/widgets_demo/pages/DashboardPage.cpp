@@ -7,7 +7,7 @@
 #include <QtAdvancedUI/Inputs/Slider.h>
 #include <QtAdvancedUI/Inputs/ComboBox.h>
 #include <QtAdvancedUI/Inputs/ToggleSwitch.h>
-#include <QtAdvancedUI/Views/ListWidget.h>
+#include <QtAdvancedUI/Views/ListView.h>
 #include <QtAdvancedUI/Views/CircularGauge.h>
 #include <QtAdvancedUI/Containers/GroupBox.h>
 #include <QtAdvancedUI/Containers/Frame.h>
@@ -17,7 +17,8 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QTextEdit>
-#include <QListWidgetItem>
+#include <QStringListModel>
+#include <QStandardItemModel>
 #include <QStyle>
 #include <QApplication>
 #include <QTimer>
@@ -115,15 +116,15 @@ DashboardPage::DashboardPage(QWidget* parent)
     vInputs->addLayout(hSlider);
     gbInputs->setLayout(vInputs);
 
-    // Material Tree（简单替代：列表部件）
+    // Material Tree（改为 ListView 展示）
     auto* gbTree = new GroupBox("MATERIAL TREE", center);
     auto* vTree = new QVBoxLayout(gbTree);
-    auto* list = new ListWidget(gbTree);
-    list->addItem(new QListWidgetItem("Tree #1"));
-    list->addItem(new QListWidgetItem("Tree #2"));
-    list->addItem(new QListWidgetItem("Subitem #4"));
-    list->addItem(new QListWidgetItem("Subitem #5"));
-    vTree->addWidget(list);
+    auto* matListView = new ListView(gbTree);
+    auto* matListModel = new QStringListModel(QStringList{
+        "Tree #1", "Tree #2", "Subitem #4", "Subitem #5"
+    }, gbTree);
+    matListView->setModel(matListModel);
+    vTree->addWidget(matListView);
     gbTree->setLayout(vTree);
 
     // 垂直滑块演示
@@ -180,13 +181,16 @@ DashboardPage::DashboardPage(QWidget* parent)
     rightLayout->setSpacing(10);
     auto* gbTopDock = new GroupBox("TOP DOCK", right);
     auto* vTopDock = new QVBoxLayout(gbTopDock);
-    auto* topList = new ListWidget(gbTopDock);
-    for (int i=0;i<8;++i) {
-        auto* item = new QListWidgetItem(QString("New Item"));
-        item->setCheckState(i%2==0 ? Qt::Checked : Qt::Unchecked);
-        topList->addItem(item);
+    auto* topDockView = new ListView(gbTopDock);
+    auto* topDockModel = new QStandardItemModel(gbTopDock);
+    for (int i = 0; i < 8; ++i) {
+        auto* item = new QStandardItem(QString("New Item"));
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(i % 2 == 0 ? Qt::Checked : Qt::Unchecked);
+        topDockModel->appendRow(item);
     }
-    vTopDock->addWidget(topList);
+    topDockView->setModel(topDockModel);
+    vTopDock->addWidget(topDockView);
     gbTopDock->setLayout(vTopDock);
     auto* gbRightDoc = new GroupBox("RIGHT DOC", right);
     auto* vRightDoc = new QVBoxLayout(gbRightDoc);

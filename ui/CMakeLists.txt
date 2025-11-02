@@ -33,9 +33,6 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Inputs/TextEdit.h
     include/QtAdvancedUI/Inputs/PlainTextEdit.h
     include/QtAdvancedUI/Inputs/ProgressBar.h
-    include/QtAdvancedUI/Inputs/FilePicker.h
-    include/QtAdvancedUI/Inputs/ColorPicker.h
-    include/QtAdvancedUI/Inputs/FontPicker.h
     include/QtAdvancedUI/Inputs/ToggleSwitch.h
     include/QtAdvancedUI/Inputs/BusyIndicator.h
     include/QtAdvancedUI/Containers/GroupBox.h
@@ -47,9 +44,9 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Containers/StatusBar.h
     include/QtAdvancedUI/Containers/ToolBox.h
     include/QtAdvancedUI/Dialogs/DialogUtils.h
-    include/QtAdvancedUI/Views/ListWidget.h
+    
     include/QtAdvancedUI/Views/TreeWidget.h
-    include/QtAdvancedUI/Views/TableWidget.h
+    
     include/QtAdvancedUI/Views/ListView.h
     include/QtAdvancedUI/Views/TreeView.h
     include/QtAdvancedUI/Views/TableView.h
@@ -86,9 +83,6 @@ set(UI_SOURCES
     src/Inputs/TextEdit.cpp
     src/Inputs/PlainTextEdit.cpp
     src/Inputs/ProgressBar.cpp
-    src/Inputs/FilePicker.cpp
-    src/Inputs/ColorPicker.cpp
-    src/Inputs/FontPicker.cpp
     src/Inputs/ToggleSwitch.cpp
     src/Inputs/BusyIndicator.cpp
     src/Containers/GroupBox.cpp
@@ -100,9 +94,12 @@ set(UI_SOURCES
     src/Containers/StatusBar.cpp
     src/Containers/ToolBox.cpp
     src/Dialogs/DialogUtils.cpp
-    src/Views/ListWidget.cpp
+    src/Dialogs/ColorPicker.cpp
+    src/Dialogs/FontPicker.cpp
+    src/Dialogs/FilePicker.cpp
+    
     src/Views/TreeWidget.cpp
-    src/Views/TableWidget.cpp
+    
     src/Views/ListView.cpp
     src/Views/TreeView.cpp
     src/Views/TableView.cpp

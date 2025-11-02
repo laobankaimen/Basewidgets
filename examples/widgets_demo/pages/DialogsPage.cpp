@@ -2,9 +2,8 @@
 
 #include <QtAdvancedUI/Inputs/Label.h>
 #include <QtAdvancedUI/Inputs/PushButton.h>
-#include <QtAdvancedUI/Inputs/FilePicker.h>
-#include <QtAdvancedUI/Inputs/ColorPicker.h>
-#include <QtAdvancedUI/Inputs/FontPicker.h>
+#include <QDir>
+#include <QFrame>
 #include <QtAdvancedUI/Dialogs/DialogUtils.h>
 #include <QtAdvancedUI/Inputs/ToolButton.h>
 #include <QtAdvancedUI/Containers/GroupBox.h>
@@ -21,20 +20,87 @@ DialogsPage::DialogsPage(QWidget* parent)
 {
     auto* layout = new QVBoxLayout(this);
 
-    auto* filePicker = new FilePicker(this);
-    filePicker->setTitle("选择文件");
-    filePicker->setFilter("所有文件 (*.*);;文本文件 (*.txt);;图片 (*.png *.jpg)");
-    filePicker->setMode(FilePicker::OpenFile);
+    // 文件选择示例：直接调用 DialogUtils
     layout->addWidget(new Label("文件选择器：", this));
-    layout->addWidget(filePicker);
+    {
+        auto* row = new QHBoxLayout();
+        auto* btnOpen = new PushButton("打开文件", this);
+        auto* btnOpenMulti = new PushButton("打开多个", this);
+        auto* btnSave = new PushButton("保存文件", this);
+        auto* btnDir = new PushButton("选择文件夹", this);
+        auto* result = new Label("结果: ", this);
+        result->setMinimumWidth(300);
+        row->addWidget(btnOpen);
+        row->addWidget(btnOpenMulti);
+        row->addWidget(btnSave);
+        row->addWidget(btnDir);
+        row->addWidget(result, 1);
+        layout->addLayout(row);
 
+        QObject::connect(btnOpen, &PushButton::clicked, [this, result]() {
+            const QString f = DialogUtils::openFile(this->window(), "选择文件", QDir::homePath(), "所有文件 (*.*);;文本文件 (*.txt);;图片 (*.png *.jpg)");
+            if (!f.isEmpty()) result->setText("结果: " + f);
+        });
+        QObject::connect(btnOpenMulti, &PushButton::clicked, [this, result]() {
+            const QStringList fs = DialogUtils::openFiles(this->window(), "选择多个文件", QDir::homePath(), "所有文件 (*.*);;文本文件 (*.txt);;图片 (*.png *.jpg)");
+            if (!fs.isEmpty()) result->setText("结果: " + fs.join(", "));
+        });
+        QObject::connect(btnSave, &PushButton::clicked, [this, result]() {
+            const QString f = DialogUtils::saveFile(this->window(), "保存文件", QDir::homePath(), "文本文件 (*.txt);;图片 (*.png *.jpg)");
+            if (!f.isEmpty()) result->setText("结果: " + f);
+        });
+        QObject::connect(btnDir, &PushButton::clicked, [this, result]() {
+            const QString d = DialogUtils::openDirectory(this->window(), "选择文件夹", QDir::homePath());
+            if (!d.isEmpty()) result->setText("结果: " + d);
+        });
+    }
+
+    // 颜色选择示例：直接调用 DialogUtils
     layout->addWidget(new Label("颜色选择器：", this));
-    auto* colorPicker = new ColorPicker(this);
-    layout->addWidget(colorPicker);
+    {
+        auto* row = new QHBoxLayout();
+        auto* btnColor = new PushButton("选择颜色...", this);
+        auto* preview = new Label(" ", this);
+        preview->setFixedSize(64, 24);
+        preview->setFrameShape(QFrame::Box);
+        row->addWidget(btnColor);
+        row->addWidget(preview);
+        row->addStretch();
+        layout->addLayout(row);
 
+        QColor lastColor = QColor(66, 133, 244);
+        auto setPreview = [&](const QColor& c){
+            QPalette pal = preview->palette();
+            pal.setColor(QPalette::Window, c);
+            preview->setAutoFillBackground(true);
+            preview->setPalette(pal);
+        };
+        setPreview(lastColor);
+        QObject::connect(btnColor, &PushButton::clicked, [this, lastColor, setPreview]() mutable {
+            QColor c = DialogUtils::pickColor(this->window(), lastColor, "选择颜色");
+            if (c.isValid()) { lastColor = c; setPreview(c); }
+        });
+    }
+
+    // 字体选择示例：直接调用 DialogUtils
     layout->addWidget(new Label("字体选择器：", this));
-    auto* fontPicker = new FontPicker(this);
-    layout->addWidget(fontPicker);
+    {
+        auto* row = new QHBoxLayout();
+        auto* btnFont = new PushButton("选择字体...", this);
+        auto* preview = new Label("示例文本 AaBbCc 123", this);
+        preview->setMinimumHeight(40);
+        row->addWidget(preview, 1);
+        row->addWidget(btnFont);
+        layout->addLayout(row);
+
+        static QFont lastFont = QFont("Microsoft YaHei", 12);
+        preview->setFont(lastFont);
+        QObject::connect(btnFont, &PushButton::clicked, [this, preview]() {
+            bool ok = false;
+            QFont f = DialogUtils::pickFont(this->window(), preview->font(), &ok, "选择字体");
+            if (ok) preview->setFont(f);
+        });
+    }
 
     auto* dlgButtonsRow = new QHBoxLayout();
     auto* btnInfo = new PushButton("信息", this);

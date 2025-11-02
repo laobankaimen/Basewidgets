@@ -43,6 +43,7 @@ public:
     static void messageInfo(QWidget* parent, const QString& title, const QString& text);
     static void messageWarning(QWidget* parent, const QString& title, const QString& text);
     static void messageError(QWidget* parent, const QString& title, const QString& text);
+    static void messageSuccess(QWidget* parent, const QString& title, const QString& text);
     static bool askQuestion(QWidget* parent, const QString& title, const QString& text);
 
     // Input dialogs
