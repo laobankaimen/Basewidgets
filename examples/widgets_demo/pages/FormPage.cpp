@@ -5,6 +5,7 @@
 #include <QtAdvancedUI/Inputs/SpinBox.h>
 #include <QtAdvancedUI/Inputs/TextEdit.h>
 #include <QtAdvancedUI/Inputs/PlainTextEdit.h>
+#include <QtAdvancedUI/Inputs/MultiSelectComboBox.h>
 #include <QtAdvancedUI/Containers/GroupBox.h>
 
 #include <QGridLayout>
@@ -41,6 +42,15 @@ FormPage::FormPage(QWidget* parent)
     auto* textEdit = new TextEdit(formGroup);
     formLayout->addWidget(textLabel, fr, 0);
     formLayout->addWidget(textEdit, fr, 1);
+    fr++;
+
+    // 多选下拉
+    auto* multiLabel = new Label("标签：", formGroup);
+    auto* multiSelect = new MultiSelectComboBox(formGroup);
+    multiSelect->setOptions({"后台", "前端", "移动端", "AI", "测试", "DevOps"});
+    multiSelect->setSelectedOptions({"前端", "AI"});
+    formLayout->addWidget(multiLabel, fr, 0);
+    formLayout->addWidget(multiSelect, fr, 1);
     fr++;
 
     auto* plainLabel = new Label("日志：", formGroup);

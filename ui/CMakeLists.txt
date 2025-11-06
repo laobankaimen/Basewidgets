@@ -32,9 +32,14 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Inputs/ToolButton.h
     include/QtAdvancedUI/Inputs/TextEdit.h
     include/QtAdvancedUI/Inputs/PlainTextEdit.h
+    include/QtAdvancedUI/Inputs/DatePicker.h
+    include/QtAdvancedUI/Inputs/TimePicker.h
+    include/QtAdvancedUI/Inputs/DateTimePicker.h
+    include/QtAdvancedUI/Inputs/DateRangePicker.h
     include/QtAdvancedUI/Inputs/ProgressBar.h
     include/QtAdvancedUI/Inputs/ToggleSwitch.h
     include/QtAdvancedUI/Inputs/BusyIndicator.h
+    include/QtAdvancedUI/Inputs/MultiSelectComboBox.h
     include/QtAdvancedUI/Containers/GroupBox.h
     include/QtAdvancedUI/Containers/Frame.h
     include/QtAdvancedUI/Containers/TabWidget.h
@@ -50,6 +55,7 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Views/ListView.h
     include/QtAdvancedUI/Views/TreeView.h
     include/QtAdvancedUI/Views/TableView.h
+    include/QtAdvancedUI/Views/TreeTable.h
     include/QtAdvancedUI/Views/PagedProxyModel.h
     include/QtAdvancedUI/Views/AdvancedTable.h
     
@@ -82,9 +88,14 @@ set(UI_SOURCES
     src/Inputs/ToolButton.cpp
     src/Inputs/TextEdit.cpp
     src/Inputs/PlainTextEdit.cpp
+    src/Inputs/DatePicker.cpp
+    src/Inputs/TimePicker.cpp
+    src/Inputs/DateTimePicker.cpp
+    src/Inputs/DateRangePicker.cpp
     src/Inputs/ProgressBar.cpp
     src/Inputs/ToggleSwitch.cpp
     src/Inputs/BusyIndicator.cpp
+    src/Inputs/MultiSelectComboBox.cpp
     src/Containers/GroupBox.cpp
     src/Containers/Frame.cpp
     src/Containers/TabWidget.cpp
@@ -105,6 +116,7 @@ set(UI_SOURCES
     src/Views/TableView.cpp
     src/Views/PagedProxyModel.cpp
     src/Views/AdvancedTable.cpp
+    src/Views/TreeTable.cpp
     src/Views/CircularGauge.cpp
     
     # Charts

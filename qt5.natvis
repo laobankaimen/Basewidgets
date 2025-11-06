@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer >
+
+<Type Name="QString">
+    <DisplayString>{((reinterpret_cast<unsigned short*>(d)) + d->offset / 2),sub}</DisplayString>
+    <StringView>((reinterpret_cast<unsigned short*>(d)) + d->offset / 2),sub</StringView>
+    <Expand>
+        <Item Name="[size]">d->size</Item>
+        <Item Name="[referenced]">d->ref.atomic._q_value</Item>
+        <ArrayItems>
+            <Size>d->size</Size>
+            <ValuePointer>((reinterpret_cast<unsigned short*>(d)) + d->offset / 2),c</ValuePointer>
+        </ArrayItems>
+    </Expand>
+</Type>
+
+<Type Name="QByteArray">
+    <DisplayString>{((reinterpret_cast<char*>(d)) + d->offset),sb}</DisplayString>
+    <StringView>((reinterpret_cast<char*>(d)) + d->offset),sb</StringView>
+    <Expand>
+        <Item Name="[size]">d->size</Item>
+        <Item Name="[referenced]">d->ref.atomic._q_value</Item>
+        <ArrayItems>
+            <Size>d->size</Size>
+            <ValuePointer>((reinterpret_cast<char*>(d)) + d->offset),c</ValuePointer>
+        </ArrayItems>
+    </Expand>
+</Type>
+
+<!— More Qt5 types… —>
+
+</AutoVisualizer>

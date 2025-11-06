@@ -9,8 +9,6 @@
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QtAdvancedUI/Core/StyledMainWindow.h>
 #include <QtAdvancedUI/Core/StyledWidget.h>
-#include <QtAdvancedUI/Core/StyledDialog.h>
-#include <QtAdvancedUI/Core/FramelessDialog.h>
 #include <QtAdvancedUI/Containers/MenuBar.h>
 #include <QtAdvancedUI/Containers/ToolBar.h>
 #include <QtAdvancedUI/Containers/StatusBar.h>
@@ -21,6 +19,7 @@
 #include <QtAdvancedUI/Inputs/PushButton.h>
 #include <QtAdvancedUI/Inputs/ToolButton.h>
 #include <QtAdvancedUI/Inputs/ComboBox.h>
+#include <QtAdvancedUI/Inputs/MultiSelectComboBox.h>
 #include <QtAdvancedUI/Inputs/Label.h>
 #include <QtAdvancedUI/Inputs/LineEdit.h>
 #include <QtAdvancedUI/Inputs/SpinBox.h>
@@ -32,15 +31,25 @@
 #include <QtAdvancedUI/Inputs/ToggleSwitch.h>
 #include <QtAdvancedUI/Inputs/TextEdit.h>
 #include <QtAdvancedUI/Inputs/PlainTextEdit.h>
+#include <QtAdvancedUI/Inputs/DatePicker.h>
+#include <QtAdvancedUI/Inputs/TimePicker.h>
+#include <QtAdvancedUI/Inputs/DateTimePicker.h>
+#include <QtAdvancedUI/Inputs/DateRangePicker.h>
 #include <QtAdvancedUI/Views/ListView.h>
 #include <QtAdvancedUI/Views/TreeView.h>
 #include <QtAdvancedUI/Views/TableView.h>
+#include <QtAdvancedUI/Views/TreeTable.h>
 #include <QtAdvancedUI/Dialogs/DialogUtils.h>
 #include <QtAdvancedUI/Views/TreeWidget.h>
 #include <QtAdvancedUI/Views/CircularGauge.h>
 #include <QtAdvancedUI/Charts/LineChart.h>
 #include <QtAdvancedUI/Charts/PieChart.h>
 #include <QtAdvancedUI/Charts/HistogramChart.h>
+#include "pages/PagedTablePage.h"
+
+// 示例数据模型
+#include <QStandardItemModel>
+#include <QHeaderView>
 
 using namespace QtAdvancedUI;
 
@@ -83,6 +92,24 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     spinBox->setValue(50);
     auto* comboBox = new ComboBox(inputGroup);
     comboBox->addItems({"选项1", "选项2", "选项3"});
+    auto* multiCombo = new MultiSelectComboBox(inputGroup);
+    multiCombo->setOptions({"后台", "前端", "移动端", "AI", "测试", "DevOps"});
+    multiCombo->setSelectedOptions({"前端", "AI"});
+    multiCombo->setJoinSelectedText(true, ", ");
+    // 增强：启用搜索过滤、允许所有项、设置选择上限与提示
+    multiCombo->setSearchEnabled(true);
+    // 纯文字展示：不显示选项图标
+    multiCombo->setShowOptionIcons(false);
+    // 允许所有选项可选
+    // multiCombo->setDisabledOptions({});
+    // 示例：设置最大选择上限为 3，并在超过时提示
+    multiCombo->setMaxSelection(3);
+    QObject::connect(multiCombo, &MultiSelectComboBox::selectionLimitReached,
+        multiCombo, [multiCombo](int limit){
+            DialogUtils::messageWarning(multiCombo, "选择上限",
+                QString("已选择数量超过上限 %1，仍允许选择。可在接口中调整上限。").arg(limit));
+        });
+    // 示例中不设置图标以保持纯文字
     auto* slider = new Slider(Qt::Horizontal, inputGroup);
     slider->setRange(0, 100);
     slider->setValue(30);
@@ -93,8 +120,28 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     inputLayout->addWidget(spinBox, 1, 1);
     inputLayout->addWidget(new Label("下拉选择:", inputGroup), 2, 0);
     inputLayout->addWidget(comboBox, 2, 1);
-    inputLayout->addWidget(new Label("滑块:", inputGroup), 3, 0);
-    inputLayout->addWidget(slider, 3, 1);
+    inputLayout->addWidget(new Label("多选下拉:", inputGroup), 3, 0);
+    inputLayout->addWidget(multiCombo, 3, 1);
+    inputLayout->addWidget(new Label("滑块:", inputGroup), 4, 0);
+    inputLayout->addWidget(slider, 4, 1);
+
+    // 日期时间控件组
+    auto* datetimeGroup = new GroupBox("日期时间", content);
+    auto* dtLayout = new QGridLayout(datetimeGroup);
+    auto* datePicker = new DatePicker(datetimeGroup);
+    datePicker->setWeekNumbersEnabled(true);
+    auto* timePicker = new TimePicker(datetimeGroup);
+    auto* dateTimePicker = new DateTimePicker(datetimeGroup);
+    auto* rangePicker = new DateRangePicker(datetimeGroup);
+    dtLayout->addWidget(new Label("日期选择:", datetimeGroup), 0, 0);
+    dtLayout->addWidget(datePicker, 0, 1);
+    dtLayout->addWidget(new Label("时间选择:", datetimeGroup), 1, 0);
+    dtLayout->addWidget(timePicker, 1, 1);
+    dtLayout->addWidget(new Label("日期时间:", datetimeGroup), 2, 0);
+    dtLayout->addWidget(dateTimePicker, 2, 1);
+    dtLayout->addWidget(new Label("日期范围:", datetimeGroup), 3, 0);
+    dtLayout->addWidget(rangePicker, 3, 1);
+    datetimeGroup->setMaximumWidth(560);
     inputGroup->setMaximumWidth(560);
     
     // 选择控件组
@@ -191,11 +238,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     dialogsLayout->addWidget(inputResult);
     dialogsLayout->addSpacing(6);
 
-    // 保留样式对话框展示
-    auto* openStyledDialogBtn = new PushButton("打开样式对话框", dialogsGroup);
-    auto* openFramelessDialogBtn = new PushButton("打开无边框对话框", dialogsGroup);
-    dialogsLayout->addWidget(openStyledDialogBtn);
-    dialogsLayout->addWidget(openFramelessDialogBtn);
+    // 原示例中的“打开样式对话框 / 打开无边框对话框”按钮取消，不再单独显示
     dialogsLayout->addStretch();
 
     // 连接：文件与目录
@@ -263,40 +306,14 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
         inputResult->setText(QString("输入结果: 小数 = %1").arg(v));
     });
 
-    // 保留示例对话框的触发
-    QObject::connect(openStyledDialogBtn, &PushButton::clicked, [page]() {
-        StyledDialog dlg(page);
-        dlg.setWindowTitle("样式对话框");
-        auto* w = new StyledWidget(&dlg);
-        auto* l = new QVBoxLayout(w);
-        l->addWidget(new Label("这里是 StyledDialog 的内容", w));
-        auto* closeBtn = new PushButton("关闭", w);
-        QObject::connect(closeBtn, &PushButton::clicked, &dlg, &QDialog::accept);
-        l->addWidget(closeBtn);
-        w->setLayout(l);
-        dlg.setLayout(new QVBoxLayout());
-        dlg.layout()->addWidget(w);
-        dlg.exec();
-    });
-    QObject::connect(openFramelessDialogBtn, &PushButton::clicked, [page]() {
-        FramelessDialog dlg(page);
-        dlg.setWindowTitle("无边框对话框");
-        auto* w = new StyledWidget(&dlg);
-        auto* l = new QVBoxLayout(w);
-        l->addWidget(new Label("这是 FramelessDialog", w));
-        auto* closeBtn = new PushButton("关闭", w);
-        QObject::connect(closeBtn, &PushButton::clicked, &dlg, &QDialog::accept);
-        l->addWidget(closeBtn);
-        w->setLayout(l);
-        dlg.setLayout(new QVBoxLayout());
-        dlg.layout()->addWidget(w);
-        dlg.exec();
-    });
+    // 已移除示例对话框按钮与触发逻辑
     
     layout->addWidget(buttonGroup, 0, 0);
     layout->addWidget(inputGroup, 0, 1);
     layout->addWidget(selectGroup, 1, 0);
     layout->addWidget(progressGroup, 1, 1);
+    // 新增：把日期时间控件组加入布局（占据左侧两列）
+    layout->addWidget(datetimeGroup, 2, 0, 1, 2);
     layout->addWidget(dialogsGroup, 0, 2, 2, 1);
     layout->setColumnStretch(0, 1);
     layout->setColumnStretch(1, 1);
@@ -327,20 +344,71 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     auto* viewLayout = new QGridLayout(viewGroup);
     
     auto* listView = new ListView(viewGroup);
-    auto* treeView = new TreeView(viewGroup);
     auto* tableView = new TableView(viewGroup);
+    // 统一最小高度，避免视图过小导致显示不全
+    listView->setMinimumHeight(140);
+    tableView->setMinimumHeight(180);
+    auto* treeTable = new TreeTable(viewGroup);
+    // 列表视图模型
+    {
+        auto* listModel = new QStandardItemModel(listView);
+        listModel->setColumnCount(1);
+        listModel->appendRow(new QStandardItem("任务 A"));
+        listModel->appendRow(new QStandardItem("任务 B"));
+        listModel->appendRow(new QStandardItem("任务 C"));
+        listView->setModel(listModel);
+    }
+    // 表格视图模型
+    {
+        auto* tableModel = new QStandardItemModel(tableView);
+        tableModel->setColumnCount(3);
+        tableModel->setHorizontalHeaderLabels({"产品", "区域", "销量"});
+        tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("A"), new QStandardItem("华北"), new QStandardItem("120")});
+        tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("B"), new QStandardItem("华东"), new QStandardItem("98")});
+        tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("C"), new QStandardItem("华南"), new QStandardItem("150")});
+        tableView->setModel(tableModel);
+        tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    }
+    // TreeTable 示例模型
+    auto* tmodel = new QStandardItemModel(treeTable);
+    tmodel->setColumnCount(3);
+    tmodel->setHorizontalHeaderLabels({"类别", "项目", "数值"});
+    auto* sales = new QStandardItem("销售");
+    auto* rnd = new QStandardItem("研发");
+    tmodel->appendRow(QList<QStandardItem*>{sales, new QStandardItem(), new QStandardItem()});
+    tmodel->appendRow(QList<QStandardItem*>{rnd, new QStandardItem(), new QStandardItem()});
+    // 销售子项
+    sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q1"), new QStandardItem(), new QStandardItem("120.5")});
+    sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q2"), new QStandardItem(), new QStandardItem("98.0")});
+    sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q3"), new QStandardItem(), new QStandardItem("150.3")});
+    sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q4"), new QStandardItem(), new QStandardItem("110.0")});
+    // 研发子项
+    rnd->appendRow(QList<QStandardItem*>{new QStandardItem("平台"), new QStandardItem(), new QStandardItem("80.0")});
+    rnd->appendRow(QList<QStandardItem*>{new QStandardItem("算法"), new QStandardItem(), new QStandardItem("132.7")});
+    rnd->appendRow(QList<QStandardItem*>{new QStandardItem("客户端"), new QStandardItem(), new QStandardItem("64.2")});
+    treeTable->setModel(tmodel);
+    // 列聚合：在第3列统计合计，并启用分组汇总行
+    treeTable->clearColumnAggregations();
+    treeTable->setColumnAggregation(2, TreeTable::Sum);
+    treeTable->expandAll();
+    treeTable->header()->setSectionResizeMode(QHeaderView::Stretch);
     auto* circularGauge = new CircularGauge(viewGroup);
     circularGauge->setValue(75);
     circularGauge->setMinimumSize(150, 150);
+
+    // （已移除懒加载树形表格示例，按用户要求仅保留一个）
     
     viewLayout->addWidget(new Label("列表视图:", viewGroup), 0, 0);
     viewLayout->addWidget(listView, 1, 0);
-    viewLayout->addWidget(new Label("树形视图:", viewGroup), 0, 1);
-    viewLayout->addWidget(treeView, 1, 1);
+    viewLayout->addWidget(new Label("圆形仪表:", viewGroup), 0, 1);
+    viewLayout->addWidget(circularGauge, 1, 1);
     viewLayout->addWidget(new Label("表格视图:", viewGroup), 2, 0);
     viewLayout->addWidget(tableView, 3, 0);
-    viewLayout->addWidget(new Label("圆形仪表:", viewGroup), 2, 1);
-    viewLayout->addWidget(circularGauge, 3, 1);
+    viewLayout->addWidget(new Label("树形表格:", viewGroup), 4, 0);
+    viewLayout->addWidget(treeTable, 5, 0);
+    // 列伸缩以平衡左右两列宽度
+    viewLayout->setColumnStretch(0, 1);
+    viewLayout->setColumnStretch(1, 1);
     
     // 图表控件组
     auto* chartGroup = new GroupBox("图表控件", content);
@@ -521,10 +589,13 @@ int main(int argc, char *argv[])
     mainTabWidget->setTabPosition(QTabWidget::North);
     mainTabWidget->setTabsClosable(false);
 
-    // 添加三个主要展示页面
-    mainTabWidget->addTab(createInputsShowcase(mainTabWidget), "🎛️ 输入控件");
-    mainTabWidget->addTab(createViewsChartsShowcase(mainTabWidget), "📊 视图图表");
-    mainTabWidget->addTab(createTextDialogShowcase(mainTabWidget), "📝 文本对话框");
+    // 添加主要展示页面
+    // 顶部标签取消 Emoji 图标，避免跨平台字体缺失
+    mainTabWidget->addTab(createInputsShowcase(mainTabWidget), "输入控件");
+    mainTabWidget->addTab(createViewsChartsShowcase(mainTabWidget), "视图图表");
+    mainTabWidget->addTab(createTextDialogShowcase(mainTabWidget), "文本对话框");
+    // 高级表格（分页/筛选/排序/导出）
+    mainTabWidget->addTab(new PagedTablePage(mainTabWidget), "高级表格");
 
     centralLayout->addWidget(mainTabWidget);
     centralWidget->setLayout(centralLayout);

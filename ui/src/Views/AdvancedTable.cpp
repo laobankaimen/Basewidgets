@@ -97,8 +97,9 @@ void AdvancedTable::initUi()
     m_tableView->setModel(m_paged);
     m_tableView->setSortingEnabled(true);
     m_tableView->sortByColumn(0, Qt::AscendingOrder);
-    m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_tableView->setSelectionBehavior(QAbstractItemView::SelectItems);
     m_tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_tableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     m_tableView->horizontalHeader()->setStretchLastSection(true);
     m_tableView->horizontalHeader()->setSectionsMovable(true);
     m_tableView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);

@@ -748,7 +748,7 @@ static void localizeFileDialogInternals(QFileDialog* fd)
         return s.trimmed();
     };
 
-    // 底部按钮优先：Open/Save/Ok/Cancel/Close/Apply
+    // 底部按钮（QFileDialog 内部自带）：本库外部统一提供按钮，为避免重复，这里仅本地化文本后隐藏内部按钮栏
     if (auto* box = fd->findChild<QDialogButtonBox*>()) {
         if (auto* b = box->button(QDialogButtonBox::Open)) b->setText(QObject::tr("打开"));
         if (auto* b = box->button(QDialogButtonBox::Save)) b->setText(QObject::tr("保存"));
@@ -756,6 +756,8 @@ static void localizeFileDialogInternals(QFileDialog* fd)
         if (auto* b = box->button(QDialogButtonBox::Apply)) b->setText(QObject::tr("应用"));
         if (auto* b = box->button(QDialogButtonBox::Cancel)) b->setText(QObject::tr("取消"));
         if (auto* b = box->button(QDialogButtonBox::Close)) b->setText(QObject::tr("关闭"));
+        // 隐藏内部按钮栏，使用外部统一的 QDialogButtonBox（确定/取消）
+        box->setVisible(false);
     }
 
     // 顶部和侧边工具按钮：Back/Forward/Parent/New Folder/Delete/List/Details
