@@ -393,8 +393,11 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     treeTable->expandAll();
     treeTable->header()->setSectionResizeMode(QHeaderView::Stretch);
     auto* circularGauge = new CircularGauge(viewGroup);
+    // 启用经典三色百分比预设，使示例页与 1.txt 逻辑一致
+    circularGauge->useClassicThreeColorPercentPreset("完成率", "%", 30, 50, 20);
+    circularGauge->setTickLabelFontScale(0.75); // 降低刻度文字大小，避免重叠
     circularGauge->setValue(75);
-    circularGauge->setMinimumSize(150, 150);
+    circularGauge->setMinimumSize(260, 260);    // 放大仪表盘尺寸
 
     // （已移除懒加载树形表格示例，按用户要求仅保留一个）
     

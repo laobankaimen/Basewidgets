@@ -157,12 +157,13 @@ DashboardPage::DashboardPage(QWidget* parent)
     auto* gbDashboard = new GroupBox("GAUGE", center);
     auto* vDashboard = new QVBoxLayout(gbDashboard);
     auto* gauge = new CircularGauge(gbDashboard);
-    gauge->setRange(0, 100);
-    gauge->setUnit("%");
-    gauge->setTitle("CPU 使用率");
-    gauge->setValue(37);
+    // 使用经典三色百分比预设（库内实现参考代码逻辑）
+    gauge->useClassicThreeColorPercentPreset("完成率", "%", 30, 50, 20);
+    gauge->setTickLabelFontScale(0.75);
+    gauge->setMinimumSize(260, 260);
+    gauge->setValue(68);
     auto* hGaugeCtrl = new QHBoxLayout();
-    auto* gaugeSlider = new Slider(Qt::Horizontal, gbDashboard); gaugeSlider->setRange(0,100); gaugeSlider->setValue(37);
+    auto* gaugeSlider = new Slider(Qt::Horizontal, gbDashboard); gaugeSlider->setRange(0,100); gaugeSlider->setValue(68);
     QObject::connect(gaugeSlider, &Slider::valueChanged, [gauge](int v){ gauge->setValue(v); });
     hGaugeCtrl->addWidget(new Label("调整", gbDashboard));
     hGaugeCtrl->addWidget(gaugeSlider, 1);
