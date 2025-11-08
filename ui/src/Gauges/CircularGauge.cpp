@@ -1,4 +1,4 @@
-#include <QtAdvancedUI/Views/CircularGauge.h>
+#include <QtAdvancedUI/Gauges/CircularGauge.h>
 #include <QPainter>
 #include <QtMath>
 

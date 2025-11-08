@@ -7,14 +7,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
 
 add_executable(widgets_demo
     main.cpp
-    pages/FormPage.cpp
-    pages/ContainersPage.cpp
-    pages/ViewsPage.cpp
-    pages/DialogsPage.cpp
-    pages/ToolBoxPage.cpp
-    pages/DashboardPage.cpp
     pages/PagedTablePage.cpp
-    pages/ChartsPage.cpp
 )
 
 target_link_libraries(widgets_demo

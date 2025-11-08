@@ -59,7 +59,7 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Views/PagedProxyModel.h
     include/QtAdvancedUI/Views/AdvancedTable.h
     
-    include/QtAdvancedUI/Views/CircularGauge.h
+    include/QtAdvancedUI/Gauges/CircularGauge.h
     
     # Charts
     include/QtAdvancedUI/Charts/ChartBase.h
@@ -117,7 +117,7 @@ set(UI_SOURCES
     src/Views/PagedProxyModel.cpp
     src/Views/AdvancedTable.cpp
     src/Views/TreeTable.cpp
-    src/Views/CircularGauge.cpp
+    src/Gauges/CircularGauge.cpp
     
     # Charts
     src/Charts/ChartBase.cpp

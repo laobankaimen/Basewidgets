@@ -41,7 +41,7 @@
 #include <QtAdvancedUI/Views/TreeTable.h>
 #include <QtAdvancedUI/Dialogs/DialogUtils.h>
 #include <QtAdvancedUI/Views/TreeWidget.h>
-#include <QtAdvancedUI/Views/CircularGauge.h>
+#include <QtAdvancedUI/Gauges/CircularGauge.h>
 #include <QtAdvancedUI/Charts/LineChart.h>
 #include <QtAdvancedUI/Charts/PieChart.h>
 #include <QtAdvancedUI/Charts/HistogramChart.h>
@@ -57,14 +57,23 @@ using namespace QtAdvancedUI;
 StyledWidget* createInputsShowcase(QWidget* parent) {
     auto* page = new StyledWidget(parent);
     auto* scrollArea = new ScrollArea(page);
+    scrollArea->setContentsMargins(0, 0, 0, 0);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     auto* content = new StyledWidget(scrollArea);
     auto* layout = new QGridLayout(content);
-    layout->setContentsMargins(16, 16, 16, 16);
-    layout->setSpacing(16);
+    layout->setContentsMargins(6, 0, 6, 6);
+    // 减小主网格的间距，让输入控件更贴近选择控件
+    layout->setSpacing(4);
+    layout->setVerticalSpacing(2);
 
     // 按钮组
     auto* buttonGroup = new GroupBox("按钮控件", content);
     auto* buttonLayout = new QGridLayout(buttonGroup);
+    buttonLayout->setContentsMargins(4, 4, 4, 4);
+    buttonLayout->setHorizontalSpacing(8);
+    buttonLayout->setVerticalSpacing(4);
     
     auto* pushBtn = new PushButton("普通按钮", buttonGroup);
     auto* checkableBtn = new PushButton("可选按钮", buttonGroup);
@@ -73,17 +82,26 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     disabledBtn->setEnabled(false);
     auto* toolBtn = new ToolButton(buttonGroup);
     toolBtn->setText("工具按钮");
+    // 固定按钮尺寸，避免在布局中被拉伸
+    pushBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    checkableBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    disabledBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    toolBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
     buttonLayout->addWidget(pushBtn, 0, 0);
     buttonLayout->addWidget(checkableBtn, 0, 1);
     buttonLayout->addWidget(disabledBtn, 1, 0);
     buttonLayout->addWidget(toolBtn, 1, 1);
     // 限制左右组最大宽度，避免控件被拉得过长
-    buttonGroup->setMaximumWidth(560);
+    buttonGroup->setMaximumWidth(420);
+    buttonGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
     // 输入框组
     auto* inputGroup = new GroupBox("输入控件", content);
     auto* inputLayout = new QGridLayout(inputGroup);
+    inputLayout->setContentsMargins(4, 4, 4, 4);
+    inputLayout->setHorizontalSpacing(8);
+    inputLayout->setVerticalSpacing(4);
     
     auto* lineEdit = new LineEdit(inputGroup);
     lineEdit->setPlaceholderText("请输入文本...");
@@ -128,6 +146,9 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     // 日期时间控件组
     auto* datetimeGroup = new GroupBox("日期时间", content);
     auto* dtLayout = new QGridLayout(datetimeGroup);
+    dtLayout->setContentsMargins(4, 4, 4, 4);
+    dtLayout->setHorizontalSpacing(8);
+    dtLayout->setVerticalSpacing(4);
     auto* datePicker = new DatePicker(datetimeGroup);
     datePicker->setWeekNumbersEnabled(true);
     auto* timePicker = new TimePicker(datetimeGroup);
@@ -141,12 +162,20 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     dtLayout->addWidget(dateTimePicker, 2, 1);
     dtLayout->addWidget(new Label("日期范围:", datetimeGroup), 3, 0);
     dtLayout->addWidget(rangePicker, 3, 1);
-    datetimeGroup->setMaximumWidth(560);
+    datetimeGroup->setMaximumWidth(420);
+    datetimeGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
     inputGroup->setMaximumWidth(560);
+    // 允许纵向按内容压缩，避免单元格留高导致上方空白
+    inputGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
     
     // 选择控件组
     auto* selectGroup = new GroupBox("选择控件", content);
-    auto* selectLayout = new QVBoxLayout(selectGroup);
+    // 改为两列横排布局
+    auto* selectLayout = new QGridLayout(selectGroup);
+    // 压缩选择组内部边距与间距
+    selectLayout->setContentsMargins(4, 4, 4, 4);
+    selectLayout->setHorizontalSpacing(8);
+    selectLayout->setVerticalSpacing(4);
     
     auto* checkBox1 = new CheckBox("复选框 1", selectGroup);
     auto* checkBox2 = new CheckBox("复选框 2", selectGroup);
@@ -156,17 +185,21 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     radioBtn1->setChecked(true);
     auto* toggleSwitch = new ToggleSwitch(selectGroup);
     
-    selectLayout->addWidget(checkBox1);
-    selectLayout->addWidget(checkBox2);
-    selectLayout->addWidget(radioBtn1);
-    selectLayout->addWidget(radioBtn2);
-    selectLayout->addWidget(new Label("开关控件:", selectGroup));
-    selectLayout->addWidget(toggleSwitch);
-    selectGroup->setMaximumWidth(560);
+    // 每行两个控件：复选、单选两行；开关与标签一行
+    selectLayout->addWidget(checkBox1, 0, 0);
+    selectLayout->addWidget(checkBox2, 0, 1);
+    selectLayout->addWidget(radioBtn1, 1, 0);
+    selectLayout->addWidget(radioBtn2, 1, 1);
+    selectLayout->addWidget(new Label("开关控件:", selectGroup), 2, 0);
+    selectLayout->addWidget(toggleSwitch, 2, 1);
+    selectGroup->setMaximumWidth(420);
+    selectGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
     
     // 进度指示器组
     auto* progressGroup = new GroupBox("进度指示器", content);
     auto* progressLayout = new QVBoxLayout(progressGroup);
+    progressLayout->setContentsMargins(4, 4, 4, 4);
+    progressLayout->setSpacing(4);
     
     auto* progressBar = new ProgressBar(progressGroup);
     progressBar->setValue(65);
@@ -177,12 +210,19 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     progressLayout->addWidget(progressBar);
     progressLayout->addWidget(new Label("忙碌指示器:", progressGroup));
     progressLayout->addWidget(busyIndicator);
-    progressGroup->setMaximumWidth(560);
+    progressGroup->setMaximumWidth(420);
+    progressGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     // 右侧：Dialogs 组件演示区域
     auto* dialogsGroup = new GroupBox("Dialogs 组件演示", content);
-    auto* dialogsLayout = new QVBoxLayout(dialogsGroup);
-    dialogsGroup->setMaximumWidth(420);
+    auto* dialogsLayout = new QGridLayout(dialogsGroup);
+    dialogsLayout->setHorizontalSpacing(10);
+    dialogsLayout->setVerticalSpacing(20);
+    dialogsLayout->setContentsMargins(6, 6, 6, 6);
+    dialogsLayout->setColumnStretch(0, 1);
+    dialogsLayout->setColumnStretch(1, 1);
+    dialogsGroup->setMaximumWidth(480);
+    dialogsGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
     // 结果展示标签
     auto* fileResult = new Label("文件结果: ", dialogsGroup);
@@ -193,13 +233,20 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
 
     // 文件对话框
     auto* openFileBtn = new PushButton("打开文件", dialogsGroup);
-    auto* openFilesBtn = new PushButton("打开多个文件", dialogsGroup);
+    auto* openFilesBtn = new PushButton("多个文件", dialogsGroup);
     auto* saveFileBtn = new PushButton("保存文件", dialogsGroup);
     auto* openDirBtn = new PushButton("打开目录", dialogsGroup);
+    // 固定按钮尺寸，避免在布局中被拉伸
+    openFileBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    openFilesBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    saveFileBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    openDirBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     // 颜色与字体对话框
     auto* pickColorBtn = new PushButton("选择颜色", dialogsGroup);
     auto* pickFontBtn = new PushButton("选择字体", dialogsGroup);
+    pickColorBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    pickFontBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     // 消息框
     auto* msgInfoBtn = new PushButton("信息消息", dialogsGroup);
@@ -207,39 +254,65 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     auto* msgErrorBtn = new PushButton("错误消息", dialogsGroup);
     auto* msgSuccessBtn = new PushButton("成功消息", dialogsGroup);
     auto* askQuestionBtn = new PushButton("询问消息", dialogsGroup);
+    msgInfoBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    msgWarnBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    msgErrorBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    msgSuccessBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    askQuestionBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     // 输入对话框
     auto* inputTextBtn = new PushButton("输入文本", dialogsGroup);
     auto* inputIntBtn = new PushButton("输入整数", dialogsGroup);
     auto* inputDoubleBtn = new PushButton("输入小数", dialogsGroup);
+    inputTextBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    inputIntBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    inputDoubleBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    // 排版
-    dialogsLayout->addWidget(openFileBtn);
-    dialogsLayout->addWidget(openFilesBtn);
-    dialogsLayout->addWidget(saveFileBtn);
-    dialogsLayout->addWidget(openDirBtn);
-    dialogsLayout->addWidget(fileResult);
-    dialogsLayout->addWidget(dirResult);
-    dialogsLayout->addSpacing(6);
-    dialogsLayout->addWidget(pickColorBtn);
-    dialogsLayout->addWidget(colorResult);
-    dialogsLayout->addWidget(pickFontBtn);
-    dialogsLayout->addWidget(fontResult);
-    dialogsLayout->addSpacing(6);
-    dialogsLayout->addWidget(msgInfoBtn);
-    dialogsLayout->addWidget(msgWarnBtn);
-    dialogsLayout->addWidget(msgErrorBtn);
-    dialogsLayout->addWidget(msgSuccessBtn);
-    dialogsLayout->addWidget(askQuestionBtn);
-    dialogsLayout->addSpacing(6);
-    dialogsLayout->addWidget(inputTextBtn);
-    dialogsLayout->addWidget(inputIntBtn);
-    dialogsLayout->addWidget(inputDoubleBtn);
-    dialogsLayout->addWidget(inputResult);
-    dialogsLayout->addSpacing(6);
+    // 调整按钮尺寸以适配两排紧凑布局
+    const int dlgBtnH = 32;
+    const int dlgBtnW = 96;
+    openFileBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    openFilesBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    saveFileBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    openDirBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    pickColorBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    pickFontBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    msgInfoBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    msgWarnBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    msgErrorBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    msgSuccessBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    askQuestionBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    inputTextBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    inputIntBtn->setFixedSize(dlgBtnW, dlgBtnH);
+    inputDoubleBtn->setFixedSize(dlgBtnW, dlgBtnH);
 
-    // 原示例中的“打开样式对话框 / 打开无边框对话框”按钮取消，不再单独显示
-    dialogsLayout->addStretch();
+    // 两列竖排布局（左列 7 个，右列 7 个）
+    dialogsLayout->addWidget(openFileBtn,    0, 0);
+    dialogsLayout->addWidget(openFilesBtn,   1, 0);
+    dialogsLayout->addWidget(saveFileBtn,    2, 0);
+    dialogsLayout->addWidget(openDirBtn,     3, 0);
+    dialogsLayout->addWidget(pickColorBtn,   4, 0);
+    dialogsLayout->addWidget(pickFontBtn,    5, 0);
+    dialogsLayout->addWidget(msgInfoBtn,     6, 0);
+    dialogsLayout->addWidget(msgWarnBtn,     0, 1);
+    dialogsLayout->addWidget(msgErrorBtn,    1, 1);
+    dialogsLayout->addWidget(msgSuccessBtn,  2, 1);
+    dialogsLayout->addWidget(askQuestionBtn, 3, 1);
+    dialogsLayout->addWidget(inputTextBtn,   4, 1);
+    dialogsLayout->addWidget(inputIntBtn,    5, 1);
+    dialogsLayout->addWidget(inputDoubleBtn, 6, 1);
+
+    // 结果标签置于两排按钮下方，减少高度占用
+    fileResult->setWordWrap(true);
+    dirResult->setWordWrap(true);
+    colorResult->setWordWrap(true);
+    fontResult->setWordWrap(true);
+    inputResult->setWordWrap(true);
+    dialogsLayout->addWidget(fileResult,  7, 0, 1, 2);
+    dialogsLayout->addWidget(dirResult,   8, 0, 1, 2);
+    dialogsLayout->addWidget(colorResult, 9, 0, 1, 2);
+    dialogsLayout->addWidget(fontResult, 10, 0, 1, 2);
+    dialogsLayout->addWidget(inputResult, 11, 0, 1, 2);
 
     // 连接：文件与目录
     QObject::connect(openFileBtn, &PushButton::clicked, [page, fileResult]() {
@@ -308,16 +381,174 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
 
     // 已移除示例对话框按钮与触发逻辑
     
-    layout->addWidget(buttonGroup, 0, 0);
-    layout->addWidget(inputGroup, 0, 1);
-    layout->addWidget(selectGroup, 1, 0);
-    layout->addWidget(progressGroup, 1, 1);
-    // 新增：把日期时间控件组加入布局（占据左侧两列）
-    layout->addWidget(datetimeGroup, 2, 0, 1, 2);
-    layout->addWidget(dialogsGroup, 0, 2, 2, 1);
-    layout->setColumnStretch(0, 1);
+    // 左侧列：使用一个垂直容器紧密堆叠控制类分组，减少行间空白
+    auto* leftPanel = new QWidget(content);
+    auto* leftPanelLayout = new QVBoxLayout(leftPanel);
+    leftPanelLayout->setContentsMargins(4, 4, 4, 4);
+    leftPanelLayout->setSpacing(6);
+    // 让分组在垂直方向尽量压缩
+    buttonGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    selectGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    inputGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    progressGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    datetimeGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+
+    leftPanelLayout->addWidget(buttonGroup);
+    leftPanelLayout->addWidget(selectGroup);
+    leftPanelLayout->addWidget(inputGroup);
+    leftPanelLayout->addWidget(progressGroup);
+    leftPanelLayout->addWidget(datetimeGroup);
+    leftPanel->setLayout(leftPanelLayout);
+
+    // 左列放置该容器，整体顶部对齐
+    layout->addWidget(leftPanel, 0, 0, 5, 1, Qt::AlignTop);
+
+    // 弹窗演示分组移至右列底部行，避免占用首屏空间
+    layout->addWidget(dialogsGroup, 4, 1, 1, 1, Qt::AlignLeft | Qt::AlignTop);
+
+    // 仪表盘控件组（从 Views 独立，仅做迁移，不改参数）
+    {
+        auto* gaugeGroup = new GroupBox("仪表盘控件", content);
+        auto* gaugeLayout = new QGridLayout(gaugeGroup);
+        // 宽度与左侧其它分组保持一致
+        gaugeGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+        auto* circularGauge = new CircularGauge(gaugeGroup);
+        // 保持与迁移前一致的初始化参数
+        circularGauge->useClassicThreeColorPercentPreset("完成率", "%", 30, 50, 20);
+        circularGauge->setTickLabelFontScale(0.75);
+        circularGauge->setValue(75);
+        circularGauge->setMinimumSize(260, 260);
+        gaugeLayout->addWidget(new Label("圆形仪表:", gaugeGroup), 0, 0);
+        gaugeLayout->addWidget(circularGauge, 1, 0);
+        // 将仪表盘分组插入左侧面板按钮分组之前
+        leftPanelLayout->insertWidget(0, gaugeGroup);
+    }
+
+    // 视图控件组（合并自“视图图表”页）
+    {
+        auto* viewGroup = new GroupBox("视图控件", content);
+        auto* viewLayout = new QGridLayout(viewGroup);
+
+        auto* listView = new ListView(viewGroup);
+        auto* tableView = new TableView(viewGroup);
+        listView->setMinimumHeight(140);
+        tableView->setMinimumHeight(180);
+        auto* treeTable = new TreeTable(viewGroup);
+        // 列表视图模型
+        {
+            auto* listModel = new QStandardItemModel(listView);
+            listModel->setColumnCount(1);
+            listModel->appendRow(new QStandardItem("任务 A"));
+            listModel->appendRow(new QStandardItem("任务 B"));
+            listModel->appendRow(new QStandardItem("任务 C"));
+            listView->setModel(listModel);
+        }
+        // 表格视图模型
+        {
+            auto* tableModel = new QStandardItemModel(tableView);
+            tableModel->setColumnCount(3);
+            tableModel->setHorizontalHeaderLabels({"产品", "区域", "销量"});
+            tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("A"), new QStandardItem("华北"), new QStandardItem("120")});
+            tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("B"), new QStandardItem("华东"), new QStandardItem("98")});
+            tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("C"), new QStandardItem("华南"), new QStandardItem("150")});
+            tableView->setModel(tableModel);
+            tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        }
+        // TreeTable 示例模型
+        auto* tmodel = new QStandardItemModel(treeTable);
+        tmodel->setColumnCount(3);
+        tmodel->setHorizontalHeaderLabels({"类别", "项目", "数值"});
+        auto* sales = new QStandardItem("销售");
+        auto* rnd = new QStandardItem("研发");
+        tmodel->appendRow(QList<QStandardItem*>{sales, new QStandardItem(), new QStandardItem()});
+        tmodel->appendRow(QList<QStandardItem*>{rnd, new QStandardItem(), new QStandardItem()});
+        sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q1"), new QStandardItem(), new QStandardItem("120.5")});
+        sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q2"), new QStandardItem(), new QStandardItem("98.0")});
+        sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q3"), new QStandardItem(), new QStandardItem("150.3")});
+        sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q4"), new QStandardItem(), new QStandardItem("110.0")});
+        rnd->appendRow(QList<QStandardItem*>{new QStandardItem("平台"), new QStandardItem(), new QStandardItem("80.0")});
+        rnd->appendRow(QList<QStandardItem*>{new QStandardItem("算法"), new QStandardItem(), new QStandardItem("132.7")});
+        rnd->appendRow(QList<QStandardItem*>{new QStandardItem("客户端"), new QStandardItem(), new QStandardItem("64.2")});
+        treeTable->setModel(tmodel);
+        treeTable->clearColumnAggregations();
+        treeTable->setColumnAggregation(2, TreeTable::Sum);
+        treeTable->expandAll();
+        treeTable->header()->setSectionResizeMode(QHeaderView::Stretch);
+
+        viewLayout->addWidget(new Label("列表视图:", viewGroup), 0, 0);
+        viewLayout->addWidget(listView, 1, 0);
+        viewLayout->addWidget(new Label("表格视图:", viewGroup), 2, 0);
+        viewLayout->addWidget(tableView, 3, 0);
+        viewLayout->addWidget(new Label("树形表格:", viewGroup), 4, 0);
+        viewLayout->addWidget(treeTable, 5, 0);
+        viewLayout->setColumnStretch(0, 1);
+        // 视图控件置于右列第二行
+    layout->addWidget(viewGroup, 1, 1);
+    }
+
+    // 图表控件组（合并自“视图图表”页）
+    {
+        auto* chartGroup = new GroupBox("图表控件", content);
+        auto* chartLayout = new QGridLayout(chartGroup);
+
+        auto* lineChart = new LineChart(chartGroup);
+        lineChart->setMinimumSize(300, 200);
+        auto* pieChart = new PieChart(chartGroup);
+        pieChart->setMinimumSize(300, 200);
+        auto* histogramChart = new HistogramChart(chartGroup);
+        histogramChart->setMinimumSize(300, 200);
+
+        chartLayout->addWidget(new Label("折线图:", chartGroup), 0, 0);
+        chartLayout->addWidget(lineChart, 1, 0);
+        chartLayout->addWidget(new Label("饼图:", chartGroup), 0, 1);
+        chartLayout->addWidget(pieChart, 1, 1);
+        chartLayout->addWidget(new Label("柱状图:", chartGroup), 2, 0, 1, 2);
+        chartLayout->addWidget(histogramChart, 3, 0, 1, 2);
+
+        // 图表组置于右列第三行
+        layout->addWidget(chartGroup, 2, 1);
+    }
+
+    // 文本编辑器组与示例容器（合并自“文本对话框”页）
+    {
+        auto* textGroup = new GroupBox("文本编辑器", content);
+        auto* textLayout = new QGridLayout(textGroup);
+        auto* textEdit = new TextEdit(textGroup);
+        textEdit->setPlainText("这是一个富文本编辑器\n支持多种格式");
+        textEdit->setMinimumHeight(120);
+        auto* plainTextEdit = new PlainTextEdit(textGroup);
+        plainTextEdit->setPlainText("这是一个纯文本编辑器\n适合代码编辑");
+        plainTextEdit->setMinimumHeight(120);
+        textLayout->addWidget(new Label("富文本编辑器:", textGroup), 0, 0);
+        textLayout->addWidget(textEdit, 1, 0);
+        textLayout->addWidget(new Label("纯文本编辑器:", textGroup), 0, 1);
+        textLayout->addWidget(plainTextEdit, 1, 1);
+        // 文本编辑器组置于右列第四行
+        layout->addWidget(textGroup, 3, 1);
+
+        auto* dialogGroup = new GroupBox("对话框和工具", content);
+        auto* dialogLayout = new QVBoxLayout(dialogGroup);
+        auto* frameExample = new Frame(dialogGroup);
+        frameExample->setMinimumHeight(80);
+        auto* frameLayout = new QVBoxLayout(frameExample);
+        frameLayout->addWidget(new Label("这是一个 Frame 容器", frameExample));
+        frameLayout->addWidget(new Label("可以包含其他控件", frameExample));
+        frameExample->setLayout(frameLayout);
+        dialogLayout->addWidget(new Label("Frame 容器示例:", dialogGroup));
+        dialogLayout->addWidget(frameExample);
+        // 工具示例容器并入右列底部，与 dialogsGroup 同层次
+        layout->addWidget(dialogGroup, 4, 1);
+    }
+
+    // 列伸缩：左列保持最小，右列作为主显示区
+    layout->setColumnStretch(0, 0);
     layout->setColumnStretch(1, 1);
-    layout->setColumnStretch(2, 1);
+    // 行伸缩：前四行固定，底部一行吸收多余空间
+    layout->setRowStretch(0, 0);
+    layout->setRowStretch(1, 0);
+    layout->setRowStretch(2, 0);
+    layout->setRowStretch(3, 0);
+    layout->setRowStretch(4, 1);
     
     content->setLayout(layout);
     scrollArea->setWidget(content);
@@ -342,6 +573,9 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     // 视图控件组
     auto* viewGroup = new GroupBox("视图控件", content);
     auto* viewLayout = new QGridLayout(viewGroup);
+    viewLayout->setContentsMargins(4, 4, 4, 4);
+    viewLayout->setHorizontalSpacing(8);
+    viewLayout->setVerticalSpacing(4);
     
     auto* listView = new ListView(viewGroup);
     auto* tableView = new TableView(viewGroup);
@@ -392,26 +626,16 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     treeTable->setColumnAggregation(2, TreeTable::Sum);
     treeTable->expandAll();
     treeTable->header()->setSectionResizeMode(QHeaderView::Stretch);
-    auto* circularGauge = new CircularGauge(viewGroup);
-    // 启用经典三色百分比预设，使示例页与 1.txt 逻辑一致
-    circularGauge->useClassicThreeColorPercentPreset("完成率", "%", 30, 50, 20);
-    circularGauge->setTickLabelFontScale(0.75); // 降低刻度文字大小，避免重叠
-    circularGauge->setValue(75);
-    circularGauge->setMinimumSize(260, 260);    // 放大仪表盘尺寸
-
     // （已移除懒加载树形表格示例，按用户要求仅保留一个）
     
     viewLayout->addWidget(new Label("列表视图:", viewGroup), 0, 0);
     viewLayout->addWidget(listView, 1, 0);
-    viewLayout->addWidget(new Label("圆形仪表:", viewGroup), 0, 1);
-    viewLayout->addWidget(circularGauge, 1, 1);
     viewLayout->addWidget(new Label("表格视图:", viewGroup), 2, 0);
     viewLayout->addWidget(tableView, 3, 0);
     viewLayout->addWidget(new Label("树形表格:", viewGroup), 4, 0);
     viewLayout->addWidget(treeTable, 5, 0);
     // 列伸缩以平衡左右两列宽度
     viewLayout->setColumnStretch(0, 1);
-    viewLayout->setColumnStretch(1, 1);
     
     // 图表控件组
     auto* chartGroup = new GroupBox("图表控件", content);
@@ -595,8 +819,6 @@ int main(int argc, char *argv[])
     // 添加主要展示页面
     // 顶部标签取消 Emoji 图标，避免跨平台字体缺失
     mainTabWidget->addTab(createInputsShowcase(mainTabWidget), "输入控件");
-    mainTabWidget->addTab(createViewsChartsShowcase(mainTabWidget), "视图图表");
-    mainTabWidget->addTab(createTextDialogShowcase(mainTabWidget), "文本对话框");
     // 高级表格（分页/筛选/排序/导出）
     mainTabWidget->addTab(new PagedTablePage(mainTabWidget), "高级表格");
 
@@ -604,32 +826,15 @@ int main(int argc, char *argv[])
     centralWidget->setLayout(centralLayout);
     window->setCentralWidget(centralWidget);
 
-    // 创建主题切换停靠窗口
-    auto* themeDock = new QDockWidget("主题设置", window);
-    auto* themeWidget = new StyledWidget(themeDock);
-    auto* themeLayout = new QVBoxLayout(themeWidget);
-
-    auto* themeLabel = new Label("🎨 主题选择", themeWidget);
-    QFont titleFont = themeLabel->font();
-    titleFont.setBold(true);
-    titleFont.setPointSize(10);
-    themeLabel->setFont(titleFont);
-
-    auto* themeCombo = new ComboBox(themeWidget);
+    // 创建顶部工具栏并放置主题切换下拉
+    auto* themeToolbar = new ToolBar(window);
+    themeToolbar->setMovable(false);
+    window->addToolBar(Qt::TopToolBarArea, themeToolbar);
+    auto* themeCombo = new ComboBox(themeToolbar);
     themeCombo->addItem("🌙 深色主题");
     themeCombo->addItem("☀️ 浅色主题");
-    
-    auto* infoLabel = new Label("选择不同主题查看\n所有控件的样式变化", themeWidget);
-    infoLabel->setWordWrap(true);
-    
-    themeLayout->addWidget(themeLabel);
-    themeLayout->addWidget(themeCombo);
-    themeLayout->addWidget(infoLabel);
-    themeLayout->addStretch();
-
-    themeWidget->setLayout(themeLayout);
-    themeDock->setWidget(themeWidget);
-    window->addDockWidget(Qt::LeftDockWidgetArea, themeDock);
+    themeToolbar->addWidget(new Label("主题:", themeToolbar));
+    themeToolbar->addWidget(themeCombo);
 
     // 连接主题切换
     QObject::connect(themeCombo, QOverload<int>::of(&ComboBox::currentIndexChanged), 
