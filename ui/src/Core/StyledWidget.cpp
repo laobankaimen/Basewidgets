@@ -29,22 +29,17 @@ void StyledWidget::setStyleManager(acss::QtAdvancedStylesheet* manager)
 void StyledWidget::attachToManager()
 {
     if (!m_manager) return;
-    // 连接信号，当样式更新时刷新本控件样式
-    connect(m_manager, &QtAdvancedStylesheet::stylesheetChanged,
-            this, &StyledWidget::onStylesheetChanged);
-    applyStylesheet();
+    // 组件级不再连接样式变更信号；应用级统一管理
 }
 
 void StyledWidget::onStylesheetChanged()
 {
-    applyStylesheet();
+    // 统一在应用级进行样式更新；此处不再单独处理
 }
 
 void StyledWidget::applyStylesheet()
 {
-    if (!m_manager) return;
-    // 简单应用全局样式表；复杂组件可在派生类中覆盖
-    this->setStyleSheet(m_manager->styleSheet());
+    // 清空组件级样式应用，改为应用级统一管理
 }
 
 } // namespace QtAdvancedUI

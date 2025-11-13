@@ -31,6 +31,11 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
     }
 #endif
 
+    // 如果未明确传入样式目录，则默认使用应用目录下的 styles 目录
+    if (resolvedStylesDir.isEmpty()) {
+        resolvedStylesDir = QDir(QApplication::applicationDirPath()).filePath("styles");
+    }
+
     if (!resolvedStylesDir.isEmpty()) {
         s_instance->setStylesDirPath(resolvedStylesDir);
     }
@@ -47,11 +52,21 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
 
     if (!themeName.isEmpty()) {
         s_instance->setCurrentTheme(themeName);
-    } else {
-        s_instance->setCurrentTheme("dark_teal");
     }
+    // 始终确保设置默认主题（当未指定或样式要求默认初始化时）
+    s_instance->setDefaultTheme();
 
+    // 初次生成并应用到整个应用
     s_instance->updateStylesheet();
+    QApplication::setWindowIcon(s_instance->styleIcon());
+    qApp->setStyleSheet(s_instance->styleSheet());
+
+    // 监听样式变化，自动应用到整个应用
+    QObject::connect(s_instance, &QtAdvancedStylesheet::stylesheetChanged, []() {
+        auto* mgr = StyleManagerAdapter::instance();
+        QApplication::setWindowIcon(mgr->styleIcon());
+        qApp->setStyleSheet(mgr->styleSheet());
+    });
 }
 
 void StyleManagerAdapter::setInstance(acss::QtAdvancedStylesheet* mgr)

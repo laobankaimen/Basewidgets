@@ -368,7 +368,7 @@ void CircularGauge::useCompletionRatePreset(const QString& title, const QString&
 
 void CircularGauge::applyStylesheet()
 {
-    if (styleManager()) setStyleSheet(styleManager()->styleSheet());
+    // 组件级样式应用已统一移除，改为应用级统一管理
 }
 
 void CircularGauge::useClassicThreeColorPercentPreset(const QString& title, const QString& unit,

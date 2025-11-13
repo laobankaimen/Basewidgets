@@ -40,7 +40,6 @@ void ToggleSwitch::setStyleManager(acss::QtAdvancedStylesheet* manager)
 {
     if (m_manager == manager) return;
     m_manager = manager;
-    applyStylesheet();
 }
 
 void ToggleSwitch::setAnimationDuration(int ms)
@@ -56,7 +55,7 @@ void ToggleSwitch::setOffset(qreal v)
 
 void ToggleSwitch::applyStylesheet()
 {
-    if (m_manager) setStyleSheet(m_manager->styleSheet());
+    // 组件级样式应用已统一移除，改为应用级统一管理
 }
 
 void ToggleSwitch::paintEvent(QPaintEvent* e)

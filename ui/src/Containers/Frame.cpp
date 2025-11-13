@@ -35,18 +35,16 @@ void Frame::attachToManager()
     if (!m_manager) return;
     connect(m_manager, &QtAdvancedStylesheet::stylesheetChanged,
             this, &Frame::onStylesheetChanged);
-    applyStylesheet();
 }
 
 void Frame::onStylesheetChanged()
 {
-    applyStylesheet();
+    // 统一在应用级进行样式更新；此处不再单独处理
 }
 
 void Frame::applyStylesheet()
 {
-    if (!m_manager) return;
-    this->setStyleSheet(m_manager->styleSheet());
+    // 清空组件级样式应用，改为应用级统一管理
 }
 
 } // namespace QtAdvancedUI

@@ -82,7 +82,7 @@ void BusyIndicator::paintEvent(QPaintEvent* e)
 
 void BusyIndicator::applyStylesheet()
 {
-    if (styleManager()) setStyleSheet(styleManager()->styleSheet());
+    // 组件级样式应用已统一移除，改为应用级统一管理
 }
 
 } // namespace QtAdvancedUI

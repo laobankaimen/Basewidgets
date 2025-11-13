@@ -836,7 +836,7 @@ int main(int argc, char *argv[])
     themeToolbar->addWidget(new Label("主题:", themeToolbar));
     themeToolbar->addWidget(themeCombo);
 
-    // 连接主题切换
+    // 连接主题切换：仅修改当前主题并生成样式表，由 StyleManagerAdapter 统一应用到 qApp
     QObject::connect(themeCombo, QOverload<int>::of(&ComboBox::currentIndexChanged), 
                      [](int index) {
         auto* mgr = StyleManagerAdapter::instance();

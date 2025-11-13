@@ -31,20 +31,17 @@ void TimePicker::setStyleManager(acss::QtAdvancedStylesheet* manager)
 void TimePicker::attachToManager()
 {
     if (!m_manager) return;
-    connect(m_manager, &QtAdvancedStylesheet::stylesheetChanged,
-            this, &TimePicker::onStylesheetChanged);
-    applyStylesheet();
+    // 组件级不再连接样式变更信号；应用级统一管理
 }
 
 void TimePicker::onStylesheetChanged()
 {
-    applyStylesheet();
+    // 统一在应用级进行样式更新；此处不再单独处理
 }
 
 void TimePicker::applyStylesheet()
 {
-    if (!m_manager) return;
-    this->setStyleSheet(m_manager->styleSheet());
+    // 清空组件级样式应用，改为应用级统一管理
 }
 
 } // namespace QtAdvancedUI
