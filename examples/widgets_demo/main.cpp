@@ -393,6 +393,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     progressGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     datetimeGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
 
+    leftPanelLayout->addWidget(dialogsGroup);
     leftPanelLayout->addWidget(buttonGroup);
     leftPanelLayout->addWidget(selectGroup);
     leftPanelLayout->addWidget(inputGroup);
@@ -402,9 +403,6 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
 
     // 左列放置该容器，整体顶部对齐
     layout->addWidget(leftPanel, 0, 0, 5, 1, Qt::AlignTop);
-
-    // 弹窗演示分组移至右列底部行，避免占用首屏空间
-    layout->addWidget(dialogsGroup, 4, 1, 1, 1, Qt::AlignLeft | Qt::AlignTop);
 
     // 仪表盘控件组（从 Views 独立，仅做迁移，不改参数）
     {
