@@ -30,7 +30,7 @@ static QStringList parseNameFilter(const QString& filter)
     int r = f.indexOf(')');
     if (l >= 0 && r > l) f = f.mid(l + 1, r - l - 1);
     f = f.replace(';', ' ');
-    QStringList tokens = f.split(' ', Qt::SkipEmptyParts);
+    QStringList tokens = f.split(' ', QString::SkipEmptyParts);
     for (QString& t : tokens) t = t.trimmed();
     return tokens;
 }

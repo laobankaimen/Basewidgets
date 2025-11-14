@@ -499,7 +499,7 @@ static QWidget* makeFilePickerBody(QWidget* parent,
         QStringList pats;
         if (l>=0 && r>l) {
             QString inside = text.mid(l+1, r-l-1);
-            for (const QString& seg : inside.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts)) {
+            for (const QString& seg : inside.split(QRegularExpression("\\s+"), QString::SkipEmptyParts)) {
                 if (seg.startsWith("*")) pats << seg;
             }
         }
@@ -815,7 +815,7 @@ QString DialogUtils::openFile(QWidget* parent, const QString& title, const QStri
     fd->setViewMode(QFileDialog::Detail);
     fd->setOption(QFileDialog::DontUseNativeDialog, true);
     fd->setWindowFlags(Qt::Widget); // 作为主体嵌入
-    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", Qt::SkipEmptyParts));
+    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", QString::SkipEmptyParts));
     fd->installEventFilter(new FileDialogLocalizer(fd));
 
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
@@ -836,7 +836,7 @@ QStringList DialogUtils::openFiles(QWidget* parent, const QString& title, const 
     fd->setViewMode(QFileDialog::Detail);
     fd->setOption(QFileDialog::DontUseNativeDialog, true);
     fd->setWindowFlags(Qt::Widget);
-    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", Qt::SkipEmptyParts));
+    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", QString::SkipEmptyParts));
     fd->installEventFilter(new FileDialogLocalizer(fd));
 
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
@@ -858,7 +858,7 @@ QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QStri
     fd->setViewMode(QFileDialog::Detail);
     fd->setOption(QFileDialog::DontUseNativeDialog, true);
     fd->setWindowFlags(Qt::Widget);
-    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", Qt::SkipEmptyParts));
+    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", QString::SkipEmptyParts));
     fd->installEventFilter(new FileDialogLocalizer(fd));
 
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
