@@ -42,9 +42,13 @@
 #include <QtAdvancedUI/Dialogs/DialogUtils.h>
 #include <QtAdvancedUI/Views/TreeWidget.h>
 #include <QtAdvancedUI/Gauges/CircularGauge.h>
-#include <QtAdvancedUI/Charts/LineChart.h>
-#include <QtAdvancedUI/Charts/PieChart.h>
-#include <QtAdvancedUI/Charts/HistogramChart.h>
+#include <QtAdvancedUI/Charts/QCustomplot.h>
+#include <QtAdvancedUI/Charts/StyledPlot.h>
+#include <QtAdvancedUI/Charts/QCPLineChart.h>
+#include <QtAdvancedUI/Charts/QCPBarChart.h>
+#include <QtAdvancedUI/Charts/QCPWaterfallChart.h>
+#include <QMenu>
+#include <QtMath>
 #include "pages/PagedTablePage.h"
 
 // 示例数据模型
@@ -421,6 +425,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
         // 将仪表盘分组插入左侧面板按钮分组之前
         leftPanelLayout->insertWidget(0, gaugeGroup);
     }
+    
 
     // 视图控件组（合并自“视图图表”页）
     {
@@ -484,28 +489,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     layout->addWidget(viewGroup, 1, 1);
     }
 
-    // 图表控件组（合并自“视图图表”页）
-    {
-        auto* chartGroup = new GroupBox("图表控件", content);
-        auto* chartLayout = new QGridLayout(chartGroup);
-
-        auto* lineChart = new LineChart(chartGroup);
-        lineChart->setMinimumSize(300, 200);
-        auto* pieChart = new PieChart(chartGroup);
-        pieChart->setMinimumSize(300, 200);
-        auto* histogramChart = new HistogramChart(chartGroup);
-        histogramChart->setMinimumSize(300, 200);
-
-        chartLayout->addWidget(new Label("折线图:", chartGroup), 0, 0);
-        chartLayout->addWidget(lineChart, 1, 0);
-        chartLayout->addWidget(new Label("饼图:", chartGroup), 0, 1);
-        chartLayout->addWidget(pieChart, 1, 1);
-        chartLayout->addWidget(new Label("柱状图:", chartGroup), 2, 0, 1, 2);
-        chartLayout->addWidget(histogramChart, 3, 0, 1, 2);
-
-        // 图表组置于右列第三行
-        layout->addWidget(chartGroup, 2, 1);
-    }
+    // 图表控件组（已迁移至 createViewsChartsShowcase，旧组移除）
 
     // 文本编辑器组与示例容器（合并自“文本对话框”页）
     {
@@ -567,94 +551,263 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     auto* layout = new QGridLayout(content);
     layout->setContentsMargins(16, 16, 16, 16);
     layout->setSpacing(16);
-
-    // 视图控件组
-    auto* viewGroup = new GroupBox("视图控件", content);
-    auto* viewLayout = new QGridLayout(viewGroup);
-    viewLayout->setContentsMargins(4, 4, 4, 4);
-    viewLayout->setHorizontalSpacing(8);
-    viewLayout->setVerticalSpacing(4);
-    
-    auto* listView = new ListView(viewGroup);
-    auto* tableView = new TableView(viewGroup);
-    // 统一最小高度，避免视图过小导致显示不全
-    listView->setMinimumHeight(140);
-    tableView->setMinimumHeight(180);
-    auto* treeTable = new TreeTable(viewGroup);
-    // 列表视图模型
-    {
-        auto* listModel = new QStandardItemModel(listView);
-        listModel->setColumnCount(1);
-        listModel->appendRow(new QStandardItem("任务 A"));
-        listModel->appendRow(new QStandardItem("任务 B"));
-        listModel->appendRow(new QStandardItem("任务 C"));
-        listView->setModel(listModel);
-    }
-    // 表格视图模型
-    {
-        auto* tableModel = new QStandardItemModel(tableView);
-        tableModel->setColumnCount(3);
-        tableModel->setHorizontalHeaderLabels({"产品", "区域", "销量"});
-        tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("A"), new QStandardItem("华北"), new QStandardItem("120")});
-        tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("B"), new QStandardItem("华东"), new QStandardItem("98")});
-        tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("C"), new QStandardItem("华南"), new QStandardItem("150")});
-        tableView->setModel(tableModel);
-        tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    }
-    // TreeTable 示例模型
-    auto* tmodel = new QStandardItemModel(treeTable);
-    tmodel->setColumnCount(3);
-    tmodel->setHorizontalHeaderLabels({"类别", "项目", "数值"});
-    auto* sales = new QStandardItem("销售");
-    auto* rnd = new QStandardItem("研发");
-    tmodel->appendRow(QList<QStandardItem*>{sales, new QStandardItem(), new QStandardItem()});
-    tmodel->appendRow(QList<QStandardItem*>{rnd, new QStandardItem(), new QStandardItem()});
-    // 销售子项
-    sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q1"), new QStandardItem(), new QStandardItem("120.5")});
-    sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q2"), new QStandardItem(), new QStandardItem("98.0")});
-    sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q3"), new QStandardItem(), new QStandardItem("150.3")});
-    sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q4"), new QStandardItem(), new QStandardItem("110.0")});
-    // 研发子项
-    rnd->appendRow(QList<QStandardItem*>{new QStandardItem("平台"), new QStandardItem(), new QStandardItem("80.0")});
-    rnd->appendRow(QList<QStandardItem*>{new QStandardItem("算法"), new QStandardItem(), new QStandardItem("132.7")});
-    rnd->appendRow(QList<QStandardItem*>{new QStandardItem("客户端"), new QStandardItem(), new QStandardItem("64.2")});
-    treeTable->setModel(tmodel);
-    // 列聚合：在第3列统计合计，并启用分组汇总行
-    treeTable->clearColumnAggregations();
-    treeTable->setColumnAggregation(2, TreeTable::Sum);
-    treeTable->expandAll();
-    treeTable->header()->setSectionResizeMode(QHeaderView::Stretch);
-    // （已移除懒加载树形表格示例，按用户要求仅保留一个）
-    
-    viewLayout->addWidget(new Label("列表视图:", viewGroup), 0, 0);
-    viewLayout->addWidget(listView, 1, 0);
-    viewLayout->addWidget(new Label("表格视图:", viewGroup), 2, 0);
-    viewLayout->addWidget(tableView, 3, 0);
-    viewLayout->addWidget(new Label("树形表格:", viewGroup), 4, 0);
-    viewLayout->addWidget(treeTable, 5, 0);
-    // 列伸缩以平衡左右两列宽度
-    viewLayout->setColumnStretch(0, 1);
-    
-    // 图表控件组
+    // 图表控件组（折线图、柱状图与瀑布图分离展示）
     auto* chartGroup = new GroupBox("图表控件", content);
     auto* chartLayout = new QGridLayout(chartGroup);
-    
-    auto* lineChart = new LineChart(chartGroup);
-    lineChart->setMinimumSize(300, 200);
-    auto* pieChart = new PieChart(chartGroup);
-    pieChart->setMinimumSize(300, 200);
-    auto* histogramChart = new HistogramChart(chartGroup);
-    histogramChart->setMinimumSize(300, 200);
-    
-    chartLayout->addWidget(new Label("折线图:", chartGroup), 0, 0);
-    chartLayout->addWidget(lineChart, 1, 0);
-    chartLayout->addWidget(new Label("饼图:", chartGroup), 0, 1);
-    chartLayout->addWidget(pieChart, 1, 1);
-    chartLayout->addWidget(new Label("柱状图:", chartGroup), 2, 0, 1, 2);
-    chartLayout->addWidget(histogramChart, 3, 0, 1, 2);
-    
-    layout->addWidget(viewGroup, 0, 0);
-    layout->addWidget(chartGroup, 1, 0);
+
+    // 折线图 Plot（独立，使用通用基类封装交互与主题）
+    auto* plotLine = new StyledPlot(chartGroup);
+    plotLine->setMinimumSize(600, 300);
+
+    // 折线图示例（多条折线，支持多纵轴与显示/隐藏）
+    QVector<double> xs(200);
+    for (int i = 0; i < xs.size(); ++i) xs[i] = i / 20.0;
+
+    auto* line1 = new QCPLineChart(plotLine->xAxis, plotLine->yAxis);
+    auto* line2 = new QCPLineChart(plotLine->xAxis, plotLine->yAxis);
+    auto* line3 = new QCPLineChart(plotLine->xAxis, plotLine->yAxis);
+
+    {
+        QVector<double> y1(xs.size()), y2(xs.size()), y3(xs.size());
+        for (int i = 0; i < xs.size(); ++i) {
+            y1[i] = qSin(xs[i]);
+            y2[i] = qCos(xs[i]);
+            y3[i] = qSin(xs[i]) + 0.5 * qCos(xs[i]);
+        }
+        line1->setData(xs, y1);
+        line2->setData(xs, y2);
+        line3->setData(xs, y3);
+        line1->setName("sin(x)");
+        line2->setName("cos(x)");
+        line3->setName("sin(x)+0.5cos(x)");
+
+        line1->setOrientation(Qt::Vertical, plotLine);
+        line2->setOrientation(Qt::Vertical, plotLine);
+        line3->setOrientation(Qt::Vertical, plotLine);
+
+        // 初始右侧纵轴给第一条线，便于演示多轴
+        if (auto* yRight = line1->addValueAxisRight(plotLine)) {
+            yRight->setRange(-1.2, 1.2);
+            line1->setValueAxisByPtr(yRight);
+        }
+
+        // 每条折线的上下文菜单：切换方向、新增左右纵轴并绑定
+        auto makeLineMenu = [plotLine](QCPLineChart* ln){
+            auto* m = new QMenu(plotLine);
+            m->addAction("切换横向/竖向", [ln, plotLine]{
+                static Qt::Orientation o = Qt::Vertical;
+                o = (o == Qt::Vertical ? Qt::Horizontal : Qt::Vertical);
+                ln->setOrientation(o, plotLine);
+                plotLine->replot();
+            });
+            m->addAction("新增左侧纵轴并绑定", [ln, plotLine]{
+                if (auto* ax = ln->addValueAxisLeft(plotLine)) {
+                    ax->setRange(-1.2, 1.2);
+                    ln->setValueAxisByPtr(ax);
+                    plotLine->replot();
+                }
+            });
+            m->addAction("新增右侧纵轴并绑定", [ln, plotLine]{
+                if (auto* ax = ln->addValueAxisRight(plotLine)) {
+                    ax->setRange(-1.2, 1.2);
+                    ln->setValueAxisByPtr(ax);
+                    plotLine->replot();
+                }
+            });
+            return m;
+        };
+        auto* menu1 = makeLineMenu(line1);
+        auto* menu2 = makeLineMenu(line2);
+        auto* menu3 = makeLineMenu(line3);
+        line1->setContextMenu(menu1); line1->installContextMenu(plotLine);
+        line2->setContextMenu(menu2); line2->installContextMenu(plotLine);
+        line3->setContextMenu(menu3); line3->installContextMenu(plotLine);
+    }
+
+    // 瀑布图 Plot（独立，使用通用基类封装交互与主题）
+    auto* plotMap = new StyledPlot(chartGroup);
+    plotMap->setMinimumSize(600, 300);
+
+    // 瀑布图（基于 QCPColorMap，绑定到 plotMap）
+    auto* cmap = new QCPWaterfallChart(plotMap->xAxis, plotMap->yAxis);
+    {
+        const int nx = 120, ny = 80;
+        cmap->data()->setSize(nx, ny);
+        cmap->data()->setRange(QCPRange(0, 6.0), QCPRange(0, 4.0));
+        for (int x = 0; x < nx; ++x) {
+            for (int y = 0; y < ny; ++y) {
+                double xv = x * 6.0 / nx;
+                double yv = y * 4.0 / ny;
+                double v = qSin(xv) * qCos(yv) + 0.3 * qSin(3*xv) * qSin(2*yv);
+                cmap->data()->setCell(x, y, v);
+            }
+        }
+        // 初始渐变：与主题一致（secondaryLightColor -> primaryColor）
+        {
+            QCPColorGradient grad;
+            auto* mgr = StyleManagerAdapter::instance();
+            QColor low = mgr->themeColor("secondaryLightColor");
+            QColor high = mgr->themeColor("primaryColor");
+            if (!low.isValid()) low = QColor(120,120,255);
+            if (!high.isValid()) high = QColor(255,80,80);
+            grad.setColorStopAt(0.0, low);
+            grad.setColorStopAt(1.0, high);
+            cmap->setGradient(grad);
+        }
+        cmap->rescaleDataRange(true);
+        // 设置图例名称
+        cmap->setName("Waterfall");
+
+        auto* cmenu = new QMenu(plotMap);
+        cmenu->addAction("重置颜色范围", [cmap]{
+            cmap->rescaleDataRange(true);
+            if (cmap->parentPlot()) cmap->parentPlot()->replot();
+        });
+        cmap->setContextMenu(cmenu);
+        cmap->installContextMenu(plotMap);
+    }
+    // 双击还原：分别重置两个图的范围
+    QObject::connect(plotLine, &QCustomPlot::mouseDoubleClick, [plotLine](QMouseEvent* /*ev*/){
+        plotLine->xAxis->setRange(0, 10.0);
+        plotLine->yAxis->setRange(-1.2, 1.2);
+        plotLine->yAxis2->setRange(-1.2, 1.2);
+        plotLine->replot();
+    });
+    QObject::connect(plotMap, &QCustomPlot::mouseDoubleClick, [plotMap, cmap](QMouseEvent* /*ev*/){
+        cmap->rescaleDataRange(true);
+        plotMap->xAxis->setRange(0, 6.0);
+        plotMap->yAxis->setRange(0, 4.0);
+        plotMap->replot();
+    });
+
+    // 主题同步：配色跟随主题变化（背景由组件内部处理）
+    auto syncTheme = [plotLine, plotMap, line1, line2, line3, cmap](){
+        auto* mgr = StyleManagerAdapter::instance();
+        const QPalette pal = qApp->palette();
+        // 多折线采用不同颜色
+        QPen p1(QColor(66,135,245), 2);   // 蓝
+        QPen p2(QColor(241,90,34), 2);    // 橙
+        QPen p3(QColor(60,179,113), 2);   // 绿
+        line1->setPen(p1);
+        line2->setPen(p2);
+        line3->setPen(p3);
+        plotLine->replot();
+        // 瀑布图渐变采用固定蓝->红
+        QCPColorGradient grad;
+        grad.setColorStopAt(0.0, QColor(0,0,255));
+        grad.setColorStopAt(1.0, QColor(255,0,0));
+        cmap->setGradient(grad);
+        plotMap->replot();
+    };
+    syncTheme();
+    QObject::connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged,
+                     chartGroup, [syncTheme](){ syncTheme(); });
+
+    // 由基类处理背景与坐标轴主题联动
+    chartLayout->addWidget(new Label("折线图", chartGroup), 0, 0);
+    chartLayout->addWidget(plotLine, 1, 0);
+    // 折线图默认显示图例
+    plotLine->legend->setVisible(true);
+    // 序列显示/隐藏控制
+    {
+        auto* controls = new StyledWidget(chartGroup);
+        auto* hl = new QHBoxLayout(controls);
+        hl->setContentsMargins(0, 0, 0, 0);
+        auto* cb1 = new CheckBox("显示 sin(x)", controls);
+        auto* cb2 = new CheckBox("显示 cos(x)", controls);
+        auto* cb3 = new CheckBox("显示 sin(x)+0.5cos(x)", controls);
+        auto* cbLegendLine = new CheckBox("显示图例(折线图)", controls);
+        cb1->setChecked(true); cb2->setChecked(true); cb3->setChecked(true); cbLegendLine->setChecked(true);
+        QObject::connect(cb1, &CheckBox::toggled, [plotLine, line1](bool v){ line1->setVisible(v); plotLine->replot(); });
+        QObject::connect(cb2, &CheckBox::toggled, [plotLine, line2](bool v){ line2->setVisible(v); plotLine->replot(); });
+        QObject::connect(cb3, &CheckBox::toggled, [plotLine, line3](bool v){ line3->setVisible(v); plotLine->replot(); });
+        QObject::connect(cbLegendLine, &CheckBox::toggled, [plotLine](bool v){ plotLine->legend->setVisible(v); plotLine->replot(); });
+        hl->addWidget(cb1);
+        hl->addWidget(cb2);
+        hl->addWidget(cb3);
+        hl->addWidget(cbLegendLine);
+        controls->setLayout(hl);
+        chartLayout->addWidget(controls, 2, 0);
+    }
+    // 柱状图 Plot（独立，使用通用基类封装交互与主题）
+    auto* plotBar = new StyledPlot(chartGroup);
+    plotBar->setMinimumSize(600, 280);
+    auto* bars = new QCPBarChart(plotBar->xAxis, plotBar->yAxis);
+    {
+        // 示例数据
+        QVector<double> k(6), v(6);
+        for (int i = 0; i < 6; ++i) { k[i] = i + 1; }
+        v[0]=2.0; v[1]=3.5; v[2]=1.2; v[3]=4.3; v[4]=3.0; v[5]=2.6;
+        bars->setData(k, v);
+        bars->setWidth(0.7);
+        bars->setName("示例柱状");
+        // 放入图例（确保图例中可见）
+        bars->addToLegend();
+        // 设置轴范围，保证柱状数据可见
+        plotBar->xAxis->setRange(0.5, 6.5);
+        plotBar->yAxis->setRange(0.0, 5.0);
+        // 主题联动颜色（填充/边框）
+        auto* mgr = StyleManagerAdapter::instance();
+        QColor fill = mgr->themeColor("primaryColor");
+        QColor border = mgr->themeColor("secondaryLightColor");
+        if (!fill.isValid()) fill = QColor(66,135,245);
+        if (!border.isValid()) border = QColor(255,255,255);
+        bars->setBrush(QBrush(fill));
+        bars->setPen(QPen(border));
+        // 图例默认开启
+        plotBar->legend->setVisible(true);
+        plotBar->replot();
+    }
+    chartLayout->addWidget(new Label("柱状图", chartGroup), 3, 0);
+    chartLayout->addWidget(plotBar, 4, 0);
+    // 双击还原柱状图范围
+    QObject::connect(plotBar, &QCustomPlot::mouseDoubleClick, [plotBar](QMouseEvent* /*ev*/){
+        plotBar->xAxis->setRange(0.5, 6.5);
+        plotBar->yAxis->setRange(0.0, 5.0);
+        plotBar->replot();
+    });
+    // 柱状图图例开关
+    {
+        auto* legendControlsBar = new StyledWidget(chartGroup);
+        auto* hlb = new QHBoxLayout(legendControlsBar);
+        hlb->setContentsMargins(0,0,0,0);
+        auto* cbLegendBar = new CheckBox("显示图例(柱状图)", legendControlsBar);
+        cbLegendBar->setChecked(true);
+        QObject::connect(cbLegendBar, &CheckBox::toggled, [plotBar](bool v){ plotBar->legend->setVisible(v); plotBar->replot(); });
+        hlb->addWidget(cbLegendBar);
+        legendControlsBar->setLayout(hlb);
+        chartLayout->addWidget(legendControlsBar, 5, 0);
+    }
+    // 主题切换时同步柱状图配色
+    QObject::connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged,
+                     chartGroup, [plotBar, bars](){
+        auto* mgr = StyleManagerAdapter::instance();
+        QColor fill = mgr->themeColor("primaryColor");
+        QColor border = mgr->themeColor("secondaryLightColor");
+        if (!fill.isValid()) fill = QColor(66,135,245);
+        if (!border.isValid()) border = QColor(255,255,255);
+        bars->setBrush(QBrush(fill));
+        bars->setPen(QPen(border));
+        plotBar->replot();
+    });
+
+    chartLayout->addWidget(new Label("瀑布图", chartGroup), 6, 0);
+    // 瀑布图图例控制
+    {
+        // 默认显示图例
+        plotMap->legend->setVisible(true);
+        auto* legendControls = new StyledWidget(chartGroup);
+        auto* hl2 = new QHBoxLayout(legendControls);
+        hl2->setContentsMargins(0, 0, 0, 0);
+        auto* cbLegendMap = new CheckBox("显示图例(瀑布图)", legendControls);
+        cbLegendMap->setChecked(true);
+        QObject::connect(cbLegendMap, &CheckBox::toggled, [plotMap](bool v){ plotMap->legend->setVisible(v); plotMap->replot(); });
+        hl2->addWidget(cbLegendMap);
+        legendControls->setLayout(hl2);
+    chartLayout->addWidget(legendControls, 7, 0);
+    }
+    chartLayout->addWidget(plotMap, 8, 0);
+    layout->addWidget(chartGroup, 0, 0);
     
     content->setLayout(layout);
     scrollArea->setWidget(content);
@@ -817,6 +970,8 @@ int main(int argc, char *argv[])
     // 添加主要展示页面
     // 顶部标签取消 Emoji 图标，避免跨平台字体缺失
     mainTabWidget->addTab(createInputsShowcase(mainTabWidget), "输入控件");
+    // 图表控件页：仅瀑布图示例
+    mainTabWidget->addTab(createViewsChartsShowcase(mainTabWidget), "图表控件");
     // 高级表格（分页/筛选/排序/导出）
     mainTabWidget->addTab(new PagedTablePage(mainTabWidget), "高级表格");
 

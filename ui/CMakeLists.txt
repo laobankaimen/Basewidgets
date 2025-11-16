@@ -62,13 +62,11 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Gauges/CircularGauge.h
     
     # Charts
-    include/QtAdvancedUI/Charts/ChartBase.h
-    include/QtAdvancedUI/Charts/LineChart.h
-    include/QtAdvancedUI/Charts/HistogramChart.h
-    include/QtAdvancedUI/Charts/JourneyChart.h
-    include/QtAdvancedUI/Charts/WaterfallChart.h
-    include/QtAdvancedUI/Charts/PieChart.h
+    include/QtAdvancedUI/Charts/QCPBarChart.h
+    include/QtAdvancedUI/Charts/QCPLineChart.h
+    include/QtAdvancedUI/Charts/QCPWaterfallChart.h
     include/QtAdvancedUI/Charts/QCustomplot.h
+    include/QtAdvancedUI/Charts/StyledPlot.h
 )
 
 set(UI_SOURCES
@@ -120,13 +118,11 @@ set(UI_SOURCES
     src/Gauges/CircularGauge.cpp
     
     # Charts
-    src/Charts/ChartBase.cpp
-    src/Charts/LineChart.cpp
-    src/Charts/HistogramChart.cpp
-    src/Charts/JourneyChart.cpp
-    src/Charts/WaterfallChart.cpp
-    src/Charts/PieChart.cpp
+    src/Charts/QCPBarChart.cpp
+    src/Charts/QCPLineChart.cpp
+    src/Charts/QCPWaterfallChart.cpp
     src/Charts/QCustomplot.cpp
+    src/Charts/StyledPlot.cpp
 )
 
 add_library(qtadvancedui_widgets
