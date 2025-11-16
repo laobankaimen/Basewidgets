@@ -42,6 +42,11 @@
 #include <QtAdvancedUI/Dialogs/DialogUtils.h>
 #include <QtAdvancedUI/Views/TreeWidget.h>
 #include <QtAdvancedUI/Gauges/CircularGauge.h>
+#include <QtAdvancedUI/Gauges/BasicGauge.h>
+#include <QtAdvancedUI/Gauges/SpeedGauge.h>
+#include <QtAdvancedUI/Gauges/CompassGauge.h>
+#include <QtAdvancedUI/Gauges/AttitudeMeter.h>
+#include <QTimer>
 #include <QtAdvancedUI/Charts/QCustomplot.h>
 #include <QtAdvancedUI/Charts/StyledPlot.h>
 #include <QtAdvancedUI/Charts/QCPLineChart.h>
@@ -407,25 +412,6 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
 
     // 左列放置该容器，整体顶部对齐
     layout->addWidget(leftPanel, 0, 0, 5, 1, Qt::AlignTop);
-
-    // 仪表盘控件组（从 Views 独立，仅做迁移，不改参数）
-    {
-        auto* gaugeGroup = new GroupBox("仪表盘控件", content);
-        auto* gaugeLayout = new QGridLayout(gaugeGroup);
-        // 宽度与左侧其它分组保持一致
-        gaugeGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-        auto* circularGauge = new CircularGauge(gaugeGroup);
-        // 保持与迁移前一致的初始化参数
-        circularGauge->useClassicThreeColorPercentPreset("完成率", "%", 30, 50, 20);
-        circularGauge->setTickLabelFontScale(0.75);
-        circularGauge->setValue(75);
-        circularGauge->setMinimumSize(260, 260);
-        gaugeLayout->addWidget(new Label("圆形仪表:", gaugeGroup), 0, 0);
-        gaugeLayout->addWidget(circularGauge, 1, 0);
-        // 将仪表盘分组插入左侧面板按钮分组之前
-        leftPanelLayout->insertWidget(0, gaugeGroup);
-    }
-    
 
     // 视图控件组（合并自“视图图表”页）
     {
@@ -820,6 +806,153 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     return page;
 }
 
+// 创建仪表盘展示页面（独立标签页）
+StyledWidget* createGaugesShowcase(QWidget* parent) {
+    auto* page = new StyledWidget(parent);
+    auto* scrollArea = new ScrollArea(page);
+    auto* content = new StyledWidget(scrollArea);
+    auto* layout = new QGridLayout(content);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(16);
+
+    auto* gaugeGroup = new GroupBox("仪表盘控件", content);
+    auto* gaugeLayout = new QGridLayout(gaugeGroup);
+
+    // Basic 速度表
+    {
+        auto* g = new BasicGauge(gaugeGroup);
+        g->setMinimumSize(240, 240);
+        auto* slider = new Slider(Qt::Horizontal, gaugeGroup);
+        slider->setRange(0, 100);
+        slider->setValue(0);
+        QObject::connect(slider, &Slider::valueChanged, [g](int v){ g->setValue(v); });
+        gaugeLayout->addWidget(new Label("Basic 速度表", gaugeGroup), 0, 0);
+        gaugeLayout->addWidget(g, 1, 0);
+        gaugeLayout->addWidget(slider, 2, 0);
+    }
+
+    // Compass 罗盘
+    {
+        auto* g = new CompassGauge(gaugeGroup);
+        g->setMinimumSize(240, 240);
+        auto* slider = new Slider(Qt::Horizontal, gaugeGroup);
+        slider->setRange(0, 360);
+        slider->setValue(0);
+        QObject::connect(slider, &Slider::valueChanged, [g](int v){ g->setValue(v); });
+        gaugeLayout->addWidget(new Label("Compass 罗盘", gaugeGroup), 0, 1);
+        gaugeLayout->addWidget(g, 1, 1);
+        gaugeLayout->addWidget(slider, 2, 1);
+    }
+
+    // SpeedGauge 速度表 + 主题预设
+    {
+        auto* g = new SpeedGauge(gaugeGroup);
+        g->setMinimumSize(240, 240);
+        auto* slider = new Slider(Qt::Horizontal, gaugeGroup);
+        slider->setRange(0, 80);
+        slider->setValue(0);
+        QObject::connect(slider, &Slider::valueChanged, [g](int v){ g->setValue(v); });
+
+        auto* row = new StyledWidget(gaugeGroup);
+        auto* hl = new QHBoxLayout(row); hl->setContentsMargins(0,0,0,0);
+        hl->addWidget(new Label("主题预设:", row));
+        auto* preset = new ComboBox(row);
+        preset->addItem("经典三色预设");
+        preset->addItem("完成率预设");
+        preset->addItem("自定义分段");
+        hl->addWidget(preset);
+        row->setLayout(hl);
+
+        QObject::connect(preset, QOverload<int>::of(&ComboBox::currentIndexChanged), [g](int idx){
+            if (idx == 0) {
+                g->useClassicThreeColorPercentPreset(QString(), QString("Km/h"), 30, 50, 20,
+                                                     QColor(162, 208, 190), QColor(103,133,160), QColor(203,80,80));
+                g->setRange(0, 80);
+            } else if (idx == 1) {
+                g->useCompletionRatePreset(QString(), QString("Km/h"));
+                g->setRange(0, 80);
+            } else {
+                QVector<CircularGauge::GaugeRange> ranges;
+                ranges.push_back({0, 30, QColor(66, 135, 245), 12});   // 蓝
+                ranges.push_back({30, 60, QColor(241, 90, 34), 12});  // 橙
+                ranges.push_back({60, 80, QColor(203, 80, 80), 12});  // 红
+                g->setRanges(ranges);
+                g->setShowValueArc(true);
+                g->setDialColor(QColor(40,40,40));
+                g->setNeedleColor(QColor(50, 120, 255));
+                g->setUnit("Km/h");
+                g->setRange(0, 80);
+                g->setTickCount(9);
+                g->setShowTickLabels(true);
+            }
+            g->update();
+        });
+        preset->setCurrentIndex(0);
+
+        gaugeLayout->addWidget(new Label("SpeedGauge 速度表", gaugeGroup), 3, 0);
+        gaugeLayout->addWidget(g, 4, 0);
+        gaugeLayout->addWidget(slider, 5, 0);
+        gaugeLayout->addWidget(row, 6, 0);
+    }
+
+    // AttitudeMeter 姿态仪 + 自动更新动画
+    {
+        auto* g = new AttitudeMeter(gaugeGroup);
+        g->setMinimumSize(240, 240);
+        auto* pitch = new Slider(Qt::Horizontal, gaugeGroup);
+        auto* roll  = new Slider(Qt::Horizontal, gaugeGroup);
+        pitch->setRange(-45, 45); pitch->setValue(0);
+        roll->setRange(-90, 90);  roll->setValue(0);
+        QObject::connect(pitch, &Slider::valueChanged, [g](int v){ g->setCurrentPitch(v); });
+        QObject::connect(roll,  &Slider::valueChanged, [g](int v){ g->setCurrentRoll(v); });
+
+        auto* animRow = new StyledWidget(gaugeGroup);
+        auto* hl = new QHBoxLayout(animRow); hl->setContentsMargins(0,0,0,0);
+        auto* cb = new CheckBox("自动更新", animRow);
+        hl->addWidget(cb);
+        animRow->setLayout(hl);
+        auto* timer = new QTimer(animRow);
+        timer->setInterval(60);
+        QObject::connect(cb, &CheckBox::toggled, [timer](bool on){ on ? timer->start() : timer->stop(); });
+        QObject::connect(timer, &QTimer::timeout, [g]{
+            static double t = 0.0; t += 0.05;
+            g->setCurrentPitch(20 * qSin(t * 1.2));
+            g->setCurrentRoll(45 * qSin(t * 0.8));
+        });
+
+        gaugeLayout->addWidget(new Label("AttitudeMeter 姿态仪", gaugeGroup), 3, 1);
+        gaugeLayout->addWidget(g, 4, 1);
+        auto* row = new StyledWidget(gaugeGroup);
+        auto* sliders = new QHBoxLayout(row); sliders->setContentsMargins(0,0,0,0);
+        sliders->addWidget(new Label("Pitch:", row)); sliders->addWidget(pitch);
+        sliders->addWidget(new Label("Roll:", row));  sliders->addWidget(roll);
+        row->setLayout(sliders);
+        gaugeLayout->addWidget(row, 5, 1);
+        gaugeLayout->addWidget(animRow, 6, 1);
+    }
+
+    // CircularGauge 圆形仪表（迁移自首页）
+    {
+        auto* g = new CircularGauge(gaugeGroup);
+        // 保持与迁移前一致的初始化参数
+        g->useClassicThreeColorPercentPreset("完成率", "%", 30, 50, 20);
+        g->setTickLabelFontScale(0.75);
+        g->setValue(75);
+        g->setMinimumSize(260, 260);
+        gaugeLayout->addWidget(new Label("CircularGauge 圆形仪表", gaugeGroup), 7, 0);
+        gaugeLayout->addWidget(g, 8, 0);
+    }
+
+    layout->addWidget(gaugeGroup, 0, 0);
+    content->setLayout(layout);
+    scrollArea->setWidget(content);
+    auto* pageLayout = new QVBoxLayout(page);
+    pageLayout->setContentsMargins(0, 0, 0, 0);
+    pageLayout->addWidget(scrollArea);
+    page->setLayout(pageLayout);
+    return page;
+}
+
 // 创建文本和对话框展示页面
 StyledWidget* createTextDialogShowcase(QWidget* parent) {
     auto* page = new StyledWidget(parent);
@@ -970,8 +1103,10 @@ int main(int argc, char *argv[])
     // 添加主要展示页面
     // 顶部标签取消 Emoji 图标，避免跨平台字体缺失
     mainTabWidget->addTab(createInputsShowcase(mainTabWidget), "输入控件");
-    // 图表控件页：仅瀑布图示例
+    // 图表控件页
     mainTabWidget->addTab(createViewsChartsShowcase(mainTabWidget), "图表控件");
+    // 仪表盘控件页（独立）
+    mainTabWidget->addTab(createGaugesShowcase(mainTabWidget), "仪表盘控件");
     // 高级表格（分页/筛选/排序/导出）
     mainTabWidget->addTab(new PagedTablePage(mainTabWidget), "高级表格");
 

@@ -60,6 +60,11 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Views/AdvancedTable.h
     
     include/QtAdvancedUI/Gauges/CircularGauge.h
+    include/QtAdvancedUI/Gauges/QcGaugeWidget.h
+    include/QtAdvancedUI/Gauges/BasicGauge.h
+    include/QtAdvancedUI/Gauges/SpeedGauge.h
+    include/QtAdvancedUI/Gauges/CompassGauge.h
+    include/QtAdvancedUI/Gauges/AttitudeMeter.h
     
     # Charts
     include/QtAdvancedUI/Charts/QCPBarChart.h
@@ -116,6 +121,7 @@ set(UI_SOURCES
     src/Views/AdvancedTable.cpp
     src/Views/TreeTable.cpp
     src/Gauges/CircularGauge.cpp
+    src/Gauges/QcGaugeWidget.cpp
     
     # Charts
     src/Charts/QCPBarChart.cpp

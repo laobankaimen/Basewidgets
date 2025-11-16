@@ -94,6 +94,26 @@ void CircularGauge::paintEvent(QPaintEvent* e)
     // 基础量程角度
     const qreal spanDeg = m_startDeg - m_endDeg; // e.g. 240
     QRectF arcRect(c.x()-outerR, c.y()-outerR, outerR*2, outerR*2);
+    // 边缘阴影：模拟 SpeedGauge 外圈的暗亮过渡，提升立体感
+    {
+        // 外侧阴影（深色半透明，线宽随半径缩放）
+        QPen outerShadowPen(QColor(0,0,0,90));
+        outerShadowPen.setWidthF(qMax<qreal>(2.0, outerR/35.0));
+        outerShadowPen.setCapStyle(Qt::FlatCap);
+        p.setPen(outerShadowPen);
+        p.setBrush(Qt::NoBrush);
+        p.drawArc(arcRect, int(m_startDeg*16), int((m_endDeg - m_startDeg)*16));
+
+        // 内侧高光（白色半透明，略细，靠内圈）
+        QPen innerHighlightPen(QColor(255,255,255,80));
+        innerHighlightPen.setWidthF(qMax<qreal>(1.5, outerR/60.0));
+        innerHighlightPen.setCapStyle(Qt::FlatCap);
+        p.setPen(innerHighlightPen);
+        // 通过缩小矩形，让高光更靠近内圈位置
+        const qreal shrink = qMax<qreal>(1.0, m_ringWidth*0.35);
+        QRectF innerRect = arcRect.adjusted(shrink, shrink, -shrink, -shrink);
+        p.drawArc(innerRect, int(m_startDeg*16), int((m_endDeg - m_startDeg)*16));
+    }
     // 如果采用经典三色百分比模式：按百分比绘制三段环；否则绘制基础环与自定义区间
     if (m_useClassicThreeColor) {
         // 完全按参考代码方式绘制三段环：使用本地坐标和 270 度参考系
@@ -253,6 +273,32 @@ void CircularGauge::paintEvent(QPaintEvent* e)
                 }
             }
         }
+    }
+
+    // 玻璃质感盖层（与 SpeedGauge 的 QcGlassItem 一致）：
+    // 顶部半圆线性渐变 + 次级半圆高光，覆盖完整圆形，增强“玻璃感”
+    {
+        // 盖层相对外圈略微内缩，避免越界
+        const qreal glassInset = qMax<qreal>(m_ringWidth*0.2, 4.0);
+        QRectF glassRect1 = arcRect.adjusted(glassInset, glassInset, -glassInset, -glassInset);
+        QRectF glassRect2 = glassRect1;
+        qreal r = qMin(glassRect1.width(), glassRect1.height())/2.0;
+        glassRect2.setHeight(r/2.0);
+        glassRect2.moveCenter(arcRect.center());
+
+        p.setPen(Qt::NoPen);
+        QColor clr1 = Qt::gray;  clr1.setAlphaF(0.20);
+        QColor clr2 = Qt::white; clr2.setAlphaF(0.40);
+
+        // 线性渐变方向与 QcGlassItem 保持一致（左上到右下）
+        QLinearGradient g1(glassRect1.topLeft(), glassRect1.bottomRight());
+        g1.setColorAt(0.10, clr1);
+        g1.setColorAt(0.50, clr2);
+        p.setBrush(g1);
+        // 顶部半圆（完整圆形区域上的半圆光泽）
+        p.drawPie(glassRect1, 0, 16*180);
+        // 次级高光（更窄的半圆，增强顶部亮度层次）
+        p.drawPie(glassRect2, 0, -16*180);
     }
 
     // 指针

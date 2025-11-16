@@ -49,13 +49,11 @@ Qt-Advanced-Stylesheets-main/
 ```powershell
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --target widgets_demo -j 8
-.\n+build\examples\widgets_demo\Release\widgets_demo.exe
 ```
 
 调试模式：
 ```powershell
 cmake --build build --config Debug --target widgets_demo -j 8
-.\n+build\examples\widgets_demo\Debug\widgets_demo.exe
 ```
 
 常见问题：
@@ -63,9 +61,9 @@ cmake --build build --config Debug --target widgets_demo -j 8
 - 找不到 Qt：确保已正确设置 `CMAKE_PREFIX_PATH`。
 
 ## 示例布局说明（当前状态）
-- 左侧面板：自上而下为“仪表盘控件（Gauges）→ 按钮控件 → 选择控件 → 输入控件 → 进度控件 → 日期/时间控件”，顶部对齐，最大压缩展示。
-- 右侧面板：自上而下为“视图控件 → 图表控件 → 文本编辑器 → 弹窗演示/工具示例”，多余空间集中到底部。
-- 仪表盘控件：仅迁移分类，不修改控件代码与参数；示例使用 `CircularGauge` 的经典三色百分比预设（标签缩放、值和尺寸与迁移前一致）。
+- 仪表盘控件页：通过主 Tab 切换到“仪表盘控件”，集中展示 `CircularGauge` 等仪表盘控件，便于独立预览与比对。
+- 首页：不再重复展示“圆形仪表盘控件组”，避免与独立页面视觉冗余。
+- 经典三色百分比与完成率预设：示例中可切换或设置不同预设，标签缩放、数值排版与尺寸已调整为更清晰的视觉比例。
 
 ## 开发指南
 ### 新增/迁移仪表盘控件
@@ -77,10 +75,20 @@ cmake --build build --config Debug --target widgets_demo -j 8
 ### 主题与样式
 - 默认主题在 `styles/qt_material/`，可根据需要定制主题 JSON 与 CSS 模板。
 
+### Gauges / CircularGauge 使用说明
+- 基本属性：`setRange(min,max)`、`setValue(v)`、`setStartAngle(deg)`、`setEndAngle(deg)`、`setRingWidth(px)`、`setNeedleWidth(px)`、`setNeedleWrapRing(bool)`、`setShowTickLabels(bool)` 等。
+- 区间环：通过 `setRanges({...})` 提供若干区间段，颜色与宽度可独立设置；也可启用经典三段百分比模式。
+- 值高亮：`setShowValueArc(bool)` 控制当前值的高亮弧线。
+- 表盘底色：`setDialColor(QColor)` 设置底层径向渐变的基色。
+- 预设示例：
+  - 完成率：`useCompletionRatePreset(title, unit)`，包含角度、刻度、环宽与文本的合理默认。
+  - 经典模式：`useClassicThreeColorPercentPreset(title, unit, percentStart, percentMid, percentEnd, colorStart, colorMid, colorEnd)`。
+
 ## 贡献与许可
 - 欢迎提交 PR 以补充控件与示例。
 - 许可证以各子目录中的 `LICENSE`/`README` 为准，请在使用第三方资源时遵循其许可要求。
 
 ## 变更记录（近期）
-- 新增 `Gauges` 分类；`CircularGauge` 从 `Views` 迁移到 `Gauges`。
-- 示例布局更新：将“仪表盘控件”分组移动到左侧面板，并插入到“按钮控件”分组上方，宽度策略与左侧其它分组保持一致。
+- 新增 `Gauges` 分类；`CircularGauge` 迁移到独立页面集中展示。
+- 统一 `CircularGauge` 与 `SpeedGauge` 的圆边风格：外阴影 + 内高光，线宽随半径缩放。
+- 为 `CircularGauge` 添加顶部半圆的玻璃质感渐变盖层（完整圆形表面的光泽），与 `SpeedGauge` 保持一致。
