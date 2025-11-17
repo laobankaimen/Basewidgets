@@ -236,13 +236,15 @@ void FramelessDialog::paintEvent(QPaintEvent* e)
     // 绘制圆角背景（启用圆角时）
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::HighQualityAntialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
     p.setPen(Qt::NoPen);
     p.setBrush(m_backgroundColor);
 
     const QRect r = rect();
     if (m_cornerRadius > 0) {
         QPainterPath path;
-        path.addRoundedRect(r.adjusted(1, 1, -1, -1), m_cornerRadius, m_cornerRadius);
+        path.addRoundedRect(r, m_cornerRadius, m_cornerRadius);
         p.drawPath(path);
     } else {
         p.drawRect(r);
@@ -333,6 +335,18 @@ void FramelessDialog::setDropShadowEnabled(bool enabled)
         setAttribute(Qt::WA_TranslucentBackground, false);
     }
     update();
+}
+
+void FramelessDialog::changeEvent(QEvent* e)
+{
+    StyledDialog::changeEvent(e);
+    if (e->type() == QEvent::WindowStateChange) {
+        auto* customBar = qobject_cast<CustomTitleBar*>(m_titleBar);
+        if (customBar) {
+            const bool noTopRadius = isFullScreen() || isMaximized();
+            customBar->setCornerRadius(noTopRadius ? 0 : m_cornerRadius);
+        }
+    }
 }
 
 } // namespace QtAdvancedUI

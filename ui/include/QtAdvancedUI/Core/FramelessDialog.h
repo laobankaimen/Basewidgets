@@ -40,6 +40,7 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void paintEvent(QPaintEvent* e) override;
     void resizeEvent(QResizeEvent* e) override;
+    void changeEvent(QEvent* e) override;
 
 private:
     void initUI();

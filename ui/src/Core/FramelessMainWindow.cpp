@@ -66,8 +66,8 @@ void FramelessMainWindow::initUI()
     // 默认启用角拖拽缩放与圆角；阴影默认关闭以避免 Win10 layered 错误
     setResizableEdgesEnabled(true);
     setResizeMargin(6);
-    // 将圆角调整为更适中的默认值（Win10 环境更自然）
-    setCornerRadius(12);
+    // 默认关闭圆角，用户可通过 API 开启
+    setCornerRadius(0);
     setDropShadowEnabled(false);
 }
 
@@ -205,12 +205,14 @@ void FramelessMainWindow::paintEvent(QPaintEvent* e)
     Q_UNUSED(e);
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::HighQualityAntialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
     p.setPen(Qt::NoPen);
     p.setBrush(m_backgroundColor);
     const QRect r = rect();
     if (m_cornerRadius > 0) {
         QPainterPath path;
-        path.addRoundedRect(r.adjusted(1, 1, -1, -1), m_cornerRadius, m_cornerRadius);
+        path.addRoundedRect(r, m_cornerRadius, m_cornerRadius);
         p.drawPath(path);
     } else {
         p.drawRect(r);
@@ -245,7 +247,8 @@ void FramelessMainWindow::setCornerRadius(int radiusPx)
     setAttribute(Qt::WA_TranslucentBackground, m_dropShadowEnabled);
     // 让标题栏顶部圆角与窗口保持一致
     if (m_titleBar) {
-        m_titleBar->setCornerRadius(r);
+        const bool noTopRadius = isFullScreen() || isMaximized();
+        m_titleBar->setCornerRadius(noTopRadius ? 0 : r);
     }
     // 使用窗口遮罩裁剪物理窗口形状，避免四角可见
     if (m_cornerRadius > 0) {
@@ -270,6 +273,11 @@ void FramelessMainWindow::resizeEvent(QResizeEvent* e)
         path.addRoundedRect(rct, radius, radius);
         setMask(QRegion(path.toFillPolygon().toPolygon()));
     }
+    // 全屏/最大化时关闭标题栏圆角
+    if (m_titleBar) {
+        const bool noTopRadius = isFullScreen() || isMaximized();
+        m_titleBar->setCornerRadius(noTopRadius ? 0 : m_cornerRadius);
+    }
 }
 
 void FramelessMainWindow::setDropShadowEnabled(bool enabled)
@@ -288,6 +296,17 @@ void FramelessMainWindow::setDropShadowEnabled(bool enabled)
         setAttribute(Qt::WA_TranslucentBackground, false);
     }
     update();
+}
+
+void FramelessMainWindow::changeEvent(QEvent* e)
+{
+    StyledMainWindow::changeEvent(e);
+    if (e->type() == QEvent::WindowStateChange) {
+        if (m_titleBar) {
+            const bool noTopRadius = isFullScreen() || isMaximized();
+            m_titleBar->setCornerRadius(noTopRadius ? 0 : m_cornerRadius);
+        }
+    }
 }
 
 void FramelessMainWindow::setRoundedCornersEnabled(bool enabled)
