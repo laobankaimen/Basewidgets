@@ -8,6 +8,7 @@
 
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QtAdvancedUI/Core/StyledMainWindow.h>
+#include <QtAdvancedUI/Core/FramelessMainWindow.h>
 #include <QtAdvancedUI/Core/StyledWidget.h>
 #include <QtAdvancedUI/Containers/MenuBar.h>
 #include <QtAdvancedUI/Containers/ToolBar.h>
@@ -1019,8 +1020,8 @@ int main(int argc, char *argv[])
     // 初始化样式管理器
     StyleManagerAdapter::initialize();
 
-    // 创建主窗口
-    auto* window = new StyledMainWindow();
+    // 创建主窗口（使用无边框主窗口，集成自定义标题栏）
+    auto* window = new FramelessMainWindow();
     window->setWindowTitle("QtAdvancedUI 组件全面展示");
     window->resize(1400, 900);
 
@@ -1123,6 +1124,8 @@ int main(int argc, char *argv[])
     themeCombo->addItem("☀️ 浅色主题");
     themeToolbar->addWidget(new Label("主题:", themeToolbar));
     themeToolbar->addWidget(themeCombo);
+
+    // 取消标题栏注入与按钮控制示例，恢复默认布局
 
     // 连接主题切换：仅修改当前主题并生成样式表，由 StyleManagerAdapter 统一应用到 qApp
     QObject::connect(themeCombo, QOverload<int>::of(&ComboBox::currentIndexChanged), 

@@ -21,6 +21,8 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/Core/StyledMainWindow.h
     include/QtAdvancedUI/Core/StyledDialog.h
     include/QtAdvancedUI/Core/FramelessDialog.h
+    include/QtAdvancedUI/Core/CustomTitleBar.h
+    include/QtAdvancedUI/Core/FramelessMainWindow.h
     include/QtAdvancedUI/Inputs/PushButton.h
     include/QtAdvancedUI/Inputs/LineEdit.h
     include/QtAdvancedUI/Inputs/CheckBox.h
@@ -80,6 +82,8 @@ set(UI_SOURCES
     src/Core/StyledMainWindow.cpp
     src/Core/StyledDialog.cpp
     src/Core/FramelessDialog.cpp
+    src/Core/CustomTitleBar.cpp
+    src/Core/FramelessMainWindow.cpp
     src/Inputs/PushButton.cpp
     src/Inputs/LineEdit.cpp
     src/Inputs/CheckBox.cpp

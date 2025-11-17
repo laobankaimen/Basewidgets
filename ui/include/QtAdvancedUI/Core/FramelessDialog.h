@@ -22,8 +22,21 @@ public:
     void setContentWidget(QWidget* w);
     QWidget* contentWidget() const { return m_contentHost; }
 
+    // 边角拖拽缩放开关与边距
+    void setResizableEdgesEnabled(bool enabled);
+    bool resizableEdgesEnabled() const { return m_resizeEnabled; }
+    void setResizeMargin(int px);
+    int resizeMargin() const { return m_resizeMargin; }
+
+    // 圆角与阴影开关
+    void setCornerRadius(int radiusPx);
+    int cornerRadius() const { return m_cornerRadius; }
+    void setDropShadowEnabled(bool enabled);
+    bool dropShadowEnabled() const { return m_dropShadowEnabled; }
+
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void paintEvent(QPaintEvent* e) override;
 
 private:
     void initUI();
@@ -36,6 +49,19 @@ private:
 
     bool m_dragging = false;
     QPoint m_dragStartPos;
+
+    // 角拖拽缩放
+    bool m_resizeEnabled = false;
+    int m_resizeMargin = 6;
+    enum ResizeRegion { None, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
+    ResizeRegion m_resizeRegion = None;
+    bool m_resizing = false;
+    QRect m_startGeo;
+
+    // 圆角与阴影
+    int m_cornerRadius = 0;
+    bool m_dropShadowEnabled = false;
+    QColor m_backgroundColor;
 };
 
 } // namespace QtAdvancedUI

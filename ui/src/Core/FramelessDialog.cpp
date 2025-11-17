@@ -1,4 +1,5 @@
 #include <QtAdvancedUI/Core/FramelessDialog.h>
+#include <QtAdvancedUI/Core/CustomTitleBar.h>
 #include <QtAdvancedUI/Inputs/ToolButton.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -9,6 +10,8 @@
 #include <QApplication>
 #include <QStyle>
 #include <QPainter>
+#include <QPaintEvent>
+#include <QGraphicsDropShadowEffect>
 
 using namespace acss;
 
@@ -38,39 +41,16 @@ FramelessDialog::~FramelessDialog() = default;
 
 void FramelessDialog::initUI()
 {
-    // Title bar
-    m_titleBar = new QWidget(this);
-    m_titleBar->setObjectName("FramelessDialogTitleBar");
-    m_titleBar->setAttribute(Qt::WA_StyledBackground, true);
-
-    m_titleLabel = new QLabel(m_titleBar);
-    m_titleLabel->setObjectName("FramelessDialogTitle");
-    m_titleLabel->setText(windowTitle());
-    m_titleLabel->setStyleSheet("font-size: 16px; font-weight: 600;");
-
-    auto* closeBtn = new ToolButton(m_titleBar);
-    closeBtn->setObjectName("FramelessDialogCloseButton");
-    closeBtn->setToolTip(tr("关闭"));
-    closeBtn->setAutoRaise(false);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    closeBtn->setFixedSize(QSize(28, 28));
-    // 使用 qtadvancedcss 提供的主题图标：icon:/primary/close.svg
-    {
-        const QSize iconSz(18, 18);
-        QIcon icon(QStringLiteral("icon:/primary/close.svg"));
-        closeBtn->setIcon(icon);
-        closeBtn->setIconSize(iconSz);
-    }
-    QObject::connect(closeBtn, &ToolButton::clicked, this, [this]() { reject(); });
-    m_closeBtn = closeBtn;
-
-    auto* titleLayout = new QHBoxLayout(m_titleBar);
-    titleLayout->setContentsMargins(10, 6, 10, 6);
-    titleLayout->setSpacing(8);
-    titleLayout->addWidget(m_titleLabel, 1);
-    titleLayout->addWidget(closeBtn, 0);
-    m_titleBar->setLayout(titleLayout);
+    // 自定义标题栏（包含最小化/最大化/关闭、拖动/停靠）
+    auto* customBar = new CustomTitleBar(this);
+    customBar->attachToWindow(this);
+    customBar->setTitle(windowTitle());
+    // 对话框：仅显示关闭按钮，禁用双击放大
+    customBar->setButtonsVisible(false, false, true);
+    customBar->setDoubleClickToToggleEnabled(false);
+    m_titleBar = customBar;
+    m_titleLabel = nullptr; // 使用 CustomTitleBar 内部的标题标签
+    m_closeBtn = nullptr;
 
     // Content host
     m_contentHost = new QWidget(this);
@@ -93,49 +73,25 @@ void FramelessDialog::initUI()
     setMinimumSize(380, 240);
     // Do not force a large initial size; size will adjust to content in setContentWidget
 
-    // Visual differentiation for title bar vs content
+    // 内容样式
     const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
-    const QString titleBg = dark ? QString("#1f1f1f") : QString("#f2f2f2");
-    const QString closeHover = QString("#3A3A3A"); // Light gray for dark background
-    const QString closePressed = QString("#555555"); // Slightly darker gray when pressed
-    m_titleBar->setStyleSheet(QString(
-        "QWidget#FramelessDialogTitleBar { background-color: %1; }\n"
-    ).arg(titleBg));
-
-    // 强制覆盖全局 QToolButton 样式，移除黑色背景与左右 10px 边框
-    closeBtn->setStyleSheet(QString(
-        "QToolButton#FramelessDialogCloseButton {\n"
-        "  background: transparent;\n"
-        "  background-color: transparent;\n"
-        "  border: 0px;\n"
-        "  border-left: 0px;\n"
-        "  border-right: 0px;\n"
-        "  border-radius: 6px;\n"
-        "  margin: 0;\n"
-        "  padding: 4px;\n"
-        "  qproperty-iconSize: 20px;\n"
-        "}\n"
-        "QToolButton#FramelessDialogCloseButton:hover {\n"
-        "  background: %1;\n"
-        "  background-color: %1;\n"
-        "}\n"
-        "QToolButton#FramelessDialogCloseButton:pressed {\n"
-        "  background: %2;\n"
-        "  background-color: %2;\n"
-        "}\n"
-    ).arg(closeHover, closePressed));
+    const QString bg = dark ? QString("#2b2d31") : QString("#ffffff");
+    m_backgroundColor = QColor(bg);
     m_contentHost->setStyleSheet(QString(
         "QWidget#FramelessDialogContentHost { background-color: %1; }\n"
-    ).arg(dark ? QString("#2b2d31") : QString("#ffffff")));
+    ).arg(bg));
 
-    // Drag support via title bar
-    m_titleBar->installEventFilter(this);
+    // 默认禁用角拖拽缩放（Dialogs 默认不可拉伸，可通过 API 开启）
+    setResizableEdgesEnabled(false);
+    setResizeMargin(6);
+    setCornerRadius(12);
+    setDropShadowEnabled(true);
 }
 
 void FramelessDialog::setTitle(const QString& title)
 {
     setWindowTitle(title);
-    if (m_titleLabel) m_titleLabel->setText(title);
+    // CustomTitleBar 会通过 windowTitleChanged 信号自动更新
 }
 
 QString FramelessDialog::title() const
@@ -167,38 +123,174 @@ void FramelessDialog::setContentWidget(QWidget* w)
 
 bool FramelessDialog::eventFilter(QObject* watched, QEvent* event)
 {
-    if (watched == m_titleBar) {
-        switch (event->type()) {
-        case QEvent::MouseButtonPress: {
-            auto* me = static_cast<QMouseEvent*>(event);
-            if (me->button() == Qt::LeftButton) {
-                m_dragging = true;
-                m_dragStartPos = me->globalPos() - frameGeometry().topLeft();
-                return true;
+    // 仅处理属于本对话框窗口的事件
+    QWidget* w = qobject_cast<QWidget*>(watched);
+    if (!w || w->window() != this) return StyledDialog::eventFilter(watched, event);
+
+    // 鼠标事件处理：角拖拽缩放
+    if (!m_resizeEnabled) return StyledDialog::eventFilter(watched, event);
+
+    switch (event->type()) {
+    case QEvent::MouseMove: {
+        auto* me = static_cast<QMouseEvent*>(event);
+        const QPoint global = me->globalPos();
+        const QPoint local = mapFromGlobal(global);
+        const QRect r = rect();
+
+        // 正在缩放时，更新窗口几何
+        if (m_resizing) {
+            QRect geo = m_startGeo;
+            const QPoint delta = global - m_dragStartPos;
+            const int minW = minimumSize().width();
+            const int minH = minimumSize().height();
+
+            switch (m_resizeRegion) {
+            case Left:       geo.setLeft(geo.left() + delta.x()); break;
+            case Right:      geo.setRight(geo.right() + delta.x()); break;
+            case Top:        geo.setTop(geo.top() + delta.y()); break;
+            case Bottom:     geo.setBottom(geo.bottom() + delta.y()); break;
+            case TopLeft:    geo.setTop(geo.top() + delta.y()); geo.setLeft(geo.left() + delta.x()); break;
+            case TopRight:   geo.setTop(geo.top() + delta.y()); geo.setRight(geo.right() + delta.x()); break;
+            case BottomLeft: geo.setBottom(geo.bottom() + delta.y()); geo.setLeft(geo.left() + delta.x()); break;
+            case BottomRight:geo.setBottom(geo.bottom() + delta.y()); geo.setRight(geo.right() + delta.x()); break;
+            default: break;
             }
-            break;
+
+            // 约束最小尺寸
+            if (geo.width() < minW) geo.setWidth(minW);
+            if (geo.height() < minH) geo.setHeight(minH);
+            setGeometry(geo);
+            return true;
         }
-        case QEvent::MouseMove: {
-            if (m_dragging) {
-                auto* me = static_cast<QMouseEvent*>(event);
-                move(me->globalPos() - m_dragStartPos);
-                return true;
-            }
-            break;
-        }
-        case QEvent::MouseButtonRelease: {
-            auto* me = static_cast<QMouseEvent*>(event);
-            if (me->button() == Qt::LeftButton) {
-                m_dragging = false;
-                return true;
-            }
-            break;
-        }
+
+        // 未按下时，根据位置更新光标与区域
+        ResizeRegion region = None;
+        const int m = m_resizeMargin;
+        const bool onLeft   = local.x() <= m;
+        const bool onRight  = local.x() >= r.width() - m;
+        const bool onTop    = local.y() <= m;
+        const bool onBottom = local.y() >= r.height() - m;
+        if (onTop && onLeft) region = TopLeft;
+        else if (onTop && onRight) region = TopRight;
+        else if (onBottom && onLeft) region = BottomLeft;
+        else if (onBottom && onRight) region = BottomRight;
+        else if (onTop) region = Top;
+        else if (onBottom) region = Bottom;
+        else if (onLeft) region = Left;
+        else if (onRight) region = Right;
+        m_resizeRegion = region;
+
+        // 更新光标
+        switch (region) {
+        case TopLeft:
+        case BottomRight:
+            setCursor(Qt::SizeFDiagCursor); break;
+        case TopRight:
+        case BottomLeft:
+            setCursor(Qt::SizeBDiagCursor); break;
+        case Left:
+        case Right:
+            setCursor(Qt::SizeHorCursor); break;
+        case Top:
+        case Bottom:
+            setCursor(Qt::SizeVerCursor); break;
         default:
-            break;
+            unsetCursor(); break;
         }
+        return StyledDialog::eventFilter(watched, event);
     }
+    case QEvent::MouseButtonPress: {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton && m_resizeRegion != None) {
+            m_resizing = true;
+            m_dragStartPos = me->globalPos();
+            m_startGeo = frameGeometry();
+            return true;
+        }
+        break;
+    }
+    case QEvent::MouseButtonRelease: {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton && m_resizing) {
+            m_resizing = false;
+            m_resizeRegion = None;
+            unsetCursor();
+            return true;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
     return StyledDialog::eventFilter(watched, event);
+}
+
+void FramelessDialog::paintEvent(QPaintEvent* e)
+{
+    Q_UNUSED(e);
+    // 绘制圆角背景（启用圆角时）
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(Qt::NoPen);
+    p.setBrush(m_backgroundColor);
+
+    const QRect r = rect();
+    if (m_cornerRadius > 0) {
+        QPainterPath path;
+        path.addRoundedRect(r.adjusted(1, 1, -1, -1), m_cornerRadius, m_cornerRadius);
+        p.drawPath(path);
+    } else {
+        p.drawRect(r);
+    }
+}
+
+// ===== 公共开关 API =====
+void FramelessDialog::setResizableEdgesEnabled(bool enabled)
+{
+    if (m_resizeEnabled == enabled) return;
+    m_resizeEnabled = enabled;
+    if (enabled) {
+        qApp->installEventFilter(this);
+    } else {
+        qApp->removeEventFilter(this);
+        m_resizing = false; m_resizeRegion = None; unsetCursor();
+    }
+}
+
+void FramelessDialog::setResizeMargin(int px)
+{
+    m_resizeMargin = qMax(1, px);
+}
+
+void FramelessDialog::setCornerRadius(int radiusPx)
+{
+    const int r = qMax(0, radiusPx);
+    if (m_cornerRadius == r) return;
+    m_cornerRadius = r;
+    // 启用圆角需要半透明背景以便裁剪
+    setAttribute(Qt::WA_TranslucentBackground, m_cornerRadius > 0);
+    update();
+}
+
+void FramelessDialog::setDropShadowEnabled(bool enabled)
+{
+    if (m_dropShadowEnabled == enabled) return;
+    m_dropShadowEnabled = enabled;
+    if (enabled) {
+        auto* eff = new QGraphicsDropShadowEffect(this);
+        eff->setBlurRadius(24);
+        eff->setOffset(0, 3);
+        eff->setColor(QColor(0, 0, 0, 90));
+        setGraphicsEffect(eff);
+        // 为阴影配合启用透明背景
+        setAttribute(Qt::WA_TranslucentBackground, true);
+    } else {
+        setGraphicsEffect(nullptr);
+        // 根据圆角状态决定是否保持透明背景
+        setAttribute(Qt::WA_TranslucentBackground, m_cornerRadius > 0);
+    }
+    update();
 }
 
 } // namespace QtAdvancedUI
