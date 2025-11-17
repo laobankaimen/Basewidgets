@@ -1,4 +1,3 @@
-// Synced implementation with test/source/qcgaugewidget.* for visual parity
 #include <QtAdvancedUI/Gauges/QcGaugeWidget.h>
 
 namespace QtAdvancedUI {

@@ -163,7 +163,7 @@ private:
    QPainterPath createSubBand(float from,float sweep);
 
    QList<QPair<QColor,float> > mBandColors;
-   float mBandStartValue;
+   float mBandStartValue = 0;
 };
 
 class ACSS_UI_EXPORT QcDegreesItem : public QcScaleItem
