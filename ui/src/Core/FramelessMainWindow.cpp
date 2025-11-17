@@ -10,6 +10,8 @@
 #include <QGraphicsDropShadowEffect>
 #include <QMouseEvent>
 #include <QApplication>
+#include <QRegion>
+#include <QResizeEvent>
 
 using namespace acss;
 
@@ -57,15 +59,16 @@ void FramelessMainWindow::initUI()
     // 将复合区设为菜单区域
     setMenuWidget(m_menuComposite);
 
-    // 背景色取主题色
+    // 背景色取主题色：使用更浅背景以增强阴影对比
     const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
-    m_backgroundColor = QColor(dark ? QString("#2b2d31") : QString("#ffffff"));
+    m_backgroundColor = QColor(dark ? QString("#3a3c40") : QString("#f7f7f7"));
 
-    // 默认启用角拖拽缩放、圆角与阴影（可通过 API 关闭）
+    // 默认启用角拖拽缩放与圆角；阴影默认关闭以避免 Win10 layered 错误
     setResizableEdgesEnabled(true);
     setResizeMargin(6);
+    // 将圆角调整为更适中的默认值（Win10 环境更自然）
     setCornerRadius(12);
-    setDropShadowEnabled(true);
+    setDropShadowEnabled(false);
 }
 
 void FramelessMainWindow::setMenuBar(QMenuBar* menuBar)
@@ -237,8 +240,36 @@ void FramelessMainWindow::setCornerRadius(int radiusPx)
     const int r = qMax(0, radiusPx);
     if (m_cornerRadius == r) return;
     m_cornerRadius = r;
-    setAttribute(Qt::WA_TranslucentBackground, m_cornerRadius > 0 || m_dropShadowEnabled);
+    if (r > 0) m_lastCornerRadiusNonZero = r;
+    // 仅在启用阴影时使用半透明背景
+    setAttribute(Qt::WA_TranslucentBackground, m_dropShadowEnabled);
+    // 让标题栏顶部圆角与窗口保持一致
+    if (m_titleBar) {
+        m_titleBar->setCornerRadius(r);
+    }
+    // 使用窗口遮罩裁剪物理窗口形状，避免四角可见
+    if (m_cornerRadius > 0) {
+        const QRect rct = rect();
+        const int radius = qMin(m_cornerRadius, qMin(rct.width(), rct.height())/2);
+        QPainterPath path;
+        path.addRoundedRect(rct, radius, radius);
+        setMask(QRegion(path.toFillPolygon().toPolygon()));
+    } else {
+        clearMask();
+    }
     update();
+}
+
+void FramelessMainWindow::resizeEvent(QResizeEvent* e)
+{
+    StyledMainWindow::resizeEvent(e);
+    if (m_cornerRadius > 0) {
+        const QRect rct = rect();
+        const int radius = qMin(m_cornerRadius, qMin(rct.width(), rct.height())/2);
+        QPainterPath path;
+        path.addRoundedRect(rct, radius, radius);
+        setMask(QRegion(path.toFillPolygon().toPolygon()));
+    }
 }
 
 void FramelessMainWindow::setDropShadowEnabled(bool enabled)
@@ -247,16 +278,25 @@ void FramelessMainWindow::setDropShadowEnabled(bool enabled)
     m_dropShadowEnabled = enabled;
     if (enabled) {
         auto* eff = new QGraphicsDropShadowEffect(this);
-        eff->setBlurRadius(24);
-        eff->setOffset(0, 3);
-        eff->setColor(QColor(0, 0, 0, 90));
+        eff->setBlurRadius(80);
+        eff->setOffset(0, 8);
+        eff->setColor(QColor(0, 0, 0, 140));
         setGraphicsEffect(eff);
         setAttribute(Qt::WA_TranslucentBackground, true);
     } else {
         setGraphicsEffect(nullptr);
-        setAttribute(Qt::WA_TranslucentBackground, m_cornerRadius > 0);
+        setAttribute(Qt::WA_TranslucentBackground, false);
     }
     update();
+}
+
+void FramelessMainWindow::setRoundedCornersEnabled(bool enabled)
+{
+    if (enabled) {
+        setCornerRadius(m_lastCornerRadiusNonZero > 0 ? m_lastCornerRadiusNonZero : 12);
+    } else {
+        setCornerRadius(0);
+    }
 }
 
 } // namespace QtAdvancedUI

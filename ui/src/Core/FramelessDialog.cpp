@@ -12,6 +12,8 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QGraphicsDropShadowEffect>
+#include <QRegion>
+#include <QResizeEvent>
 
 using namespace acss;
 
@@ -73,9 +75,9 @@ void FramelessDialog::initUI()
     setMinimumSize(380, 240);
     // Do not force a large initial size; size will adjust to content in setContentWidget
 
-    // 内容样式
+    // 内容样式：使用更浅背景以增强阴影对比
     const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
-    const QString bg = dark ? QString("#2b2d31") : QString("#ffffff");
+    const QString bg = dark ? QString("#3a3c40") : QString("#f7f7f7");
     m_backgroundColor = QColor(bg);
     m_contentHost->setStyleSheet(QString(
         "QWidget#FramelessDialogContentHost { background-color: %1; }\n"
@@ -84,8 +86,10 @@ void FramelessDialog::initUI()
     // 默认禁用角拖拽缩放（Dialogs 默认不可拉伸，可通过 API 开启）
     setResizableEdgesEnabled(false);
     setResizeMargin(6);
+    // 将圆角调整为更适中的默认值（与 MainWindow 统一）
     setCornerRadius(12);
-    setDropShadowEnabled(true);
+    // 默认关闭阴影以避免 Win10 layered window 错误
+    setDropShadowEnabled(false);
 }
 
 void FramelessDialog::setTitle(const QString& title)
@@ -268,9 +272,47 @@ void FramelessDialog::setCornerRadius(int radiusPx)
     const int r = qMax(0, radiusPx);
     if (m_cornerRadius == r) return;
     m_cornerRadius = r;
+    if (r > 0) m_lastCornerRadiusNonZero = r;
     // 启用圆角需要半透明背景以便裁剪
     setAttribute(Qt::WA_TranslucentBackground, m_cornerRadius > 0);
+    // 同步更新标题栏顶部圆角
+    if (m_titleBar) {
+        auto* customBar = qobject_cast<CustomTitleBar*>(m_titleBar);
+        if (customBar) customBar->setCornerRadius(r);
+    }
+    // 使用窗口遮罩裁剪物理窗口形状，避免四角可见
+    if (m_cornerRadius > 0) {
+        const QRect rct = rect();
+        const int radius = qMin(m_cornerRadius, qMin(rct.width(), rct.height())/2);
+        QPainterPath path;
+        path.addRoundedRect(rct, radius, radius);
+        setMask(QRegion(path.toFillPolygon().toPolygon()));
+    } else {
+        clearMask();
+    }
     update();
+}
+
+void FramelessDialog::resizeEvent(QResizeEvent* e)
+{
+    StyledDialog::resizeEvent(e);
+    if (m_cornerRadius > 0) {
+        const QRect rct = rect();
+        const int radius = qMin(m_cornerRadius, qMin(rct.width(), rct.height())/2);
+        QPainterPath path;
+        path.addRoundedRect(rct, radius, radius);
+        setMask(QRegion(path.toFillPolygon().toPolygon()));
+    }
+}
+
+void FramelessDialog::setRoundedCornersEnabled(bool enabled)
+{
+    if (enabled) {
+        // 恢复最近一次非零圆角半径（默认 12）
+        setCornerRadius(m_lastCornerRadiusNonZero > 0 ? m_lastCornerRadiusNonZero : 12);
+    } else {
+        setCornerRadius(0);
+    }
 }
 
 void FramelessDialog::setDropShadowEnabled(bool enabled)
@@ -279,16 +321,16 @@ void FramelessDialog::setDropShadowEnabled(bool enabled)
     m_dropShadowEnabled = enabled;
     if (enabled) {
         auto* eff = new QGraphicsDropShadowEffect(this);
-        eff->setBlurRadius(24);
-        eff->setOffset(0, 3);
-        eff->setColor(QColor(0, 0, 0, 90));
+        eff->setBlurRadius(80);
+        eff->setOffset(0, 8);
+        eff->setColor(QColor(0, 0, 0, 140));
         setGraphicsEffect(eff);
         // 为阴影配合启用透明背景
         setAttribute(Qt::WA_TranslucentBackground, true);
     } else {
         setGraphicsEffect(nullptr);
-        // 根据圆角状态决定是否保持透明背景
-        setAttribute(Qt::WA_TranslucentBackground, m_cornerRadius > 0);
+        // 禁用阴影时关闭半透明背景（圆角遮罩即可，不再依赖 layered window）
+        setAttribute(Qt::WA_TranslucentBackground, false);
     }
     update();
 }

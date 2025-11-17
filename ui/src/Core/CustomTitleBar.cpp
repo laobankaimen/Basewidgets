@@ -9,6 +9,8 @@
 #include <QScreen>
 #include <QIcon>
 #include <QStyle>
+#include <QPainter>
+#include <QPaintEvent>
 
 using namespace acss;
 
@@ -19,6 +21,8 @@ CustomTitleBar::CustomTitleBar(QWidget* parent)
 {
     setObjectName("CustomTitleBar");
     setAttribute(Qt::WA_StyledBackground, true);
+    // 统一标题栏高度，确保在 MainWindow 与 Dialog 中一致
+    setFixedHeight(36);
     initUI();
     applyThemeStyles();
 }
@@ -154,10 +158,8 @@ void CustomTitleBar::applyThemeStyles()
     const QString titleBg = dark ? QString("#1f1f1f") : QString("#f2f2f2");
     const QString hoverBg = dark ? QString("#3A3A3A") : QString("#e6e6e6");
     const QString pressBg = dark ? QString("#555555") : QString("#d9d9d9");
-
-    setStyleSheet(QString(
-        "QWidget#CustomTitleBar { background-color: %1; }\n"
-    ).arg(titleBg));
+    // 使用自绘背景颜色，避免样式表在部分环境下圆角不生效
+    m_bgColorTitle = QColor(titleBg);
 
     auto buttonStyle = [&](const QString& obj){
         return QString(
@@ -181,6 +183,39 @@ void CustomTitleBar::applyThemeStyles()
     m_btnMin->setStyleSheet(buttonStyle("CustomTitleBarMinButton"));
     m_btnMax->setStyleSheet(buttonStyle("CustomTitleBarMaxButton"));
     m_btnClose->setStyleSheet(buttonStyle("CustomTitleBarCloseButton"));
+}
+
+void CustomTitleBar::setCornerRadius(int radiusPx)
+{
+    m_cornerRadius = qMax(0, radiusPx);
+    applyThemeStyles();
+}
+
+void CustomTitleBar::paintEvent(QPaintEvent* e)
+{
+    Q_UNUSED(e);
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(Qt::NoPen);
+    p.setBrush(m_bgColorTitle.isValid() ? m_bgColorTitle : QColor("#f2f2f2"));
+
+    const QRect r = rect();
+    const int radius = qMax(0, m_cornerRadius);
+    if (radius > 0) {
+        QPainterPath path;
+        // 仅顶部圆角，底部保持直角以贴合内容区域
+        path.moveTo(r.left(), r.bottom());
+        path.lineTo(r.left(), r.top() + radius);
+        path.quadTo(r.left(), r.top(), r.left() + radius, r.top());
+        path.lineTo(r.right() - radius, r.top());
+        path.quadTo(r.right(), r.top(), r.right(), r.top() + radius);
+        path.lineTo(r.right(), r.bottom());
+        path.lineTo(r.left(), r.bottom());
+        path.closeSubpath();
+        p.drawPath(path);
+    } else {
+        p.drawRect(r);
+    }
 }
 
 void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)

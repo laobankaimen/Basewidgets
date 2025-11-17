@@ -23,6 +23,10 @@ public:
     void attachToWindow(QWidget* window);
     QWidget* attachedWindow() const { return m_window; }
 
+    // 统一圆角：允许设置标题栏顶部圆角半径
+public slots:
+    void setCornerRadius(int radiusPx);
+
 public slots:
     void setTitle(const QString& title);
     void updateForWindowState();
@@ -54,6 +58,12 @@ private:
 
     bool m_dragging = false;
     QPoint m_dragStartPos;
+
+    int m_cornerRadius = 0;
+    QColor m_bgColorTitle;
+
+protected:
+    void paintEvent(QPaintEvent* e) override;
 };
 
 } // namespace QtAdvancedUI

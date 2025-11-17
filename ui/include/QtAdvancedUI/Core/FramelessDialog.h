@@ -31,12 +31,15 @@ public:
     // 圆角与阴影开关
     void setCornerRadius(int radiusPx);
     int cornerRadius() const { return m_cornerRadius; }
+    // 便捷开关：启用/关闭圆角（关闭即半径为 0；启用恢复上次非零半径）
+    void setRoundedCornersEnabled(bool enabled);
     void setDropShadowEnabled(bool enabled);
     bool dropShadowEnabled() const { return m_dropShadowEnabled; }
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void paintEvent(QPaintEvent* e) override;
+    void resizeEvent(QResizeEvent* e) override;
 
 private:
     void initUI();
@@ -60,6 +63,7 @@ private:
 
     // 圆角与阴影
     int m_cornerRadius = 0;
+    int m_lastCornerRadiusNonZero = 12; // 记录最近一次非零圆角，便于关闭后再次启用恢复
     bool m_dropShadowEnabled = false;
     QColor m_backgroundColor;
 };
