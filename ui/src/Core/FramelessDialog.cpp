@@ -86,8 +86,8 @@ void FramelessDialog::initUI()
     // 默认禁用角拖拽缩放（Dialogs 默认不可拉伸，可通过 API 开启）
     setResizableEdgesEnabled(false);
     setResizeMargin(6);
-    // 将圆角调整为更适中的默认值（与 MainWindow 统一）
-    setCornerRadius(12);
+    // 默认关闭圆角，用户可通过 API 开启
+    setCornerRadius(0);
     // 默认关闭阴影以避免 Win10 layered window 错误
     setDropShadowEnabled(false);
 }

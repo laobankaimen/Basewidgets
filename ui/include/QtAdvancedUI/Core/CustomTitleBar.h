@@ -39,6 +39,7 @@ protected:
     void mouseMoveEvent(QMouseEvent* e) override;
     void mouseReleaseEvent(QMouseEvent* e) override;
     void mouseDoubleClickEvent(QMouseEvent* e) override;
+    void showEvent(QShowEvent *event) override;
     bool eventFilter(QObject* obj, QEvent* ev) override;
 
 private:
@@ -62,6 +63,7 @@ private:
     int m_cornerRadius = 0;
     QColor m_bgColorTitle;
 
+    QRect normalGeometry;
 protected:
     void paintEvent(QPaintEvent* e) override;
 };

@@ -1,3 +1,4 @@
+#include <complex.h>
 #include <QtAdvancedUI/Core/CustomTitleBar.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QtAdvancedUI/Inputs/ToolButton.h>
@@ -11,6 +12,7 @@
 #include <QStyle>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QPropertyAnimation>
 
 using namespace acss;
 
@@ -83,7 +85,11 @@ void CustomTitleBar::mouseReleaseEvent(QMouseEvent* e)
     if (!m_window) return;
     if (m_dragging && e->button() == Qt::LeftButton) {
         m_dragging = false;
+#ifdef Q_OS_LINUX
+        //linux取消停靠
+#else
         snapDockIfNeeded(e->globalPos());
+#endif
         e->accept();
         return;
     }
@@ -99,6 +105,11 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
         return;
     }
     QWidget::mouseDoubleClickEvent(e);
+}
+
+void CustomTitleBar::showEvent(QShowEvent *event) {
+    normalGeometry = m_window->geometry();
+    QWidget::showEvent(event);
 }
 
 void CustomTitleBar::initUI()
@@ -147,7 +158,11 @@ void CustomTitleBar::initUI()
     setLayout(h);
 
     // 行为连接
-    QObject::connect(m_btnMin, &ToolButton::clicked, this, [this]{ if (m_window) m_window->showMinimized(); });
+    QObject::connect(m_btnMin, &ToolButton::clicked, this, [this] {
+        if (m_window) {
+            m_window->showMinimized();
+        }
+    });
     QObject::connect(m_btnMax, &ToolButton::clicked, this, [this]{ toggleMaximizeRestore(); });
     QObject::connect(m_btnClose, &ToolButton::clicked, this, [this]{ if (m_window) m_window->close(); });
 }
@@ -257,7 +272,40 @@ void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
 void CustomTitleBar::toggleMaximizeRestore()
 {
     if (!m_window) return;
-    if (m_window->isMaximized()) m_window->showNormal(); else m_window->showMaximized();
+    if (m_window->isMaximized()) {
+        QPropertyAnimation* animation = new QPropertyAnimation(m_window,"geometry");
+        animation->setDuration(150);
+        animation->setEasingCurve(QEasingCurve::OutQuad);
+
+        QRect startGeometry = m_window->geometry();
+        animation->setStartValue(startGeometry);
+        animation->setEndValue(normalGeometry);
+
+        //确保执行到位
+        connect(animation,&QPropertyAnimation::finished,this,[this]() {
+            m_window->showNormal();
+            m_window->setGeometry(normalGeometry);
+        });
+        animation->start(QPropertyAnimation::DeleteWhenStopped);
+    }
+    else {
+        normalGeometry = m_window->geometry();
+        QScreen *primaryScreen = QGuiApplication::screenAt(this->geometry().center());
+        QRect maximizedGeometry = primaryScreen->geometry();
+        QPropertyAnimation *animation = new QPropertyAnimation(m_window,"geometry");
+        animation->setDuration(150);
+        animation->setEasingCurve(QEasingCurve::OutQuad);
+
+        animation->setStartValue(normalGeometry);
+        animation->setEndValue(maximizedGeometry);
+
+        //确保执行到位
+        connect(animation,&QPropertyAnimation::finished,this,[this,maximizedGeometry]() {
+            m_window->showMaximized();
+            m_window->setGeometry(maximizedGeometry);
+        });
+        animation->start(QPropertyAnimation::DeleteWhenStopped);
+    }
     updateForWindowState();
 }
 
