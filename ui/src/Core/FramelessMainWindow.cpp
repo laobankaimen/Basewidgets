@@ -61,7 +61,7 @@ void FramelessMainWindow::initUI()
 
     // 背景色取主题色：使用更浅背景以增强阴影对比
     const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
-    m_backgroundColor = QColor(dark ? QString("#3a3c40") : QString("#f7f7f7"));
+    //m_backgroundColor = QColor(dark ? QString("#3a3c40") : QString("#f7f7f7"));
 
     // 默认启用角拖拽缩放与圆角；阴影默认关闭以避免 Win10 layered 错误
     setResizableEdgesEnabled(true);
@@ -208,7 +208,7 @@ void FramelessMainWindow::paintEvent(QPaintEvent* e)
     p.setRenderHint(QPainter::HighQualityAntialiasing, true);
     p.setRenderHint(QPainter::SmoothPixmapTransform, true);
     p.setPen(Qt::NoPen);
-    p.setBrush(m_backgroundColor);
+    //p.setBrush(m_backgroundColor);
     const QRect r = rect();
     if (m_cornerRadius > 0) {
         QPainterPath path;
