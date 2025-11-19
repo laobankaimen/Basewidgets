@@ -65,41 +65,18 @@ static QWidget* makeContent(QWidget* parent, QWidget* body, QDialogButtonBox* bo
 // 统一风格的圆形彩色徽标图标
 static QPixmap makeBadgeIcon(const QColor& circleColor, const QString& shape, const QColor& shapeColor)
 {
-    QPixmap pm(40, 40);
-    pm.fill(Qt::transparent);
-    QPainter p(&pm);
-    p.setRenderHint(QPainter::Antialiasing, true);
-    p.setRenderHint(QPainter::TextAntialiasing, true);
-    p.setPen(Qt::NoPen);
-    p.setBrush(circleColor);
-    p.drawEllipse(QRectF(2, 2, 36, 36));
-    p.setBrush(shapeColor);
-    p.setPen(QPen(shapeColor, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    QPixmap pixmap;
     if (shape == "check") {
-        p.drawLine(QPointF(13, 22), QPointF(18, 28));
-        p.drawLine(QPointF(18, 28), QPointF(28, 14));
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_check.svg").pixmap(40,40);
     } else if (shape == "cross") {
-        p.drawLine(QPointF(13, 13), QPointF(27, 27));
-        p.drawLine(QPointF(27, 13), QPointF(13, 27));
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_xmark.svg").pixmap(40,40);
     } else if (shape == "info") {
-        p.setPen(QPen(shapeColor, 6));
-        p.drawPoint(QPointF(20, 12));
-        p.setPen(QPen(shapeColor, 4));
-        p.drawLine(QPointF(20, 18), QPointF(20, 28));
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_exclamation.svg").pixmap(40,40);
     } else if (shape == "question") {
-        // 使用适中粗细、较小字号的“?”并留出边距，避免溢出圆圈
-        p.setBrush(Qt::NoBrush);
-        p.setPen(shapeColor);
-        QFont f;
-        f.setBold(false);
-        f.setPointSize(18);
-        p.setFont(f);
-        p.drawText(QRectF(4, 4, 32, 32), Qt::AlignCenter, "?");
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_question.svg").pixmap(40,40);
     }
-    return pm;
+    return pixmap;
 }
-
-// 去除 Automoc 依赖（ColorArea 已迁移到独立文件）
 
 // 自定义颜色选择器主体（RGB 滑条 + Hex 输入 + 预览）
 #if 0
