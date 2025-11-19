@@ -247,7 +247,8 @@ void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
 void CustomTitleBar::toggleMaximizeRestore()
 {
     if (!m_window) return;
-    if (m_window->isMaximized() || m_window->isFullScreen()) {
+    //没有切换到最小化的时候判断才有效
+    if ((m_window->isMaximized() || m_window->isFullScreen()) && !m_isMinimized) {
         QPropertyAnimation* animation = new QPropertyAnimation(m_window,"geometry");
         animation->setDuration(150);
         animation->setEasingCurve(QEasingCurve::OutQuad);
@@ -283,10 +284,15 @@ void CustomTitleBar::toggleMaximizeRestore()
         });
         animation->start(QPropertyAnimation::DeleteWhenStopped);
     }
+    m_isMinimized = false;
 }
 
 bool CustomTitleBar::eventFilter(QObject* obj, QEvent* ev)
 {
+    if(obj == m_window && ev->type() == QEvent::WindowStateChange) {
+        if(m_window->isMinimized())
+            m_isMinimized = true;
+    }
     return QWidget::eventFilter(obj, ev);
 }
 

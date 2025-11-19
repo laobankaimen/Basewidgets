@@ -57,6 +57,8 @@ private:
     bool m_doubleClickToggleEnabled = true;
 
     bool m_dragging = false;
+    //需要记录最小化状态，系统bug最小化后默认状态为全屏
+    bool m_isMinimized = false;
     QPoint m_dragStartPos;
 
     int m_cornerRadius = 0;

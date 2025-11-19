@@ -67,7 +67,6 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
         QApplication::setWindowIcon(mgr->styleIcon());
         qApp->setStyleSheet(mgr->styleSheet());
     });
-    Q_INIT_RESOURCE(images);//库中需要显示初始化资源才能在主程序使用
 }
 
 void StyleManagerAdapter::setInstance(acss::QtAdvancedStylesheet* mgr)
