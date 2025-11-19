@@ -135,10 +135,12 @@ set(UI_SOURCES
     src/Charts/StyledPlot.cpp
 )
 
+qt5_add_resources(SOURCE resource/images.qrc)
+
 add_library(qtadvancedui_widgets
-    resource/images.qrc
     ${UI_PUBLIC_HEADERS}
     ${UI_SOURCES}
+    ${SOURCE}
 )
 
 # Export macro

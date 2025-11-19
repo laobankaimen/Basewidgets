@@ -51,9 +51,9 @@ void CustomTitleBar::setTitle(const QString& title)
 void CustomTitleBar::updateForWindowState()
 {
     if (!m_window || !m_btnMax) return;
-    const bool maximized = (m_window->isMaximized() | m_window->isFullScreen());
-    const QIcon icon = maximized ? StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_tosmall.svg")
-                                 : StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_tobig.svg");
+    const bool maximized = (m_window->isMaximized() || m_window->isFullScreen());
+    const QIcon icon = maximized ? StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tosmall.svg")
+                                 : StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tobig.svg");
     m_btnMax->setIcon(icon);
 }
 
@@ -108,7 +108,6 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
 }
 
 void CustomTitleBar::showEvent(QShowEvent *event) {
-    normalGeometry = m_window->geometry();
     QWidget::showEvent(event);
 }
 
@@ -124,8 +123,8 @@ void CustomTitleBar::initUI()
     m_btnMin->setCursor(Qt::PointingHandCursor);
     m_btnMin->setAutoRaise(false);
     m_btnMin->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnMin->setFixedSize(QSize(28, 28));
-    m_btnMin->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_hide.svg"));
+    m_btnMin->setFixedSize(QSize(30, 30));
+    m_btnMin->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_hide.svg"));
     m_btnMin->setIconSize(QSize(18, 18));
 
     m_btnMax = new ToolButton(this);
@@ -134,8 +133,8 @@ void CustomTitleBar::initUI()
     m_btnMax->setCursor(Qt::PointingHandCursor);
     m_btnMax->setAutoRaise(false);
     m_btnMax->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnMax->setFixedSize(QSize(28, 28));
-    m_btnMax->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_tobig.svg"));
+    m_btnMax->setFixedSize(QSize(30, 30));
+    m_btnMax->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tobig.svg"));
     m_btnMax->setIconSize(QSize(18, 18));
 
     m_btnClose = new ToolButton(this);
@@ -144,8 +143,8 @@ void CustomTitleBar::initUI()
     m_btnClose->setCursor(Qt::PointingHandCursor);
     m_btnClose->setAutoRaise(false);
     m_btnClose->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnClose->setFixedSize(QSize(28, 28));
-    m_btnClose->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_close.svg"));
+    m_btnClose->setFixedSize(QSize(30, 30));
+    m_btnClose->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_close.svg"));
     m_btnClose->setIconSize(QSize(18, 18));
 
     auto* h = new QHBoxLayout(this);
@@ -248,7 +247,7 @@ void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
 void CustomTitleBar::toggleMaximizeRestore()
 {
     if (!m_window) return;
-    if (m_window->isMaximized()) {
+    if (m_window->isMaximized() || m_window->isFullScreen()) {
         QPropertyAnimation* animation = new QPropertyAnimation(m_window,"geometry");
         animation->setDuration(150);
         animation->setEasingCurve(QEasingCurve::OutQuad);
