@@ -51,9 +51,9 @@ void CustomTitleBar::setTitle(const QString& title)
 void CustomTitleBar::updateForWindowState()
 {
     if (!m_window || !m_btnMax) return;
-    const bool maximized = m_window->isMaximized();
-    const QIcon icon = maximized ? style()->standardIcon(QStyle::SP_TitleBarNormalButton)
-                                 : style()->standardIcon(QStyle::SP_TitleBarMaxButton);
+    const bool maximized = (m_window->isMaximized() | m_window->isFullScreen());
+    const QIcon icon = maximized ? StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_tosmall.svg")
+                                 : StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_tobig.svg");
     m_btnMax->setIcon(icon);
 }
 
@@ -116,36 +116,36 @@ void CustomTitleBar::initUI()
 {
     m_titleLabel = new QLabel(this);
     m_titleLabel->setObjectName("CustomTitleBarTitle");
-    m_titleLabel->setStyleSheet("font-size: 15px; font-weight: 600;");
+    m_titleLabel->setStyleSheet("font-size: 15px; font-weight: 400;");
 
     m_btnMin = new ToolButton(this);
-    m_btnMin->setObjectName("CustomTitleBarMinButton");
+    m_btnMin->setObjectName("TitleBarMinButton");
     m_btnMin->setToolTip(tr("最小化"));
     m_btnMin->setCursor(Qt::PointingHandCursor);
     m_btnMin->setAutoRaise(false);
     m_btnMin->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnMin->setFixedSize(QSize(28, 28));
-    m_btnMin->setIcon(style()->standardIcon(QStyle::SP_TitleBarMinButton));
+    m_btnMin->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_hide.svg"));
     m_btnMin->setIconSize(QSize(18, 18));
 
     m_btnMax = new ToolButton(this);
-    m_btnMax->setObjectName("CustomTitleBarMaxButton");
+    m_btnMax->setObjectName("TitleBarMaxButton");
     m_btnMax->setToolTip(tr("最大化/还原"));
     m_btnMax->setCursor(Qt::PointingHandCursor);
     m_btnMax->setAutoRaise(false);
     m_btnMax->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnMax->setFixedSize(QSize(28, 28));
-    m_btnMax->setIcon(style()->standardIcon(QStyle::SP_TitleBarMaxButton));
+    m_btnMax->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_tobig.svg"));
     m_btnMax->setIconSize(QSize(18, 18));
 
     m_btnClose = new ToolButton(this);
-    m_btnClose->setObjectName("CustomTitleBarCloseButton");
+    m_btnClose->setObjectName("TitleBarCloseButton");
     m_btnClose->setToolTip(tr("关闭"));
     m_btnClose->setCursor(Qt::PointingHandCursor);
     m_btnClose->setAutoRaise(false);
     m_btnClose->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnClose->setFixedSize(QSize(28, 28));
-    m_btnClose->setIcon(style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+    m_btnClose->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon("D:/Work/share/Git/qtadvancedui/ui/resource/icons/hx_custom_close.svg"));
     m_btnClose->setIconSize(QSize(18, 18));
 
     auto* h = new QHBoxLayout(this);
@@ -158,46 +158,22 @@ void CustomTitleBar::initUI()
     setLayout(h);
 
     // 行为连接
-    QObject::connect(m_btnMin, &ToolButton::clicked, this, [this] {
+    connect(m_btnMin, &ToolButton::clicked, this, [this] {
         if (m_window) {
             m_window->showMinimized();
         }
     });
-    QObject::connect(m_btnMax, &ToolButton::clicked, this, [this]{ toggleMaximizeRestore(); });
-    QObject::connect(m_btnClose, &ToolButton::clicked, this, [this]{ if (m_window) m_window->close(); });
+    connect(m_btnMax, &ToolButton::clicked, this, [this]{ toggleMaximizeRestore(); });
+    connect(m_btnClose, &ToolButton::clicked, this, [this]{ if (m_window) m_window->close(); });
+
+    //主题切换
+    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
+        update();
+    });
 }
 
 void CustomTitleBar::applyThemeStyles()
 {
-    const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
-    const QString titleBg = dark ? QString("#1f1f1f") : QString("#f2f2f2");
-    const QString hoverBg = dark ? QString("#3A3A3A") : QString("#e6e6e6");
-    const QString pressBg = dark ? QString("#555555") : QString("#d9d9d9");
-    // 使用自绘背景颜色，避免样式表在部分环境下圆角不生效
-    m_bgColorTitle = QColor(titleBg);
-
-    auto buttonStyle = [&](const QString& obj){
-        return QString(
-            "QToolButton#%1 {\n"
-            "  background: transparent;\n"
-            "  border: 0px;\n"
-            "  border-radius: 6px;\n"
-            "  margin: 0;\n"
-            "  padding: 4px;\n"
-            "  qproperty-iconSize: 20px;\n"
-            "}\n"
-            "QToolButton#%1:hover {\n"
-            "  background: %2;\n"
-            "}\n"
-            "QToolButton#%1:pressed {\n"
-            "  background: %3;\n"
-            "}\n"
-        ).arg(obj, hoverBg, pressBg);
-    };
-
-    m_btnMin->setStyleSheet(buttonStyle("CustomTitleBarMinButton"));
-    m_btnMax->setStyleSheet(buttonStyle("CustomTitleBarMaxButton"));
-    m_btnClose->setStyleSheet(buttonStyle("CustomTitleBarCloseButton"));
 }
 
 void CustomTitleBar::setCornerRadius(int radiusPx)
@@ -212,7 +188,7 @@ void CustomTitleBar::paintEvent(QPaintEvent* e)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setPen(Qt::NoPen);
-    p.setBrush(m_bgColorTitle.isValid() ? m_bgColorTitle : QColor("#f2f2f2"));
+    p.setBrush(StyleManagerAdapter::instance()->generateThemePalette().window());
 
     const QRect r = rect();
     const int radius = qMax(0, m_cornerRadius);
@@ -285,6 +261,7 @@ void CustomTitleBar::toggleMaximizeRestore()
         connect(animation,&QPropertyAnimation::finished,this,[this]() {
             m_window->showNormal();
             m_window->setGeometry(normalGeometry);
+            updateForWindowState();
         });
         animation->start(QPropertyAnimation::DeleteWhenStopped);
     }
@@ -303,17 +280,14 @@ void CustomTitleBar::toggleMaximizeRestore()
         connect(animation,&QPropertyAnimation::finished,this,[this,maximizedGeometry]() {
             m_window->showMaximized();
             m_window->setGeometry(maximizedGeometry);
+            updateForWindowState();
         });
         animation->start(QPropertyAnimation::DeleteWhenStopped);
     }
-    updateForWindowState();
 }
 
 bool CustomTitleBar::eventFilter(QObject* obj, QEvent* ev)
 {
-    if (obj == m_window && ev->type() == QEvent::WindowStateChange) {
-        updateForWindowState();
-    }
     return QWidget::eventFilter(obj, ev);
 }
 
@@ -328,5 +302,4 @@ void CustomTitleBar::setDoubleClickToToggleEnabled(bool enabled)
 {
     m_doubleClickToggleEnabled = enabled;
 }
-
 } // namespace QtAdvancedUI

@@ -58,11 +58,6 @@ void FramelessMainWindow::initUI()
 
     // 将复合区设为菜单区域
     setMenuWidget(m_menuComposite);
-
-    // 背景色取主题色：使用更浅背景以增强阴影对比
-    const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
-    //m_backgroundColor = QColor(dark ? QString("#3a3c40") : QString("#f7f7f7"));
-
     // 默认启用角拖拽缩放与圆角；阴影默认关闭以避免 Win10 layered 错误
     setResizableEdgesEnabled(true);
     setResizeMargin(6);

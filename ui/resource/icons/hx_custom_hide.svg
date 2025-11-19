@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" version="1.1" width="64"
+     height="64" viewBox="0 0 64 64">
+    <defs>
+        <clipPath id="master_svg0_571_324">
+            <rect x="0" y="0" width="64" height="64" rx="0"/>
+        </clipPath>
+    </defs>
+    <g clip-path="url(#master_svg0_571_324)">
+        <g>
+            <g>
+                <g>
+                    <g></g>
+                    <g>
+                        <g>
+                            <g>
+                                <g>
+                                    <line x1="13.333251953125" y1="30.25" x2="50.666587829589844" y2="30.25"
+                                          fill-opacity="0" stroke-opacity="1" stroke="#03b8e5" fill="none"
+                                          stroke-width="3.5"/>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -27,7 +27,6 @@ public:
 public slots:
     void setCornerRadius(int radiusPx);
 
-public slots:
     void setTitle(const QString& title);
     void updateForWindowState();
     // 仅用于对话框等场景：按钮显隐与双击开关
@@ -61,7 +60,6 @@ private:
     QPoint m_dragStartPos;
 
     int m_cornerRadius = 0;
-    QColor m_bgColorTitle;
 
     QRect normalGeometry;
 protected:

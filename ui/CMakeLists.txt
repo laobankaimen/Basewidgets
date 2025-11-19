@@ -136,6 +136,7 @@ set(UI_SOURCES
 )
 
 add_library(qtadvancedui_widgets
+    resource/images.qrc
     ${UI_PUBLIC_HEADERS}
     ${UI_SOURCES}
 )

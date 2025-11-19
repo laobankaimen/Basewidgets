@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" version="1.1" width="64"
+     height="64" viewBox="0 0 64 64">
+    <defs>
+        <clipPath id="master_svg0_571_514">
+            <rect x="0" y="0" width="64" height="64" rx="0"/>
+        </clipPath>
+    </defs>
+    <g clip-path="url(#master_svg0_571_514)">
+        <g>
+            <g>
+                <g>
+                    <g>
+                        <g></g>
+                        <g>
+                            <g>
+                                <g>
+                                    <g>
+                                        <g>
+                                            <rect x="16.333251953125" y="19.666748046875" width="26.666667938232422"
+                                                  height="26.666667938232422" rx="0" fill-opacity="0" stroke-opacity="1"
+                                                  stroke="#03b8e5" fill="none" stroke-width="3.5"/>
+                                        </g>
+                                    </g>
+                                </g>
+                            </g>
+                        </g>
+                        <g>
+                            <g>
+                                <g>
+                                    <g>
+                                        <line x1="21.333251953125" y1="12.916748046875" x2="51.333251953125"
+                                              y2="12.916748046875" fill-opacity="0" stroke-opacity="1" stroke="#03b8e5"
+                                              fill="none" stroke-width="3.5"/>
+                                    </g>
+                                </g>
+                            </g>
+                        </g>
+                        <g transform="matrix(0,1,-1,0,34.66796875,-8.00146484375)">
+                            <g>
+                                <g>
+                                    <g>
+                                        <line x1="21.334716796875" y1="11.583251953125" x2="29.334716796875"
+                                              y2="11.583251953125" fill-opacity="0" stroke-opacity="1" stroke="#03b8e5"
+                                              fill="none" stroke-width="3.5"/>
+                                    </g>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                    <g transform="matrix(0,1,-1,0,59.18000030517578,-36.81999969482422)">
+                        <g>
+                            <g>
+                                <g>
+                                    <line x1="48" y1="9.430000305175781" x2="78.14999771118164" y2="9.430000305175781"
+                                          fill-opacity="0" stroke-opacity="1" stroke="#03b8e5" fill="none"
+                                          stroke-width="3.5"/>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                    <g transform="matrix(1,-2.2348338291067193e-8,2.2348338291067193e-8,1,-9.23729494672898e-7,9.535309217767463e-7)">
+                        <g>
+                            <g>
+                                <g>
+                                    <line x1="42.666748046875" y1="39.583251953125" x2="50.666748046875"
+                                          y2="39.583251953125" fill-opacity="0" stroke-opacity="1" stroke="#03b8e5"
+                                          fill="none" stroke-width="3.5"/>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

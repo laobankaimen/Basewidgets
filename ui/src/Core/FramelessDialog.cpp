@@ -76,12 +76,12 @@ void FramelessDialog::initUI()
     // Do not force a large initial size; size will adjust to content in setContentWidget
 
     // 内容样式：使用更浅背景以增强阴影对比
-    const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
-    const QString bg = dark ? QString("#3a3c40") : QString("#f7f7f7");
-    m_backgroundColor = QColor(bg);
-    m_contentHost->setStyleSheet(QString(
-        "QWidget#FramelessDialogContentHost { background-color: %1; }\n"
-    ).arg(bg));
+    // const bool dark = StyleManagerAdapter::instance()->isCurrentThemeDark();
+    // const QString bg = dark ? QString("#3a3c40") : QString("#f7f7f7");
+    // m_backgroundColor = QColor(bg);
+    // m_contentHost->setStyleSheet(QString(
+    //     "QWidget#FramelessDialogContentHost { background-color: %1; }\n"
+    // ).arg(bg));
 
     // 默认禁用角拖拽缩放（Dialogs 默认不可拉伸，可通过 API 开启）
     setResizableEdgesEnabled(false);
@@ -232,14 +232,14 @@ bool FramelessDialog::eventFilter(QObject* watched, QEvent* event)
 
 void FramelessDialog::paintEvent(QPaintEvent* e)
 {
-    Q_UNUSED(e);
+    /*Q_UNUSED(e);
     // 绘制圆角背景（启用圆角时）
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setRenderHint(QPainter::HighQualityAntialiasing, true);
     p.setRenderHint(QPainter::SmoothPixmapTransform, true);
     p.setPen(Qt::NoPen);
-    p.setBrush(m_backgroundColor);
+    p.setBrush(StyleManagerAdapter::instance()->generateThemePalette().base());
 
     const QRect r = rect();
     if (m_cornerRadius > 0) {
@@ -248,7 +248,7 @@ void FramelessDialog::paintEvent(QPaintEvent* e)
         p.drawPath(path);
     } else {
         p.drawRect(r);
-    }
+    }*/
 }
 
 // ===== 公共开关 API =====

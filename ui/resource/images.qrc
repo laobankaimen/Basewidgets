@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>icons/hx_custom_close.svg</file>
+        <file>icons/hx_custom_hide.svg</file>
+        <file>icons/hx_custom_tobig.svg</file>
+        <file>icons/hx_custom_tosmall.svg</file>
+    </qresource>
+</RCC>

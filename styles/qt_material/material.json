@@ -32,9 +32,9 @@
 
     "palette" : {
         "active" : {
-            "Window" : "",
+            "Window" : "secondaryDarkColor",
             "WindowText" : "secondaryTextColor",
-            "Base" : "",
+            "Base" : "secondaryLightColor",
             "AlternateBase" : "",
             "ToolTipBase" : "",
             "ToolTipText" : "",
