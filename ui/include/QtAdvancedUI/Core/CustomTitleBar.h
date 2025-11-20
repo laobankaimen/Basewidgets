@@ -34,6 +34,7 @@ public slots:
     void setDoubleClickToToggleEnabled(bool enabled);
 
 protected:
+    // 移除所有拖动相关的事件处理，让framelesswindow处理
     void mousePressEvent(QMouseEvent* e) override;
     void mouseMoveEvent(QMouseEvent* e) override;
     void mouseReleaseEvent(QMouseEvent* e) override;
@@ -44,6 +45,7 @@ protected:
 private:
     void initUI();
     void applyThemeStyles();
+    // 移除贴边停靠逻辑，让framelesswindow处理
     void snapDockIfNeeded(const QPoint& globalReleasePos);
     void toggleMaximizeRestore(bool isDoubleClick = false);
 
@@ -56,10 +58,13 @@ private:
 
     bool m_doubleClickToggleEnabled = true;
 
+    // 移除所有拖动和状态记录相关的成员变量
     bool m_dragging = false;
     //需要记录最小化状态，系统bug最小化后默认状态为全屏
     bool m_isMinimized = false;
     Qt::WindowStates m_lastState = Qt::WindowNoState;
+    Qt::WindowStates m_preMinimizeState = Qt::WindowNoState; // 专门记录最小化前的状态
+    bool m_hasPreMinimizeState = false; // 标记是否有有效的最小化前状态
     QPoint m_dragStartPos;
 
     int m_cornerRadius = 0;

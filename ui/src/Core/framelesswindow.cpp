@@ -1,4 +1,4 @@
-﻿#include "framelesswindow.h"
+#include "framelesswindow.h"
 #include <QApplication>
 #include <QPoint>
 #include <QSize>
@@ -10,8 +10,6 @@
 #include <windowsx.h>
 #include <dwmapi.h>
 #include <objidl.h> // Fixes error C2504: 'IUnknown' : base class undefined
-#include <gdiplus.h>
-#include <gdiplus/gdipluscolor.h>
 
 #pragma comment (lib,"Dwmapi.lib") // Adds missing library, fixes error LNK2019: unresolved external symbol __imp__DwmExtendFrameIntoClientArea
 #pragma comment (lib,"user32.lib")

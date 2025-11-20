@@ -9,6 +9,7 @@
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QtAdvancedUI/Core/StyledMainWindow.h>
 #include <QtAdvancedUI/Core/FramelessMainWindow.h>
+#include <QtAdvancedUI/Core/FramelessWidgetWindow.h>
 #include <QtAdvancedUI/Core/StyledWidget.h>
 #include <QtAdvancedUI/Containers/MenuBar.h>
 #include <QtAdvancedUI/Containers/ToolBar.h>
@@ -1042,13 +1043,18 @@ int main(int argc, char *argv[])
     // 初始化样式管理器
     StyleManagerAdapter::initialize();
 
-    // 创建主窗口（使用无边框主窗口，集成自定义标题栏）
-    auto* window = new FramelessMainWindow();
-    window->setWindowTitle("QtAdvancedUI 组件全面展示");
+    // 创建主窗口（使用基于 QWidget 的无边框主界面）
+    auto* window = new FramelessWidgetWindow();
+    window->setTitle("QtAdvancedUI 组件全面展示");
     window->resize(1400, 900);
 
     // 创建菜单栏
-    auto* menuBar = new MenuBar(window);
+    auto* contentRoot = new StyledWidget();
+    auto* rootLayout = new QVBoxLayout(contentRoot);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
+
+    auto* menuBar = new MenuBar(contentRoot);
     auto* fileMenu = menuBar->addMenu("文件(&F)");
     fileMenu->addAction("新建(&N)", [](){});
     fileMenu->addAction("打开(&O)", [](){});
@@ -1064,7 +1070,7 @@ int main(int argc, char *argv[])
     window->setMenuBar(menuBar);
 
     // 创建工具栏
-    auto* toolBar = new ToolBar(window);
+    auto* toolBar = new ToolBar(contentRoot);
     toolBar->setWindowTitle("主工具栏");
     toolBar->addAction("新建", [](){});
     toolBar->addAction("打开", [](){});
@@ -1096,10 +1102,10 @@ int main(int argc, char *argv[])
     moreButton->setMenu(moreMenu);
     toolBar->addWidget(moreButton);
     
-    window->addToolBar(toolBar);
+    rootLayout->addWidget(toolBar);
 
     // 创建状态栏
-    auto* statusBar = new StatusBar(window);
+    auto* statusBar = new StatusBar(contentRoot);
     statusBar->showMessage("QtAdvancedUI 组件展示 - 就绪");
     
     // 添加永久控件
@@ -1112,10 +1118,11 @@ int main(int argc, char *argv[])
     progressBar->setMaximumWidth(150);
     statusBar->addPermanentWidget(progressBar);
     
-    window->setStatusBar(statusBar);
+    // 状态栏置于底部
+    // 先占位，稍后在设置中央内容后再添加
 
     // 创建中央控件 - 主标签页
-    auto* centralWidget = new StyledWidget(window);
+    auto* centralWidget = new StyledWidget(contentRoot);
     auto* centralLayout = new QVBoxLayout(centralWidget);
     centralLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -1135,17 +1142,24 @@ int main(int argc, char *argv[])
 
     centralLayout->addWidget(mainTabWidget);
     centralWidget->setLayout(centralLayout);
-    window->setCentralWidget(centralWidget);
-
-    // 创建顶部工具栏并放置主题切换下拉
-    auto* themeToolbar = new ToolBar(window);
+    // 工具栏（主题切换）置于顶部工具栏区域下方
+    auto* themeToolbar = new ToolBar(contentRoot);
     themeToolbar->setMovable(false);
-    window->addToolBar(Qt::TopToolBarArea, themeToolbar);
+    rootLayout->addWidget(themeToolbar);
     auto* themeCombo = new ComboBox(themeToolbar);
     themeCombo->addItem("🌙 深色主题");
     themeCombo->addItem("☀️ 浅色主题");
     themeToolbar->addWidget(new Label("主题:", themeToolbar));
     themeToolbar->addWidget(themeCombo);
+
+    // 主内容
+    rootLayout->addWidget(centralWidget, 1);
+    // 底部状态栏
+    rootLayout->addWidget(statusBar);
+    contentRoot->setLayout(rootLayout);
+    window->setContentWidget(contentRoot);
+
+    // 主题切换逻辑保持不变
 
     // 取消标题栏注入与按钮控制示例，恢复默认布局
 

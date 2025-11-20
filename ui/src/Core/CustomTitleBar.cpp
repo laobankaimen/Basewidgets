@@ -13,8 +13,11 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPropertyAnimation>
+#include <QTimer>
+#include <QWindowStateChangeEvent>
 
 #include "QtAdvancedUI/Core/FramelessMainWindow.h"
+#include "QtAdvancedUI/Core/FramelessWidgetWindow.h"
 
 using namespace acss;
 
@@ -60,38 +63,22 @@ void CustomTitleBar::updateForWindowState()
     m_btnMax->setIcon(icon);
 }
 
+// 移除所有拖动相关的实现，因为framelesswindow会处理拖动
 void CustomTitleBar::mousePressEvent(QMouseEvent* e)
 {
-    if (!m_window) return;
-    if (e->button() == Qt::LeftButton) {
-        m_dragging = true;
-        m_dragStartPos = e->globalPos() - m_window->frameGeometry().topLeft();
-        e->accept();
-        return;
-    }
+    // 不再处理拖动，让framelesswindow处理
     QWidget::mousePressEvent(e);
 }
 
 void CustomTitleBar::mouseMoveEvent(QMouseEvent* e)
 {
-    if (!m_window) return;
-    if (m_window->windowState() == Qt::WindowMaximized || m_window->windowState() == Qt::WindowFullScreen) return;//全屏禁止拖动
-    if (m_dragging) {
-        m_window->move(e->globalPos() - m_dragStartPos);
-        e->accept();
-        return;
-    }
+    // 不再处理拖动，让framelesswindow处理
     QWidget::mouseMoveEvent(e);
 }
 
 void CustomTitleBar::mouseReleaseEvent(QMouseEvent* e)
 {
-    if (!m_window) return;
-    if (m_dragging && e->button() == Qt::LeftButton) {
-        m_dragging = false;
-        e->accept();
-        return;
-    }
+    // 不再处理拖动，让framelesswindow处理
     QWidget::mouseReleaseEvent(e);
 }
 
@@ -107,21 +94,7 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
 }
 
 void CustomTitleBar::showEvent(QShowEvent *event) {
-#ifdef Q_OS_WIN
-    ;
-#endif
-#ifdef Q_OS_LINUX
-    if(m_window->windowState() == Qt::WindowMinimized) {
-        if(m_lastState == Qt::WindowMaximized)
-            m_window->showMaximized();
-        else if(m_lastState ==  Qt::WindowFullScreen)
-            m_window->showFullScreen();
-        else
-            m_window->showNormal();
-        m_window->setAttribute(Qt::WA_Mapped);
-        m_window->update();
-    }
-#endif
+    // 移除所有最小化恢复逻辑，让framelesswindow处理
     QWidget::showEvent(event);
 }
 
@@ -218,42 +191,14 @@ void CustomTitleBar::paintEvent(QPaintEvent* e)
     }
 }
 
+// 移除贴边停靠逻辑，因为framelesswindow会处理
 void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
 {
-    if (!m_window) return;
-
-    QScreen* scr = QApplication::screenAt(globalReleasePos);
-    if (!scr) scr = QApplication::primaryScreen();
-    if (!scr) return;
-
-    const QRect area = scr->availableGeometry();
-    const int thresh = 12; // 贴边阈值
-
-    const bool nearTop = (globalReleasePos.y() - area.top()) <= thresh;
-    const bool nearLeft = (globalReleasePos.x() - area.left()) <= thresh;
-    const bool nearRight = (area.right() - globalReleasePos.x()) <= thresh;
-
-    if (nearTop) {
-        m_window->showMaximized();
-        updateForWindowState();
-        return;
-    }
-    if (nearLeft) {
-        // 左半屏停靠
-        m_window->showNormal();
-        m_window->setGeometry(area.left(), area.top(), area.width() / 2, area.height());
-        updateForWindowState();
-        return;
-    }
-    if (nearRight) {
-        // 右半屏停靠
-        m_window->showNormal();
-        m_window->setGeometry(area.left() + area.width() / 2, area.top(), area.width() / 2, area.height());
-        updateForWindowState();
-        return;
-    }
+    Q_UNUSED(globalReleasePos)
+    // 不再处理贴边停靠，让framelesswindow处理
 }
 
+// 简化toggleMaximizeRestore，移除状态记录逻辑
 void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 {
     if (!m_window) return;
@@ -270,11 +215,9 @@ void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 
         //确保执行到位
         connect(animation,&QPropertyAnimation::finished,this,[this]() {
-            qDebug()<<m_window->windowState()<<normalGeometry;
             m_window->showNormal();
             m_window->setGeometry(normalGeometry);
             updateForWindowState();
-            qDebug()<<"nos----------"<<m_window->windowState();
         });
         animation->start(QPropertyAnimation::DeleteWhenStopped);
     }
@@ -296,46 +239,35 @@ void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
                 m_window->showFullScreen();
             else
                 m_window->showMaximized();
-            //m_window->setGeometry(maximizedGeometry);
             updateForWindowState();
-            qDebug()<<"full----------"<<m_window->windowState();
         });
         animation->start(QPropertyAnimation::DeleteWhenStopped);
     }
-
 }
 
+// 简化事件过滤器，移除状态记录逻辑
 bool CustomTitleBar::eventFilter(QObject* obj, QEvent* ev)
 {
     if(obj == m_window && ev->type() == QEvent::WindowStateChange) {
-        if(m_window->windowState() == Qt::WindowMaximized ||m_window->windowState() == Qt::WindowFullScreen) {
-            auto window = dynamic_cast<FramelessMainWindow*>(m_window);
-            window->setResizableEdgesEnabled(false);//全屏禁止角拖拽缩放
-        }
-        else {
-            auto window = dynamic_cast<FramelessMainWindow*>(m_window);
-            window->setResizableEdgesEnabled(true);
-        }
-
-        /*auto *stateEvent = dynamic_cast<QWindowStateChangeEvent*>(ev);
-        auto oldState = stateEvent->oldState();
-        //记录最小化之前的状态
-        if(!(oldState & Qt::WindowMinimized))
-            m_lastState = oldState;
-        if(!m_window->isMinimized())
-            m_lastState = m_window->windowState();//非最小化状态时记录状态
-
-        //当前已经是最小化状态，强制系统切换回上一次的状态
-        if(m_isMinimized) {
-            m_isMinimized = false;
-        }
-        else {
-            if(m_window->windowState() == (Qt::WindowMaximized|Qt::WindowMinimized) || m_window->windowState() == (Qt::WindowFullScreen|Qt::WindowMinimized))
-                m_window->showMinimized();
-            else if(m_window->windowState() == Qt::WindowMinimized) {
-                m_isMinimized = true;
+        // 处理最大化/全屏状态的边缘调整
+        if(m_window->windowState() == Qt::WindowMaximized || m_window->windowState() == Qt::WindowFullScreen) {
+            if (auto mw = dynamic_cast<FramelessMainWindow*>(m_window)) {
+                mw->setResizableEdgesEnabled(false);
+            } else if (auto ww = dynamic_cast<FramelessWidgetWindow*>(m_window)) {
+                ww->setResizableEdgesEnabled(false);
             }
-        }*/
+        }
+        else if (m_window->windowState() == Qt::WindowNoState) {
+            // 确保从最大化/全屏恢复时重新启用边缘调整
+            if (auto mw = dynamic_cast<FramelessMainWindow*>(m_window)) {
+                mw->setResizableEdgesEnabled(true);
+            } else if (auto ww = dynamic_cast<FramelessWidgetWindow*>(m_window)) {
+                ww->setResizableEdgesEnabled(true);
+            }
+        }
+
+        // 更新窗口状态显示
+        updateForWindowState();
     }
     return QWidget::eventFilter(obj, ev);
 }
@@ -351,4 +283,5 @@ void CustomTitleBar::setDoubleClickToToggleEnabled(bool enabled)
 {
     m_doubleClickToggleEnabled = enabled;
 }
+
 } // namespace QtAdvancedUI
