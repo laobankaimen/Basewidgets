@@ -71,9 +71,11 @@ static QPixmap makeBadgeIcon(const QColor& circleColor, const QString& shape, co
     } else if (shape == "cross") {
         pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_xmark.svg").pixmap(40,40);
     } else if (shape == "info") {
-        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_exclamation.svg").pixmap(40,40);
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_info.svg").pixmap(40,40);
     } else if (shape == "question") {
         pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_question.svg").pixmap(40,40);
+    } else if (shape == "warning") {
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_exclamation.svg").pixmap(40,40);
     }
     return pixmap;
 }
@@ -944,7 +946,7 @@ void DialogUtils::messageWarning(QWidget* parent, const QString& title, const QS
     h->setContentsMargins(0, 0, 0, 0);
     h->setSpacing(10);
     QLabel* iconLabel = new QLabel(body);
-    iconLabel->setPixmap(makeBadgeIcon(QColor(255, 166, 0), "info", Qt::white));
+    iconLabel->setPixmap(makeBadgeIcon(QColor(255, 166, 0), "warning", Qt::white));
     QLabel* textLabel = new QLabel(text, body);
     textLabel->setWordWrap(true);
     textLabel->setStyleSheet("font-size: 14px;");
