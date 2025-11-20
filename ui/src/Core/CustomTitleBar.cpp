@@ -14,6 +14,8 @@
 #include <QPaintEvent>
 #include <QPropertyAnimation>
 
+#include "QtAdvancedUI/Core/FramelessMainWindow.h"
+
 using namespace acss;
 
 namespace QtAdvancedUI {
@@ -51,7 +53,8 @@ void CustomTitleBar::setTitle(const QString& title)
 void CustomTitleBar::updateForWindowState()
 {
     if (!m_window || !m_btnMax) return;
-    const bool maximized = (m_window->isMaximized() || m_window->isFullScreen());
+    //最小化可能有两种状态
+    const bool maximized = (m_window->windowState() == Qt::WindowMaximized || m_window->windowState() == Qt::WindowFullScreen);
     const QIcon icon = maximized ? StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tosmall.svg")
                                  : StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tobig.svg");
     m_btnMax->setIcon(icon);
@@ -72,6 +75,7 @@ void CustomTitleBar::mousePressEvent(QMouseEvent* e)
 void CustomTitleBar::mouseMoveEvent(QMouseEvent* e)
 {
     if (!m_window) return;
+    if (m_window->windowState() == Qt::WindowMaximized || m_window->windowState() == Qt::WindowFullScreen) return;//全屏禁止拖动
     if (m_dragging) {
         m_window->move(e->globalPos() - m_dragStartPos);
         e->accept();
@@ -85,11 +89,6 @@ void CustomTitleBar::mouseReleaseEvent(QMouseEvent* e)
     if (!m_window) return;
     if (m_dragging && e->button() == Qt::LeftButton) {
         m_dragging = false;
-#ifdef Q_OS_LINUX
-        //linux取消停靠
-#else
-        snapDockIfNeeded(e->globalPos());
-#endif
         e->accept();
         return;
     }
@@ -100,7 +99,7 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
 {
     if (!m_window) return;
     if (m_doubleClickToggleEnabled && e->button() == Qt::LeftButton) {
-        toggleMaximizeRestore();
+        toggleMaximizeRestore(true);
         e->accept();
         return;
     }
@@ -108,6 +107,21 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
 }
 
 void CustomTitleBar::showEvent(QShowEvent *event) {
+#ifdef Q_OS_WIN
+    ;
+#endif
+#ifdef Q_OS_LINUX
+    if(m_window->windowState() == Qt::WindowMinimized) {
+        if(m_lastState == Qt::WindowMaximized)
+            m_window->showMaximized();
+        else if(m_lastState ==  Qt::WindowFullScreen)
+            m_window->showFullScreen();
+        else
+            m_window->showNormal();
+        m_window->setAttribute(Qt::WA_Mapped);
+        m_window->update();
+    }
+#endif
     QWidget::showEvent(event);
 }
 
@@ -157,11 +171,7 @@ void CustomTitleBar::initUI()
     setLayout(h);
 
     // 行为连接
-    connect(m_btnMin, &ToolButton::clicked, this, [this] {
-        if (m_window) {
-            m_window->showMinimized();
-        }
-    });
+    connect(m_btnMin, &ToolButton::clicked, this, [this] { if (m_window)  m_window->showMinimized(); });
     connect(m_btnMax, &ToolButton::clicked, this, [this]{ toggleMaximizeRestore(); });
     connect(m_btnClose, &ToolButton::clicked, this, [this]{ if (m_window) m_window->close(); });
 
@@ -244,11 +254,12 @@ void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
     }
 }
 
-void CustomTitleBar::toggleMaximizeRestore()
+void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 {
     if (!m_window) return;
-    //没有切换到最小化的时候判断才有效
-    if ((m_window->isMaximized() || m_window->isFullScreen()) && !m_isMinimized) {
+
+    //直接判断窗口状态
+    if (m_window->windowState() == Qt::WindowMaximized || m_window->windowState() == Qt::WindowFullScreen) {
         QPropertyAnimation* animation = new QPropertyAnimation(m_window,"geometry");
         animation->setDuration(150);
         animation->setEasingCurve(QEasingCurve::OutQuad);
@@ -259,9 +270,11 @@ void CustomTitleBar::toggleMaximizeRestore()
 
         //确保执行到位
         connect(animation,&QPropertyAnimation::finished,this,[this]() {
+            qDebug()<<m_window->windowState()<<normalGeometry;
             m_window->showNormal();
             m_window->setGeometry(normalGeometry);
             updateForWindowState();
+            qDebug()<<"nos----------"<<m_window->windowState();
         });
         animation->start(QPropertyAnimation::DeleteWhenStopped);
     }
@@ -277,21 +290,52 @@ void CustomTitleBar::toggleMaximizeRestore()
         animation->setEndValue(maximizedGeometry);
 
         //确保执行到位
-        connect(animation,&QPropertyAnimation::finished,this,[this,maximizedGeometry]() {
-            m_window->showMaximized();
-            m_window->setGeometry(maximizedGeometry);
+        connect(animation,&QPropertyAnimation::finished,this,[this,isDoubleClick]() {
+            auto window = dynamic_cast<FramelessMainWindow*>(m_window);
+            if(isDoubleClick)
+                m_window->showFullScreen();
+            else
+                m_window->showMaximized();
+            //m_window->setGeometry(maximizedGeometry);
             updateForWindowState();
+            qDebug()<<"full----------"<<m_window->windowState();
         });
         animation->start(QPropertyAnimation::DeleteWhenStopped);
     }
-    m_isMinimized = false;
+
 }
 
 bool CustomTitleBar::eventFilter(QObject* obj, QEvent* ev)
 {
     if(obj == m_window && ev->type() == QEvent::WindowStateChange) {
-        if(m_window->isMinimized())
-            m_isMinimized = true;
+        if(m_window->windowState() == Qt::WindowMaximized ||m_window->windowState() == Qt::WindowFullScreen) {
+            auto window = dynamic_cast<FramelessMainWindow*>(m_window);
+            window->setResizableEdgesEnabled(false);//全屏禁止角拖拽缩放
+        }
+        else {
+            auto window = dynamic_cast<FramelessMainWindow*>(m_window);
+            window->setResizableEdgesEnabled(true);
+        }
+
+        /*auto *stateEvent = dynamic_cast<QWindowStateChangeEvent*>(ev);
+        auto oldState = stateEvent->oldState();
+        //记录最小化之前的状态
+        if(!(oldState & Qt::WindowMinimized))
+            m_lastState = oldState;
+        if(!m_window->isMinimized())
+            m_lastState = m_window->windowState();//非最小化状态时记录状态
+
+        //当前已经是最小化状态，强制系统切换回上一次的状态
+        if(m_isMinimized) {
+            m_isMinimized = false;
+        }
+        else {
+            if(m_window->windowState() == (Qt::WindowMaximized|Qt::WindowMinimized) || m_window->windowState() == (Qt::WindowFullScreen|Qt::WindowMinimized))
+                m_window->showMinimized();
+            else if(m_window->windowState() == Qt::WindowMinimized) {
+                m_isMinimized = true;
+            }
+        }*/
     }
     return QWidget::eventFilter(obj, ev);
 }

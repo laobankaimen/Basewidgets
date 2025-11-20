@@ -13,6 +13,17 @@
 #include <QRegion>
 #include <QResizeEvent>
 
+#ifdef Q_OS_WIN
+    #include <windows.h>
+    #include <winuser.h>
+    #include <windowsx.h>
+    #include <dwmapi.h>
+    #include <objidl.h> // Fixes error C2504: 'IUnknown' : base class undefined
+    #include <gdiplus.h>
+    #include <gdipluscolor.h>
+#endif
+#ifdef Q_OS_LINUX
+#endif
 using namespace acss;
 
 namespace QtAdvancedUI {
@@ -20,17 +31,19 @@ namespace QtAdvancedUI {
 FramelessMainWindow::FramelessMainWindow(QWidget* parent)
     : StyledMainWindow(parent)
 {
-    setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
+    setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
     setStyleManager(StyleManagerAdapter::instance());
     initUI();
+
+    setAttribute(Qt::WA_PaintOnScreen,true);
 }
 
 FramelessMainWindow::FramelessMainWindow(acss::QtAdvancedStylesheet* manager, QWidget* parent)
     : StyledMainWindow(manager, parent)
 {
-    setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
+    setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
     initUI();
@@ -218,6 +231,32 @@ void FramelessMainWindow::paintEvent(QPaintEvent* e)
 void FramelessMainWindow::setResizableEdgesEnabled(bool enabled)
 {
     if (m_resizeEnabled == enabled) return;
+#ifdef Q_OS_WIN
+    bool visible = isVisible();
+    m_resizeEnabled = enabled;
+    if (m_resizeEnabled){
+        setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
+
+        //此行代码可以带回Aero效果，同时也带回了标题栏和边框,在nativeEvent()会再次去掉标题栏
+        HWND hwnd = (HWND)this->winId();
+        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
+        ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CAPTION);
+    }else{
+        setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
+        //        setWindowFlag(Qt::WindowMaximizeButtonHint,false);
+
+        HWND hwnd = (HWND)this->winId();
+        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
+        ::SetWindowLong(hwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX & ~WS_CAPTION);
+    }
+
+    //保留一个像素的边框宽度，否则系统不会绘制边框阴影(部分系统会提示API未定义)
+    //const MARGINS shadow = { 1, 1, 1, 1 };
+    //DwmExtendFrameIntoClientArea(HWND(winId()), &shadow);
+    setVisible(visible);
+#endif
+
+#ifdef Q_OS_LINUX
     m_resizeEnabled = enabled;
     if (enabled) {
         qApp->installEventFilter(this);
@@ -225,6 +264,7 @@ void FramelessMainWindow::setResizableEdgesEnabled(bool enabled)
         qApp->removeEventFilter(this);
         m_resizing = false; m_resizeRegion = None; unsetCursor();
     }
+#endif
 }
 
 void FramelessMainWindow::setResizeMargin(int px)
@@ -234,6 +274,10 @@ void FramelessMainWindow::setResizeMargin(int px)
 
 void FramelessMainWindow::setCornerRadius(int radiusPx)
 {
+#ifdef Q_OS_WIN
+
+#endif
+#ifdef  Q_OS_LINUX
     const int r = qMax(0, radiusPx);
     if (m_cornerRadius == r) return;
     m_cornerRadius = r;
@@ -255,13 +299,14 @@ void FramelessMainWindow::setCornerRadius(int radiusPx)
     } else {
         clearMask();
     }
+#endif
     update();
 }
 
 void FramelessMainWindow::resizeEvent(QResizeEvent* e)
 {
     StyledMainWindow::resizeEvent(e);
-    if (m_cornerRadius > 0) {
+    /*if (m_cornerRadius > 0) {
         const QRect rct = rect();
         const int radius = qMin(m_cornerRadius, qMin(rct.width(), rct.height())/2);
         QPainterPath path;
@@ -272,7 +317,7 @@ void FramelessMainWindow::resizeEvent(QResizeEvent* e)
     if (m_titleBar) {
         const bool noTopRadius = isFullScreen() || isMaximized();
         m_titleBar->setCornerRadius(noTopRadius ? 0 : m_cornerRadius);
-    }
+    }*/
 }
 
 void FramelessMainWindow::setDropShadowEnabled(bool enabled)
@@ -304,6 +349,162 @@ void FramelessMainWindow::changeEvent(QEvent* e)
     }
 }
 
+bool FramelessMainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result) {
+#ifdef Q_OS_WIN
+    //Workaround for known bug -> check Qt forum : https://forum.qt.io/topic/93141/qtablewidget-itemselectionchanged/13
+    #if (QT_VERSION == QT_VERSION_CHECK(5, 11, 1))
+    MSG* msg = *reinterpret_cast<MSG**>(message);
+    #else
+    MSG* msg = reinterpret_cast<MSG*>(message);
+    #endif
+
+    switch (msg->message)
+    {
+    case WM_NCCALCSIZE:
+    {
+        NCCALCSIZE_PARAMS& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam);
+ 	if (params.rgrc[0].top != 0)
+		params.rgrc[0].top -= 1;
+
+        //this kills the window frame and title bar we added with WS_THICKFRAME and WS_CAPTION
+        *result = WVR_REDRAW;
+        return true;
+    }
+    case WM_NCHITTEST:
+    {
+        *result = 0;
+
+        const LONG border_width = m_resizeMargin;
+        RECT winrect;
+        GetWindowRect(HWND(winId()), &winrect);
+
+        long x = GET_X_LPARAM(msg->lParam);
+        long y = GET_Y_LPARAM(msg->lParam);
+
+        if(m_resizeEnabled)
+        {
+
+            bool resizeWidth = minimumWidth() != maximumWidth();
+            bool resizeHeight = minimumHeight() != maximumHeight();
+
+            if(resizeWidth)
+            {
+                //left border
+                if (x >= winrect.left && x < winrect.left + border_width)
+                {
+                    *result = HTLEFT;
+                }
+                //right border
+                if (x < winrect.right && x >= winrect.right - border_width)
+                {
+                    *result = HTRIGHT;
+                }
+            }
+            if(resizeHeight)
+            {
+                //bottom border
+                if (y < winrect.bottom && y >= winrect.bottom - border_width)
+                {
+                    *result = HTBOTTOM;
+                }
+                //top border
+                if (y >= winrect.top && y < winrect.top + border_width)
+                {
+                    *result = HTTOP;
+                }
+            }
+            if(resizeWidth && resizeHeight)
+            {
+                //bottom left corner
+                if (x >= winrect.left && x < winrect.left + border_width &&
+                        y < winrect.bottom && y >= winrect.bottom - border_width)
+                {
+                    *result = HTBOTTOMLEFT;
+                }
+                //bottom right corner
+                if (x < winrect.right && x >= winrect.right - border_width &&
+                        y < winrect.bottom && y >= winrect.bottom - border_width)
+                {
+                    *result = HTBOTTOMRIGHT;
+                }
+                //top left corner
+                if (x >= winrect.left && x < winrect.left + border_width &&
+                        y >= winrect.top && y < winrect.top + border_width)
+                {
+                    *result = HTTOPLEFT;
+                }
+                //top right corner
+                if (x < winrect.right && x >= winrect.right - border_width &&
+                        y >= winrect.top && y < winrect.top + border_width)
+                {
+                    *result = HTTOPRIGHT;
+                }
+            }
+        }
+        if (0!=*result) return true;
+
+        //*result still equals 0, that means the cursor locate OUTSIDE the frame area
+        //but it may locate in titlebar area
+        if (!m_titleBar) return false;
+
+        //support highdpi
+        double dpr = this->devicePixelRatioF();
+        QPoint pos = m_titleBar->mapFromGlobal(QPoint(x/dpr,y/dpr));
+
+        if (!m_titleBar->rect().contains(pos)) return false;
+        QWidget* child = m_titleBar->childAt(pos);
+        if (!child)
+        {
+            *result = HTCAPTION;
+            return true;
+        }else{
+            /*if (m_whiteList.contains(child))
+            {
+                *result = HTCAPTION;
+                return true;
+            }*/
+        }
+        return false;
+    } //end case WM_NCHITTEST
+    case WM_GETMINMAXINFO:
+    {
+        if (::IsZoomed(msg->hwnd)) {
+            RECT frame = { 0, 0, 0, 0 };
+            AdjustWindowRectEx(&frame, WS_OVERLAPPEDWINDOW, FALSE, 0);
+
+            //record frame area data
+            double dpr = this->devicePixelRatioF();
+
+            m_frames.setLeft(abs(frame.left)/dpr+0.5);
+            m_frames.setTop(abs(frame.bottom)/dpr+0.5);
+            m_frames.setRight(abs(frame.right)/dpr+0.5);
+            m_frames.setBottom(abs(frame.bottom)/dpr+0.5);
+
+            QMainWindow::setContentsMargins(m_frames.left()+m_margins.left(), \
+                                            m_frames.top()+m_margins.top(), \
+                                            m_frames.right()+m_margins.right(), \
+                                            m_frames.bottom()+m_margins.bottom());
+            m_bJustMaximized = true;
+        }else {
+            if (m_bJustMaximized)
+            {
+                QMainWindow::setContentsMargins(m_margins);
+                m_frames = QMargins();
+                m_bJustMaximized = false;
+            }
+        }
+        return false;
+    }
+    default:
+        return QMainWindow::nativeEvent(eventType, message, result);
+    }
+#endif
+
+#ifdef Q_OS_LINUX
+    return StyledMainWindow::nativeEvent(eventType, message, result);
+#endif
+}
+
 void FramelessMainWindow::setRoundedCornersEnabled(bool enabled)
 {
     if (enabled) {
@@ -312,5 +513,22 @@ void FramelessMainWindow::setRoundedCornersEnabled(bool enabled)
         setCornerRadius(0);
     }
 }
+
+void FramelessMainWindow::setContentsMargins(const QMargins &margins)
+{
+    QMainWindow::setContentsMargins(margins+m_frames);
+    m_margins = margins;
+}
+
+void FramelessMainWindow::showFullScreen()
+{
+    if (isMaximized())
+    {
+        QMainWindow::setContentsMargins(m_margins);
+        m_frames = QMargins();
+    }
+    QMainWindow::showFullScreen();
+}
+
 
 } // namespace QtAdvancedUI

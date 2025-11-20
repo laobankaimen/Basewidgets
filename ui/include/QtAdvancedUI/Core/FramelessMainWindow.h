@@ -37,7 +37,8 @@ public:
     void setRoundedCornersEnabled(bool enabled);
     void setDropShadowEnabled(bool enabled);
     bool dropShadowEnabled() const { return m_dropShadowEnabled; }
-
+    void setContentsMargins(const QMargins &margins);
+    void showFullScreen();
 
 protected:
     void showEvent(QShowEvent* e) override;
@@ -45,6 +46,7 @@ protected:
     void paintEvent(QPaintEvent* e) override;
     void resizeEvent(QResizeEvent* e) override;
     void changeEvent(QEvent* e) override;
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
 
 private:
     void initUI();
@@ -58,9 +60,12 @@ private:
     // 角拖拽缩放
     bool m_resizeEnabled = false;
     int m_resizeMargin = 6;
+
     enum ResizeRegion { None, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
     ResizeRegion m_resizeRegion = None;
     bool m_resizing = false;
+    bool m_bJustMaximized = true;
+    QMargins m_margins, m_frames;;
     QRect m_startGeo;
     QPoint m_dragStartPos;
 
