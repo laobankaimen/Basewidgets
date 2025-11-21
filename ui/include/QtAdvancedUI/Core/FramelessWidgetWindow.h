@@ -40,7 +40,6 @@ class ACSS_UI_EXPORT FramelessWidgetWindow : public QWidget
     Q_OBJECT
 public:
     explicit FramelessWidgetWindow(QWidget* parent = nullptr);
-    explicit FramelessWidgetWindow(QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~FramelessWidgetWindow() override;
 
     void setTitle(const QString& title);
@@ -99,15 +98,14 @@ private slots:
 
 private:
     void initUI();
-    void applyThemeStyles();
 
 private:
     QWidget* m_contentHost = nullptr;
     QMenuBar* m_menuBar = nullptr;
 
 #ifdef Q_OS_WIN
-    // Windows平台特定成员 - 来自framelesswindow
-    QWidget* m_titlebar = Q_NULLPTR;  // 使用framelesswindow的命名
+    // Windows平台特定成员
+    QWidget* m_titlebar = Q_NULLPTR;
     QList<QWidget*> m_whiteList;
     int m_borderWidth = 5;
     QMargins m_margins;

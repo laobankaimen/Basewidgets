@@ -32,31 +32,6 @@
 }
 
 /*  ------------------------------------------------------------------------  */
-/*  Custom TitleBar Buttons  */
-
-QToolButton#TitleBarMinButton,
-QToolButton#TitleBarMaxButton,
-QToolButton#TitleBarCloseButton {
-  background: transparent;
-  border: 0px;
-  border-radius: 6px;
-  margin: 0;
-  padding: 4px;
-}
-
-QToolButton#TitleBarMinButton:hover,
-QToolButton#TitleBarMaxButton:hover,
-QToolButton#TitleBarCloseButton:hover{
-  background: {{secondaryLightColor}};
-}
-
-QToolButton#TitleBarMinButton:pressed,
-QToolButton#TitleBarMaxButton:pressed,
-QToolButton#TitleBarCloseButton:pressed {
-  background: {{secondaryColor}};
-}
-
-/*  ------------------------------------------------------------------------  */
 /*  Basic widgets  */
 
 QWidget {
@@ -1146,8 +1121,6 @@ QHeaderView::section {
   border-color: {{secondaryDarkColor}};
 }
 
-
-
 /*  ------------------------------------------------------------------------  */
 /*  QLCDNumber  */
 
@@ -1214,6 +1187,35 @@ QDialog QToolButton:checked {
   padding: 0px;
   border-right: 0px;
   border-left: 0px;
+}
+
+/*  ------------------------------------------------------------------------  */
+/*  Custom TitleBar Buttons  */
+
+QToolButton#TitleBarMinButton,
+QToolButton#TitleBarMaxButton,
+QToolButton#TitleBarCloseButton {
+  background: transparent;
+  border: 0px;
+  height: auto;
+  margin: 0px;
+  padding: 0px;
+}
+
+QToolButton#TitleBarMinButton:hover,
+QToolButton#TitleBarMaxButton:hover {
+  background-color: {{secondaryDarkColor}};
+}
+QToolButton#TitleBarCloseButton:hover{
+  background-color: #dc3545;
+}
+
+QToolButton#TitleBarMinButton:pressed,
+QToolButton#TitleBarMaxButton:pressed {
+  background-color: {{secondaryDarkColor|opacity(0.4)}};
+}
+QToolButton#TitleBarCloseButton:pressed {
+  background-color: #80dc3545;
 }
 
 /*  ------------------------------------------------------------------------  */

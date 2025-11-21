@@ -8,7 +8,6 @@
 
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QtAdvancedUI/Core/StyledMainWindow.h>
-#include <QtAdvancedUI/Core/FramelessMainWindow.h>
 #include <QtAdvancedUI/Core/FramelessWidgetWindow.h>
 #include <QtAdvancedUI/Core/StyledWidget.h>
 #include <QtAdvancedUI/Containers/MenuBar.h>
@@ -1147,8 +1146,8 @@ int main(int argc, char *argv[])
     themeToolbar->setMovable(false);
     rootLayout->addWidget(themeToolbar);
     auto* themeCombo = new ComboBox(themeToolbar);
-    themeCombo->addItem("🌙 深色主题");
-    themeCombo->addItem("☀️ 浅色主题");
+    themeCombo->addItem("深色主题");
+    themeCombo->addItem("浅色主题");
     themeToolbar->addWidget(new Label("主题:", themeToolbar));
     themeToolbar->addWidget(themeCombo);
 

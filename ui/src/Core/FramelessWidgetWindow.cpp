@@ -12,6 +12,7 @@
 #include <QRegion>
 #include <QResizeEvent>
 #include <QMenuBar>
+#include <qshortcut.h>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -31,33 +32,15 @@
 namespace QtAdvancedUI {
 
 #ifdef Q_OS_WIN
-// Windows平台实现 - 直接完整复制framelesswindow的代码
+// Windows平台实现 - 复刻framelesswindow的代码
 FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
     : QMainWindow(parent),
       m_titlebar(Q_NULLPTR),
       m_contentHost(nullptr),
       m_borderWidth(5),
-      m_bJustMaximized(false),
+      m_bJustMaximized(true),
       m_bResizeable(true),
-      m_titlebarHeight(30),
-      m_menuBar(nullptr)
-{
-    setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
-    setAttribute(Qt::WA_StyledBackground, true);
-    setAutoFillBackground(true);
-    
-    setResizeable(m_bResizeable);
-    initUI();
-}
-
-FramelessWidgetWindow::FramelessWidgetWindow(QtAdvancedStylesheet* manager, QWidget* parent)
-    : QMainWindow(parent),
-      m_titlebar(Q_NULLPTR),
-      m_contentHost(nullptr),
-      m_borderWidth(5),
-      m_bJustMaximized(false),
-      m_bResizeable(true),
-      m_titlebarHeight(30),
+      m_titlebarHeight(36),
       m_menuBar(nullptr)
 {
     setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
@@ -202,24 +185,25 @@ bool FramelessWidgetWindow::nativeEvent(const QByteArray &eventType, void *messa
         }
         if (0!=*result) return true;
         
-        if (!m_titlebar) return false;
-        
-        double dpr = this->devicePixelRatioF();
-        QPoint pos = m_titlebar->mapFromGlobal(QPoint(x/dpr,y/dpr));
-        
-        if (!m_titlebar->rect().contains(pos)) return false;
-        QWidget* child = m_titlebar->childAt(pos);
-        if (!child)
-        {
-            *result = HTCAPTION;
-            return true;
-        }else{
-            if (m_whiteList.contains(child))
-            {
+        if (m_titlebar) {
+            double dpr = this->devicePixelRatioF();
+            QPoint titlePos = m_titlebar->mapFromGlobal(QPoint(x/dpr,y/dpr));
+
+            QWidget* child = m_titlebar->childAt(titlePos);
+            //鼠标标题栏的子控件，让子控件接收事件（过滤掉其他不需要鼠标交互的控件）
+            if (child && (child->objectName().contains("TitleBarCloseButton") ||
+                child->objectName().contains("TitleBarMaxButton") ||
+                child->objectName().contains("TitleBarMinButton"))) {
+                *result = HTCLIENT;
+                return true;
+            }
+            //不在子控件上，且在标题栏内
+            if (m_titlebar->geometry().contains(titlePos)) {
                 *result = HTCAPTION;
                 return true;
             }
         }
+
         return false;
     }
     case WM_GETMINMAXINFO:
@@ -260,6 +244,7 @@ void FramelessWidgetWindow::setContentsMargins(const QMargins &margins)
     QMainWindow::setContentsMargins(margins+m_frames);
     m_margins = margins;
 }
+
 void FramelessWidgetWindow::setContentsMargins(int left, int top, int right, int bottom)
 {
     QMainWindow::setContentsMargins(left+m_frames.left(),
@@ -391,23 +376,26 @@ void FramelessWidgetWindow::initUI()
     // 创建CustomTitleBar作为标题栏
     CustomTitleBar* customTitleBar = new CustomTitleBar(this);
     customTitleBar->attachToWindow(this);
-    
-    // 使用framelesswindow的setTitleBar方法设置标题栏
+    customTitleBar->setFixedHeight(m_titlebarHeight);
+
+    // 设置标题栏
     setTitleBar(customTitleBar);
-    
+
     m_contentHost = new QWidget(this);
     m_contentHost->setObjectName("contentHost");
-    
 #ifdef Q_OS_WIN
     // 为QMainWindow创建中心部件
     QWidget* centralWidget = new QWidget(this);
     QVBoxLayout* mainLayout = new QVBoxLayout(centralWidget);
+
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
     mainLayout->addWidget(customTitleBar);
     mainLayout->addWidget(m_contentHost, 1);
     
     setCentralWidget(centralWidget);
+
+
 #elif defined(Q_OS_LINUX)
     // 为QWidget直接设置布局
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -417,12 +405,13 @@ void FramelessWidgetWindow::initUI()
     mainLayout->addWidget(m_contentHost, 1);
 #endif
     
-    applyThemeStyles();
-}
-
-void FramelessWidgetWindow::applyThemeStyles()
-{
-    // Style will be applied by the framework
+    //applyThemeStyles();
+    //通过快捷键全屏，避免误操作，全屏无动画效果
+    QShortcut *shortcut = new QShortcut(QKeySequence(tr("F11")),this);
+    connect(shortcut,&QShortcut::activated,[=](){
+        showFullScreen();
+    });
+    move(10,10);
 }
 
 void FramelessWidgetWindow::setTitle(const QString& title)
@@ -640,7 +629,6 @@ void FramelessWidgetWindow::showEvent(QShowEvent* e)
 #elif defined(Q_OS_LINUX)
     QWidget::showEvent(e);
 #endif
-    applyThemeStyles();
 }
 
 bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
