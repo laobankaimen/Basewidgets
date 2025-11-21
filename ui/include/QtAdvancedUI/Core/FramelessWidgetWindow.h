@@ -17,8 +17,7 @@
 #include <windows.h>
 #include <dwmapi.h>
 #elif defined(Q_OS_LINUX)
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
+
 #endif
 
 class QVBoxLayout;
@@ -43,12 +42,13 @@ public:
 
     QMenuBar* menuBar() const;
     void setMenuBar(QMenuBar* menuBar);
-    void setResizableEdgesEnabled(bool enabled);
-    bool isResizeable() const;
+    void setResizableEdgesEnabled(bool enabled = true);
+    bool isResizeable() const {return m_bResizeable;};
     void setResizeableAreaWidth(int width = 5);
     void setTitleBar(QWidget* titlebar);
     void addIgnoreWidget(QWidget* widget);
-    void setResizeable(bool resizeable = true);
+public slots:
+    void showFullScreen();
 #ifdef Q_OS_WIN
     // 内容边距管理
     void setContentsMargins(const QMargins &margins);
@@ -56,15 +56,13 @@ public:
     QMargins contentsMargins() const;
     QRect contentsRect() const;
     void getContentsMargins(int *left, int *top, int *right, int *bottom) const;
-public slots:
-    void showFullScreen();
-    
 #elif defined(Q_OS_LINUX)
-
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
 #endif
 
 protected:
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
     void changeEvent(QEvent* e) override;
 #ifdef Q_OS_WIN
     bool nativeWindowsEvent(const QByteArray &eventType, void *message, long *result);
@@ -83,12 +81,21 @@ private:
     QMenuBar* m_menuBar = nullptr;
 
     QWidget* m_titlebar = Q_NULLPTR;
+#ifdef Q_OS_WIN
 
+#elif defined(Q_OS_LINUX)
+    enum ResizeRegion { None, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
+    ResizeRegion m_resizeRegion = None;
+    bool m_resizing = false;
+    int m_resizeMargin = 6;
+    QRect m_startGeo;
+    QPoint m_dragStartPos;
+#endif
     int m_borderWidth = 5;
     QMargins m_margins;
     QMargins m_frames;
     bool m_bJustMaximized = false;
-    bool m_bResizeable = true;
+    bool m_bResizeable = false;
     int m_titlebarHeight = 30;
 
 };

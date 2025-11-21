@@ -46,34 +46,8 @@ FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
     
-    setResizeable(m_bResizeable);
+    setResizableEdgesEnabled(m_bResizeable);
     initUI();
-}
-
-void FramelessWidgetWindow::setResizeable(bool resizeable)
-{
-    bool visible = isVisible();
-    m_bResizeable = resizeable;
-#ifdef Q_OS_WIN
-    if (m_bResizeable){
-        setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
-
-        HWND hwnd = (HWND)this->winId();
-        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
-        ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CAPTION);
-    }else{
-        setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
-
-        HWND hwnd = (HWND)this->winId();
-        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
-        ::SetWindowLong(hwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX & ~WS_CAPTION);
-    }
-
-    const MARGINS shadow = { 1, 1, 1, 1 };
-#elif defined(Q_OS_LINUX)
-
-#endif
-    setVisible(visible);
 }
 
 void FramelessWidgetWindow::setResizeableAreaWidth(int width)
@@ -243,8 +217,8 @@ void FramelessWidgetWindow::setContentsMargins(const QMargins &margins)
 void FramelessWidgetWindow::setContentsMargins(int left, int top, int right, int bottom)
 {
     QMainWindow::setContentsMargins(left+m_frames.left(),
-                                    top+m_frames.top(), 
-                                    right+m_frames.right(), 
+                                    top+m_frames.top(),
+                                    right+m_frames.right(),
                                     bottom+m_frames.bottom());
     m_margins.setLeft(left);
     m_margins.setTop(top);
@@ -280,6 +254,115 @@ QRect FramelessWidgetWindow::contentsRect() const
     rect.setHeight(height);
     return rect;
 }
+
+
+#elif defined(Q_OS_LINUX)
+
+bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    QWidget* w = qobject_cast<QWidget*>(watched);
+    if (!w || w->window() != this) return QMainWindow::eventFilter(watched, event);
+    if (!m_bResizeable) return QMainWindow::eventFilter(watched, event);
+qDebug()<<event->type();
+    switch (event->type()) {
+    case QEvent::MouseMove: {
+        auto* me = static_cast<QMouseEvent*>(event);
+        const QPoint global = me->globalPos();
+        const QPoint local = mapFromGlobal(global);
+        const QRect r = rect();
+
+        if (m_resizing) {
+            QRect geo = m_startGeo;
+            const QPoint d = global - m_dragStartPos;
+            const int minW = minimumSize().width();
+            const int minH = minimumSize().height();
+
+            switch (m_resizeRegion) {
+            case Left:       geo.setLeft(geo.left() + d.x()); break;
+            case Right:      geo.setRight(geo.right() + d.x()); break;
+            case Top:        geo.setTop(geo.top() + d.y()); break;
+            case Bottom:     geo.setBottom(geo.bottom() + d.y()); break;
+            case TopLeft:    geo.setTop(geo.top() + d.y()); geo.setLeft(geo.left() + d.x()); break;
+            case TopRight:   geo.setTop(geo.top() + d.y()); geo.setRight(geo.right() + d.x()); break;
+            case BottomLeft: geo.setBottom(geo.bottom() + d.y()); geo.setLeft(geo.left() + d.x()); break;
+            case BottomRight:geo.setBottom(geo.bottom() + d.y()); geo.setRight(geo.right() + d.x()); break;
+            default: break;
+            }
+
+            if (geo.width() < minW) geo.setWidth(minW);
+            if (geo.height() < minH) geo.setHeight(minH);
+            setGeometry(geo);
+            return true;
+        }
+
+        ResizeRegion region = None;
+        const int m = m_resizeMargin;
+        const bool onLeft   = local.x() <= m;
+        const bool onRight  = local.x() >= r.width() - m;
+        const bool onTop    = local.y() <= m;
+        const bool onBottom = local.y() >= r.height() - m;
+        if (onTop && onLeft) region = TopLeft;
+        else if (onTop && onRight) region = TopRight;
+        else if (onBottom && onLeft) region = BottomLeft;
+        else if (onBottom && onRight) region = BottomRight;
+        else if (onTop) region = Top;
+        else if (onBottom) region = Bottom;
+        else if (onLeft) region = Left;
+        else if (onRight) region = Right;
+        m_resizeRegion = region;
+
+        switch (region) {
+        case TopLeft:
+        case BottomRight:
+            setCursor(Qt::SizeFDiagCursor); break;
+        case TopRight:
+        case BottomLeft:
+            setCursor(Qt::SizeBDiagCursor); break;
+        case Left:
+        case Right:
+            setCursor(Qt::SizeHorCursor); break;
+        case Top:
+        case Bottom:
+            setCursor(Qt::SizeVerCursor); break;
+        default:
+            unsetCursor(); break;
+        }
+        return QMainWindow::eventFilter(watched, event);
+    }
+    case QEvent::MouseButtonPress: {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton && m_resizeRegion != None) {
+            m_resizing = true;
+            m_dragStartPos = me->globalPos();
+            m_startGeo = frameGeometry();
+            return true;
+        }
+        break;
+    }
+    case QEvent::MouseButtonRelease: {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton && m_resizing) {
+            m_resizing = false;
+            m_resizeRegion = None;
+            unsetCursor();
+            return true;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    return QMainWindow::eventFilter(watched, event);
+}
+
+bool FramelessWidgetWindow::nativeLinuxEvent(const QByteArray &eventType, void *message, long *result)
+{
+    return QMainWindow::nativeEvent(eventType, message, result);
+}
+
+#endif
+
 void FramelessWidgetWindow::showFullScreen()
 {
     if (isMaximized())
@@ -289,15 +372,6 @@ void FramelessWidgetWindow::showFullScreen()
     }
     QMainWindow::showFullScreen();
 }
-
-#elif defined(Q_OS_LINUX)
-
-bool FramelessWidgetWindow::nativeLinuxEvent(const QByteArray &eventType, void *message, long *result)
-{
-    ;
-}
-
-#endif
 
 FramelessWidgetWindow::~FramelessWidgetWindow()
 {
@@ -331,7 +405,6 @@ void FramelessWidgetWindow::initUI()
     connect(shortcut,&QShortcut::activated,[=](){
         showFullScreen();
     });
-    move(10,10);
 }
 
 void FramelessWidgetWindow::setTitle(const QString& title)
@@ -354,7 +427,36 @@ void FramelessWidgetWindow::setContentWidget(QWidget* w)
 
 void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
 {
-    setResizeable(enabled);
+    //if (m_bResizeable == enabled) return;
+    bool visible = isVisible();
+    m_bResizeable = enabled;
+#ifdef Q_OS_WIN
+    if (m_bResizeable){
+        setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
+
+        HWND hwnd = (HWND)this->winId();
+        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
+        ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CAPTION);
+    }else{
+        setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
+
+        HWND hwnd = (HWND)this->winId();
+        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
+        ::SetWindowLong(hwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX & ~WS_CAPTION);
+    }
+
+    const MARGINS shadow = { 1, 1, 1, 1 };
+#elif defined(Q_OS_LINUX)
+    if (m_bResizeable) {
+        qApp->installEventFilter(this);
+    } else {
+        qApp->removeEventFilter(this);
+        m_resizing = false;
+        m_resizeRegion = None;
+        unsetCursor();
+    }
+#endif
+    setVisible(visible);
 }
 
 void FramelessWidgetWindow::setMenuBar(QMenuBar* menuBar)
