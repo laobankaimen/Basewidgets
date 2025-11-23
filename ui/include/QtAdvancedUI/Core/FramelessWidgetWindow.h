@@ -59,6 +59,13 @@ public slots:
 #elif defined(Q_OS_LINUX)
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    
+private:
+    bool handleQtResizeEvents(QEvent* event);
+    void updateCursorForX11Direction(int direction);
 #endif
 
 protected:
@@ -90,6 +97,18 @@ private:
     int m_resizeMargin = 6;
     QRect m_startGeo;
     QPoint m_dragStartPos;
+    
+    // X11 EWMH resize direction constants
+    enum X11ResizeDirection {
+        X11_SizeTopLeft = 0,
+        X11_SizeTopRight = 1,
+        X11_SizeBottomLeft = 2,
+        X11_SizeBottomRight = 3,
+        X11_SizeLeft = 4,
+        X11_SizeRight = 5,
+        X11_SizeTop = 6,
+        X11_SizeBottom = 7
+    };
 #endif
     int m_borderWidth = 5;
     QMargins m_margins;
