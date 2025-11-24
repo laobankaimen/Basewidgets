@@ -57,6 +57,12 @@ void CustomTitleBar::updateForWindowState()
     const QIcon icon = maximized ? StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tosmall.svg")
                                  : StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tobig.svg");
     m_btnMax->setIcon(icon);
+
+    //全屏不显示最大化最小化按钮（通用做法）
+    if(m_window->windowState() == Qt::WindowFullScreen)
+        setButtonsVisible(false,false,true);
+    else
+        setButtonsVisible(true,true,true);
 }
 
 void CustomTitleBar::mousePressEvent(QMouseEvent* e)
@@ -161,7 +167,7 @@ void CustomTitleBar::initUI()
     });
 }
 
-// 移除贴边停靠逻辑
+// 移除贴边停靠逻辑,需要依赖窗管实现
 void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
 {
     Q_UNUSED(globalReleasePos)
@@ -185,7 +191,6 @@ void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
     QPropertyAnimation* animation = new QPropertyAnimation(m_window,"geometry");
     animation->setDuration(150);
     animation->setEasingCurve(QEasingCurve::OutQuad);
-
     if (m_window->windowState() == Qt::WindowMaximized || m_window->windowState() == Qt::WindowFullScreen) {
         QRect startGeometry = m_window->geometry();
         animation->setStartValue(startGeometry);
@@ -198,8 +203,9 @@ void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
         });
     }
     else {
-        if(m_window->windowState() == Qt::WindowNoState)
+        if(m_window->windowState() == Qt::WindowNoState) {
             normalGeometry = m_window->geometry();
+        }
         QScreen *primaryScreen = QGuiApplication::screenAt(this->geometry().center());
         QRect maximizedGeometry = primaryScreen->geometry();
 
