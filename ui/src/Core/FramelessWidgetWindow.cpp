@@ -423,18 +423,19 @@ void FramelessWidgetWindow::setFramelessWindowState(FramelessWindowState state)
         xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
         xev.xclient.data.l[1] = fullScreen;
         xev.xclient.data.l[2] = 0;
-        XSendEvent(display,XDefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
+        XSendEvent(display,DefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
         //移除最大化
         xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
         xev.xclient.data.l[1] = maxHorz;
         xev.xclient.data.l[2] = maxVert;
         break;
     }
-    XSendEvent(display,XDefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
+    XSendEvent(display,DefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
     XFlush(display);
 #endif
 
 }
+
 void FramelessWidgetWindow::showFullScreen()
 {
     if (isMaximized())

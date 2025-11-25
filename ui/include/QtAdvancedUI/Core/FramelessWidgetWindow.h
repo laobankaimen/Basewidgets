@@ -46,10 +46,9 @@ public slots:
     void setContentsMargins(int left, int top, int right, int bottom);
     QMargins contentsMargins() const;
     QRect contentsRect() const;
-    void getContentsMargins(int *left, int *top, int *right, int *bottom) const;
+    void getContentsMargins(int *left, int *top, int *right, int *bottom) const;    
 #elif defined(Q_OS_LINUX)
-protected:
-    bool eventFilter(QObject* watched, QEvent* event) override;
+
 #endif
 
 protected:
@@ -58,6 +57,7 @@ protected:
 #ifdef Q_OS_WIN
     bool nativeWindowsEvent(const QByteArray &eventType, void *message, long *result);
 #elif defined(Q_OS_LINUX)
+    bool eventFilter(QObject* watched, QEvent* event) override;
     bool nativeLinuxEvent(const QByteArray &eventType, void *message, long *result);
 #endif
 
