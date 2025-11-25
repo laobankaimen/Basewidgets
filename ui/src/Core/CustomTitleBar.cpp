@@ -163,13 +163,9 @@ void CustomTitleBar::initUI()
 
     // 行为连接
     connect(m_btnMin, &ToolButton::clicked, this, [this] {
-#ifdef Q_OS_WIN
-    if (m_window)  m_window->showMinimized();
-#elif defined(Q_OS_LINUX)
         FramelessWidgetWindow *window = qobject_cast<FramelessWidgetWindow *>(m_window);
         if (!window) return;
-        window->setX11WindowState(Minimized);
-#endif
+        window->setFramelessWindowState(Minimized);
     });
     connect(m_btnMax, &ToolButton::clicked, this, [this]{ toggleMaximizeRestore(); });
     connect(m_btnClose, &ToolButton::clicked, this, [this]{
@@ -192,58 +188,66 @@ void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
 void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 {
     Q_UNUSED(isDoubleClick)
-    FramelessWidgetWindow *window = qobject_cast<FramelessWidgetWindow *>(m_window);
+    auto *window = qobject_cast<FramelessWidgetWindow *>(m_window);
     if (!window) return;
-#ifdef Q_OS_WIN
-    if (window->windowState() == Qt::WindowMaximized || window->windowState() == Qt::WindowFullScreen) {
-        window->showNormal();
-    }
-    else {
-        window->showMaximized();//默认全部最大化，全屏没有动画效果
-    }
-#elif defined(Q_OS_LINUX)
-    //Linux下需要处理缩放动画
-    /*QPropertyAnimation* animation = new QPropertyAnimation(m_window,"geometry");
-    animation->setDuration(150);
-    animation->setEasingCurve(QEasingCurve::OutQuad);
-    if (m_window->windowState() == Qt::WindowMaximized
-            || m_window->windowState() == Qt::WindowFullScreen
-            || window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
-        QRect startGeometry = m_window->geometry();
-        animation->setStartValue(startGeometry);
-        animation->setEndValue(normalGeometry);
-        //确保执行到位
-        connect(animation,&QPropertyAnimation::finished,this,[this,window]() {
-            window->setX11WindowState(Normal);
-            updateForWindowState();
-        });
-    }
-    else {
-        if(m_window->windowState() == Qt::WindowNoState) {
-            normalGeometry = m_window->geometry();
-        }
-        QScreen *primaryScreen = QGuiApplication::screenAt(this->geometry().center());
-        QRect maximizedGeometry = primaryScreen->geometry();
-
-        animation->setStartValue(normalGeometry);
-        animation->setEndValue(maximizedGeometry);
-
-        //确保执行到位
-        connect(animation,&QPropertyAnimation::finished,this,[this,window]() {
-            window->setX11WindowState(Maximized);
-            updateForWindowState();
-        });
-    }
-    animation->start(QPropertyAnimation::DeleteWhenStopped);*/
     if (window->windowState() == Qt::WindowMaximized ||
             window->windowState() == Qt::WindowFullScreen ||
             window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
-        window->setX11WindowState(Normal);
+        window->setFramelessWindowState(Normal);
     }
     else {
-        window->setX11WindowState(Maximized);//默认全部最大化，全屏没有动画效果
+        window->setFramelessWindowState(Maximized);//默认全部最大化，全屏没有动画效果
     }
-#endif
+/*#ifdef Q_OS_WIN
+//     if (window->windowState() == Qt::WindowMaximized || window->windowState() == Qt::WindowFullScreen) {
+//         window->showNormal();
+//     }
+//     else {
+//         window->showMaximized();//默认全部最大化，全屏没有动画效果
+//     }
+// #elif defined(Q_OS_LINUX)
+//     //Linux下需要处理缩放动画
+//     QPropertyAnimation* animation = new QPropertyAnimation(m_window,"geometry");
+//     animation->setDuration(150);
+//     animation->setEasingCurve(QEasingCurve::OutQuad);
+//     if (m_window->windowState() == Qt::WindowMaximized
+//             || m_window->windowState() == Qt::WindowFullScreen
+//             || window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
+//         QRect startGeometry = m_window->geometry();
+//         animation->setStartValue(startGeometry);
+//         animation->setEndValue(normalGeometry);
+//         //确保执行到位
+//         connect(animation,&QPropertyAnimation::finished,this,[this,window]() {
+//             window->setFramelessWindowState(Normal);
+//             updateForWindowState();
+//         });
+//     }
+//     else {
+//         if(m_window->windowState() == Qt::WindowNoState) {
+//             normalGeometry = m_window->geometry();
+//         }
+//         QScreen *primaryScreen = QGuiApplication::screenAt(this->geometry().center());
+//         QRect maximizedGeometry = primaryScreen->geometry();
+//
+//         animation->setStartValue(normalGeometry);
+//         animation->setEndValue(maximizedGeometry);
+//
+//         //确保执行到位
+//         connect(animation,&QPropertyAnimation::finished,this,[this,window]() {
+//             window->setFramelessWindowState(Maximized);
+//             updateForWindowState();
+//         });
+//     }
+//     animation->start(QPropertyAnimation::DeleteWhenStopped);
+     if (window->windowState() == Qt::WindowMaximized ||
+             window->windowState() == Qt::WindowFullScreen ||
+             window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
+         window->setFramelessWindowState(Normal);
+     }
+     else {
+         window->setFramelessWindowState(Maximized);//默认全部最大化，全屏没有动画效果
+     }
+// #endif*/
 }
 
 void CustomTitleBar::setButtonsVisible(bool showMinimize, bool showMaximize, bool showClose)

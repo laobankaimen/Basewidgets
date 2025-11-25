@@ -5,11 +5,8 @@
 
 #include <QMainWindow>
 
-#ifdef Q_OS_WIN
 
-#elif defined(Q_OS_LINUX)
-enum X11WindowState {Maximized,Minimized,FullScreen,Normal};
-#endif
+enum FramelessWindowState {Maximized,Minimized,FullScreen,Normal};
 
 class QVBoxLayout;
 class QMenuBar;
@@ -42,6 +39,7 @@ public:
 
 public slots:
     void showFullScreen();
+    void setFramelessWindowState(FramelessWindowState state);
 #ifdef Q_OS_WIN
     // 内容边距管理
     void setContentsMargins(const QMargins &margins);
@@ -50,7 +48,6 @@ public slots:
     QRect contentsRect() const;
     void getContentsMargins(int *left, int *top, int *right, int *bottom) const;
 #elif defined(Q_OS_LINUX)
-    void setX11WindowState(X11WindowState state);
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 #endif
@@ -86,7 +83,7 @@ private:
     QPoint m_dragStartPos;
     Qt::WindowStates m_preMinimizedState{Qt::WindowNoState};
     Qt::WindowStates m_preFullScreenState{Qt::WindowNoState};
-    X11WindowState m_currentWindowState{Normal};
+    FramelessWindowState m_currentWindowState{Normal};
 #endif
     int m_borderWidth = 5;
     QMargins m_margins;

@@ -37,7 +37,6 @@
 
 namespace QtAdvancedUI {
 
-
 // Windows平台实现 - 复刻framelesswindow的代码
 FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
     : QMainWindow(parent),
@@ -264,7 +263,6 @@ QRect FramelessWidgetWindow::contentsRect() const
 
 
 #elif defined(Q_OS_LINUX)
-
 //拖动缩放大小
 bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
 {
@@ -369,8 +367,27 @@ bool FramelessWidgetWindow::nativeLinuxEvent(const QByteArray &eventType, void *
     return QMainWindow::nativeEvent(eventType, message, result);
 }
 
-void FramelessWidgetWindow::setX11WindowState(X11WindowState state)
+
+#endif
+
+void FramelessWidgetWindow::setFramelessWindowState(FramelessWindowState state)
 {
+#ifdef Q_OS_WIN
+    switch (state) {
+        case Maximized:
+            showMaximized();
+            break;
+        case Minimized:
+            showMinimized();
+            break;
+        case FullScreen:
+            showFullScreen();
+            break;
+        case Normal:
+            showNormal();
+            break;
+    }
+#elif defined(Q_OS_LINUX)
     Display *display = QX11Info::display();
     Window window = winId();
 
@@ -415,9 +432,9 @@ void FramelessWidgetWindow::setX11WindowState(X11WindowState state)
     }
     XSendEvent(display,XDefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
     XFlush(display);
-}
 #endif
 
+}
 void FramelessWidgetWindow::showFullScreen()
 {
     if (isMaximized())
@@ -428,14 +445,12 @@ void FramelessWidgetWindow::showFullScreen()
     QMainWindow::showFullScreen();
 }
 
-FramelessWidgetWindow::~FramelessWidgetWindow()
-{
-}
+FramelessWidgetWindow::~FramelessWidgetWindow()= default;
 
 void FramelessWidgetWindow::initUI()
 {
     // 创建CustomTitleBar作为标题栏
-    CustomTitleBar* customTitleBar = new CustomTitleBar(this);
+    auto* customTitleBar = new CustomTitleBar(this);
     customTitleBar->attachToWindow(this);
     customTitleBar->setFixedHeight(m_titlebarHeight);
 
@@ -445,8 +460,8 @@ void FramelessWidgetWindow::initUI()
     m_contentHost = new QWidget(this);
     m_contentHost->setObjectName("contentHost");
 
-    QWidget* centralWidget = new QWidget(this);
-    QVBoxLayout* mainLayout = new QVBoxLayout(centralWidget);
+    auto centralWidget = new QWidget(this);
+    auto mainLayout = new QVBoxLayout(centralWidget);
 
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
@@ -456,33 +471,20 @@ void FramelessWidgetWindow::initUI()
     setCentralWidget(centralWidget);
 
     //通过快捷键全屏，避免误操作，全屏无动画效果
-    QShortcut *shortcut = new QShortcut(QKeySequence(tr("F11")),this);
+    auto *shortcut = new QShortcut(QKeySequence(tr("F11")),this);
     connect(shortcut,&QShortcut::activated,[=](){
         //恢复到全屏前的状态
-        if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
-#ifdef Q_OS_WIN
-            showNormal();
-#elif defined (Q_OS_LINUX)
-            /*if(m_preFullScreenState == Qt::WindowNoState) setX11WindowState(Normal);
-            else if(m_preFullScreenState == Qt::WindowMaximized) setX11WindowState(Maximized);
-            else */setX11WindowState(Normal);
-#endif
-        }
-        else {
-#ifdef Q_OS_WIN
-            showFullScreen();
-#elif defined (Q_OS_LINUX)
-            m_preFullScreenState = windowState();
-            setX11WindowState(FullScreen);
-#endif
-        }
+        if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen))
+            setFramelessWindowState(Normal);
+        else
+            setFramelessWindowState(FullScreen);
     });
 }
 
 void FramelessWidgetWindow::setTitle(const QString& title)
 {
     // 由于m_titlebar是QWidget*类型，我们需要转换为CustomTitleBar*
-    CustomTitleBar* customTitleBar = qobject_cast<CustomTitleBar*>(m_titlebar);
+    auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titlebar);
     if (customTitleBar) {
         customTitleBar->setTitle(title);
     }
@@ -491,7 +493,7 @@ void FramelessWidgetWindow::setTitle(const QString& title)
 void FramelessWidgetWindow::setContentWidget(QWidget* w)
 {
     if (m_contentHost && w) {
-        QVBoxLayout* contentLayout = new QVBoxLayout(m_contentHost);
+        auto* contentLayout = new QVBoxLayout(m_contentHost);
         contentLayout->setContentsMargins(0, 0, 0, 0);
         contentLayout->addWidget(w);
     }
@@ -555,11 +557,8 @@ bool FramelessWidgetWindow::nativeEvent(const QByteArray &eventType, void *messa
 void FramelessWidgetWindow::changeEvent(QEvent* e)
 {
     if (e->type() == QEvent::WindowStateChange) {
-#ifdef Q_OS_LINUX
-
-#endif
         // 由于m_titlebar是QWidget*类型，我们需要转换为CustomTitleBar*
-        CustomTitleBar* customTitleBar = qobject_cast<CustomTitleBar*>(m_titlebar);
+        auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titlebar);
         if (customTitleBar) {
             customTitleBar->updateForWindowState();
         }
