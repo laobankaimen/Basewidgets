@@ -8,6 +8,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <QMenuBar>
 #include <QShortcut>
+#include <QSettings>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -434,6 +435,20 @@ void FramelessWidgetWindow::setFramelessWindowState(FramelessWindowState state)
     XFlush(display);
 #endif
 
+}
+
+void FramelessWidgetWindow::showEvent(QShowEvent *ev)
+{
+    QSettings setting("ZKHX","MainWindow");
+    restoreGeometry(setting.value("geometry").toByteArray());
+    QMainWindow::showEvent(ev);
+}
+
+void FramelessWidgetWindow::closeEvent(QCloseEvent *ev)
+{
+    QSettings setting("ZKHX","MainWindow");
+    setting.setValue("geometry",saveGeometry());
+    QMainWindow::closeEvent(ev);
 }
 
 void FramelessWidgetWindow::showFullScreen()

@@ -1046,7 +1046,6 @@ int main(int argc, char *argv[])
     auto* window = new FramelessWidgetWindow();
     window->setTitle("QtAdvancedUI 组件全面展示");
 
-    window->resize(1400, 900);
     //初始化居中显示
     auto primary_screen = QGuiApplication::primaryScreen();
     if(primary_screen) {

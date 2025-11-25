@@ -4,6 +4,8 @@
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 #include <QMainWindow>
+#include <QShowEvent>
+#include <QCloseEvent>
 
 
 enum FramelessWindowState {Maximized,Minimized,FullScreen,Normal};
@@ -40,6 +42,8 @@ public:
 public slots:
     void showFullScreen();
     void setFramelessWindowState(FramelessWindowState state);
+    void showEvent(QShowEvent *ev);
+    void closeEvent(QCloseEvent *ev);
 #ifdef Q_OS_WIN
     // 内容边距管理
     void setContentsMargins(const QMargins &margins);
