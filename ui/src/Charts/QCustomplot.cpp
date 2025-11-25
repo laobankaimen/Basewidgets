@@ -1827,7 +1827,7 @@ void QCPLayerable::mouseDoubleClickEvent(QMouseEvent *event, const QVariant &det
   The \c event->angleDelta() indicates how far the mouse wheel was turned, which is usually +/- 120
   for single rotation steps. However, if the mouse wheel is turned rapidly, multiple steps may
   accumulate to one event, making the delta larger. On the other hand, if the wheel has very smooth
-  steps or none at all, the delta may be smaller.
+  steps or None at all, the delta may be smaller.
 
   The default implementation does nothing.
 
@@ -13993,7 +13993,7 @@ void QCustomPlot::setSelectionRectMode(QCP::SelectionRectMode mode)
   if (mSelectionRect)
   {
     if (mode == QCP::srmNone)
-      mSelectionRect->cancel(); // when switching to none, we immediately want to abort a potentially active selection rect
+      mSelectionRect->cancel(); // when switching to None, we immediately want to abort a potentially active selection rect
     
     // disconnect old connections:
     if (mSelectionRectMode == QCP::srmSelect)

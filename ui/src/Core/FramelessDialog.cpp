@@ -168,7 +168,7 @@ bool FramelessDialog::eventFilter(QObject* watched, QEvent* event)
         }
 
         // 未按下时，根据位置更新光标与区域
-        ResizeRegion region = None;
+        ResizeRegion region = NoneR;
         const int m = m_resizeMargin;
         const bool onLeft   = local.x() <= m;
         const bool onRight  = local.x() >= r.width() - m;
@@ -205,7 +205,7 @@ bool FramelessDialog::eventFilter(QObject* watched, QEvent* event)
     }
     case QEvent::MouseButtonPress: {
         auto* me = static_cast<QMouseEvent*>(event);
-        if (me->button() == Qt::LeftButton && m_resizeRegion != None) {
+        if (me->button() == Qt::LeftButton && m_resizeRegion != NoneR) {
             m_resizing = true;
             m_dragStartPos = me->globalPos();
             m_startGeo = frameGeometry();
@@ -217,7 +217,7 @@ bool FramelessDialog::eventFilter(QObject* watched, QEvent* event)
         auto* me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton && m_resizing) {
             m_resizing = false;
-            m_resizeRegion = None;
+            m_resizeRegion = NoneR;
             unsetCursor();
             return true;
         }
@@ -260,7 +260,7 @@ void FramelessDialog::setResizableEdgesEnabled(bool enabled)
         qApp->installEventFilter(this);
     } else {
         qApp->removeEventFilter(this);
-        m_resizing = false; m_resizeRegion = None; unsetCursor();
+        m_resizing = false; m_resizeRegion = NoneR; unsetCursor();
     }
 }
 

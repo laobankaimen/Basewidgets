@@ -10,8 +10,14 @@ if(NOT UI_BUILD_WIDGETS)
 endif()
 
 # Find Qt
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport X11Extras)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport X11Extras)
+    find_package(X11 REQUIRED)
+endif()
 
 # Sources
 set(UI_PUBLIC_HEADERS
@@ -158,14 +164,28 @@ target_include_directories(qtadvancedui_widgets
 )
 
 # Link deps
-target_link_libraries(qtadvancedui_widgets
-    PUBLIC
-        Qt${QT_VERSION_MAJOR}::Core
-        Qt${QT_VERSION_MAJOR}::Gui
-        Qt${QT_VERSION_MAJOR}::Widgets
-        Qt${QT_VERSION_MAJOR}::PrintSupport
-        qtadvancedcss
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(qtadvancedui_widgets
+        PUBLIC
+            Qt${QT_VERSION_MAJOR}::Core
+            Qt${QT_VERSION_MAJOR}::Gui
+            Qt${QT_VERSION_MAJOR}::Widgets
+            Qt${QT_VERSION_MAJOR}::PrintSupport
+            qtadvancedcss
+    )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(qtadvancedui_widgets
+        PUBLIC
+            Qt${QT_VERSION_MAJOR}::Core
+            Qt${QT_VERSION_MAJOR}::Gui
+            Qt${QT_VERSION_MAJOR}::Widgets
+            Qt${QT_VERSION_MAJOR}::PrintSupport
+            Qt${QT_VERSION_MAJOR}::X11Extras
+            qtadvancedcss
+            ${X11_LIBRARIES}
+    )
+endif()
+
 
 # Provide styles dir to library (string literal for compile-time macro)
 target_compile_definitions(qtadvancedui_widgets

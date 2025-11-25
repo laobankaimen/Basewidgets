@@ -57,8 +57,8 @@ private:
     // 角拖拽缩放
     bool m_resizeEnabled = false;
     int m_resizeMargin = 6;
-    enum ResizeRegion { None, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
-    ResizeRegion m_resizeRegion = None;
+    enum ResizeRegion { NoneR, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
+    ResizeRegion m_resizeRegion = NoneR;
     bool m_resizing = false;
     QRect m_startGeo;
 

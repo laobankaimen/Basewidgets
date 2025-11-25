@@ -2,27 +2,19 @@
 #define QTADVANCEDUI_FRAMELESSWIDGETWINDOW_H
 
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
-#include "qsystemdetection.h"
 
-#include <QWidget>
-#include <QMouseEvent>
-#include <QResizeEvent>
-#include <QPoint>
 #include <QMainWindow>
-#include <QWidget>
-#include <QList>
-#include <QMargins>
-#include <QRect>
-#ifdef Q_OS_WIN
-#include <windows.h>
-#include <dwmapi.h>
-#elif defined(Q_OS_LINUX)
 
+#ifdef Q_OS_WIN
+
+#elif defined(Q_OS_LINUX)
+enum X11WindowState {Maximized,Minimized,FullScreen,Normal};
 #endif
 
 class QVBoxLayout;
 class QMenuBar;
 class QtAdvancedStylesheet;
+class QMainWindow;
 
 namespace QtAdvancedUI {
 
@@ -47,6 +39,7 @@ public:
     void setResizeableAreaWidth(int width = 5);
     void setTitleBar(QWidget* titlebar);
     void addIgnoreWidget(QWidget* widget);
+
 public slots:
     void showFullScreen();
 #ifdef Q_OS_WIN
@@ -57,6 +50,7 @@ public slots:
     QRect contentsRect() const;
     void getContentsMargins(int *left, int *top, int *right, int *bottom) const;
 #elif defined(Q_OS_LINUX)
+    void setX11WindowState(X11WindowState state);
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 #endif
@@ -84,14 +78,15 @@ private:
 #ifdef Q_OS_WIN
 
 #elif defined(Q_OS_LINUX)
-    enum ResizeRegion { None, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
-    ResizeRegion m_resizeRegion = None;
+    enum ResizeRegion { NoneR, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
+    ResizeRegion m_resizeRegion = NoneR;
     bool m_resizing = false;
     int m_resizeMargin = 6;
     QRect m_startGeo;
     QPoint m_dragStartPos;
     Qt::WindowStates m_preMinimizedState{Qt::WindowNoState};
     Qt::WindowStates m_preFullScreenState{Qt::WindowNoState};
+    X11WindowState m_currentWindowState{Normal};
 #endif
     int m_borderWidth = 5;
     QMargins m_margins;

@@ -13,7 +13,7 @@ class ACSS_UI_EXPORT TreeTable : public QTreeView
 {
     Q_OBJECT
 public:
-    enum Aggregation { None, Sum, Avg, Count };
+    enum Aggregation { NoneR, Sum, Avg, Count };
 
     explicit TreeTable(QWidget* parent = nullptr);
     explicit TreeTable(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);

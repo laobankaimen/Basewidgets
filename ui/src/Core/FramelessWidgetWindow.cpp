@@ -13,7 +13,7 @@
 #include <QResizeEvent>
 #include <QMenuBar>
 #include <QScreen>
-#include <qshortcut.h>
+#include <QShortcut>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -27,7 +27,12 @@
 #include <QMouseEvent>
 #include <QResizeEvent>
 #include <QPoint>
-#include <qtimer.h>
+#include <QTimer>
+#include <QX11Info>
+
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #endif
 
 namespace QtAdvancedUI {
@@ -36,13 +41,13 @@ namespace QtAdvancedUI {
 // Windows平台实现 - 复刻framelesswindow的代码
 FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
     : QMainWindow(parent),
-      m_titlebar(Q_NULLPTR),
       m_contentHost(nullptr),
+      m_menuBar(nullptr),
+      m_titlebar(Q_NULLPTR),
       m_borderWidth(5),
       m_bJustMaximized(true),
       m_bResizeable(true),
-      m_titlebarHeight(36),
-      m_menuBar(nullptr)
+      m_titlebarHeight(36)
 {
     setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
     setAttribute(Qt::WA_StyledBackground, true);
@@ -260,12 +265,13 @@ QRect FramelessWidgetWindow::contentsRect() const
 
 #elif defined(Q_OS_LINUX)
 
+//拖动缩放大小
 bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
 {
     QWidget* w = qobject_cast<QWidget*>(watched);
     if (!w || w->window() != this) return QMainWindow::eventFilter(watched, event);
     if (!m_bResizeable) return QMainWindow::eventFilter(watched, event);
-qDebug()<<event->type();
+
     switch (event->type()) {
     case QEvent::MouseMove: {
         auto* me = static_cast<QMouseEvent*>(event);
@@ -297,7 +303,7 @@ qDebug()<<event->type();
             return true;
         }
 
-        ResizeRegion region = None;
+        ResizeRegion region = NoneR;
         const int m = m_resizeMargin;
         const bool onLeft   = local.x() <= m;
         const bool onRight  = local.x() >= r.width() - m;
@@ -333,7 +339,7 @@ qDebug()<<event->type();
     }
     case QEvent::MouseButtonPress: {
         auto* me = static_cast<QMouseEvent*>(event);
-        if (me->button() == Qt::LeftButton && m_resizeRegion != None) {
+        if (me->button() == Qt::LeftButton && m_resizeRegion != NoneR) {
             m_resizing = true;
             m_dragStartPos = me->globalPos();
             m_startGeo = frameGeometry();
@@ -345,7 +351,7 @@ qDebug()<<event->type();
         auto* me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton && m_resizing) {
             m_resizing = false;
-            m_resizeRegion = None;
+            m_resizeRegion = NoneR;
             unsetCursor();
             return true;
         }
@@ -363,6 +369,53 @@ bool FramelessWidgetWindow::nativeLinuxEvent(const QByteArray &eventType, void *
     return QMainWindow::nativeEvent(eventType, message, result);
 }
 
+void FramelessWidgetWindow::setX11WindowState(X11WindowState state)
+{
+    Display *display = QX11Info::display();
+    Window window = winId();
+
+    Atom wmState = XInternAtom(display, "_NET_WM_STATE",false);
+    Atom maxHorz = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_HORZ",false);
+    Atom maxVert = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT",false);
+    Atom hidden = XInternAtom(display, "_NET_WM_STATE_HIDDEN",false);
+    Atom fullScreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN",false);
+
+    XEvent xev;
+    memset(&xev,0,sizeof(xev));
+    xev.type = ClientMessage;
+    xev.xclient.window = window;
+    xev.xclient.message_type = wmState;
+    xev.xclient.format = 32;
+
+    switch (state) {
+    case Maximized:
+        xev.xclient.data.l[0] = 1;//_NET_WM_STATE_ADD
+        xev.xclient.data.l[1] = maxHorz;
+        xev.xclient.data.l[2] = maxVert;
+        break;
+    case Minimized:
+        XIconifyWindow(display,window,0);
+        break;
+    case FullScreen:
+        xev.xclient.data.l[0] = 1;
+        xev.xclient.data.l[1] = fullScreen;
+        xev.xclient.data.l[2] = 0;
+        break;
+    case Normal:
+        //移除全屏
+        xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
+        xev.xclient.data.l[1] = fullScreen;
+        xev.xclient.data.l[2] = 0;
+        XSendEvent(display,XDefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
+        //移除最大化
+        xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
+        xev.xclient.data.l[1] = maxHorz;
+        xev.xclient.data.l[2] = maxVert;
+        break;
+    }
+    XSendEvent(display,XDefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
+    XFlush(display);
+}
 #endif
 
 void FramelessWidgetWindow::showFullScreen()
@@ -406,20 +459,22 @@ void FramelessWidgetWindow::initUI()
     QShortcut *shortcut = new QShortcut(QKeySequence(tr("F11")),this);
     connect(shortcut,&QShortcut::activated,[=](){
         //恢复到全屏前的状态
-        if(windowState() == Qt::WindowFullScreen) {
+        if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
 #ifdef Q_OS_WIN
             showNormal();
 #elif defined (Q_OS_LINUX)
-            if(m_preFullScreenState == Qt::WindowNoState) showNormal();
-            else if(m_preFullScreenState == Qt::WindowMaximized) showMaximized();
-            else showNormal();
+            /*if(m_preFullScreenState == Qt::WindowNoState) setX11WindowState(Normal);
+            else if(m_preFullScreenState == Qt::WindowMaximized) setX11WindowState(Maximized);
+            else */setX11WindowState(Normal);
 #endif
         }
         else {
-#ifdef Q_OS_LINUX
-            m_preFullScreenState = windowState();
-#endif
+#ifdef Q_OS_WIN
             showFullScreen();
+#elif defined (Q_OS_LINUX)
+            m_preFullScreenState = windowState();
+            setX11WindowState(FullScreen);
+#endif
         }
     });
 }
@@ -469,7 +524,7 @@ void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
     } else {
         qApp->removeEventFilter(this);
         m_resizing = false;
-        m_resizeRegion = None;
+        m_resizeRegion = NoneR;
         unsetCursor();
     }
 #endif
@@ -501,17 +556,7 @@ void FramelessWidgetWindow::changeEvent(QEvent* e)
 {
     if (e->type() == QEvent::WindowStateChange) {
 #ifdef Q_OS_LINUX
-    QWindowStateChangeEvent *stateEvent = static_cast<QWindowStateChangeEvent*>(e);
-    //linux下只要最大化之后再最小化,状态就会错乱
-    //记录缩小前的状态
-    if(windowState() & Qt::WindowMinimized) {
-        m_preMinimizedState = stateEvent->oldState();
-    }
-    else if(stateEvent->oldState() & Qt::WindowMinimized) {//恢复到缩小前的状态
-        QTimer::singleShot(50,this,[this](){
-            setWindowState(m_preMinimizedState);
-        });
-    }
+
 #endif
         // 由于m_titlebar是QWidget*类型，我们需要转换为CustomTitleBar*
         CustomTitleBar* customTitleBar = qobject_cast<CustomTitleBar*>(m_titlebar);

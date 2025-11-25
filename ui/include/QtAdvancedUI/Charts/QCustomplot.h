@@ -312,7 +312,7 @@ enum SelectionRectMode { srmNone    ///< The selection rect is disabled, and all
   <center>
   <table>
   <tr>
-    <td>\image html selectiontype-none.png stNone</td>
+    <td>\image html selectiontype-None.png stNone</td>
     <td>\image html selectiontype-whole.png stWhole</td>
     <td>\image html selectiontype-singledata.png stSingleData</td>
     <td>\image html selectiontype-datarange.png stDataRange</td>

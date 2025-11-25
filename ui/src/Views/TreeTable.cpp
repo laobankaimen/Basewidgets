@@ -64,7 +64,7 @@ void TreeTable::setVirtualizationEnabled(bool enabled)
 
 void TreeTable::setColumnAggregation(int column, Aggregation agg)
 {
-    if (agg == None) {
+    if (agg == NoneR) {
         m_columnAggs.remove(column);
     } else {
         m_columnAggs.insert(column, agg);
@@ -74,7 +74,7 @@ void TreeTable::setColumnAggregation(int column, Aggregation agg)
 
 TreeTable::Aggregation TreeTable::columnAggregation(int column) const
 {
-    return m_columnAggs.value(column, None);
+    return m_columnAggs.value(column, NoneR);
 }
 
 void TreeTable::clearColumnAggregations()
