@@ -53,24 +53,23 @@ void CustomTitleBar::setTitle(const QString& title)
 void CustomTitleBar::updateForWindowState()
 {
     if (!m_window || !m_btnMax) return;
-    const bool maximized = (m_window->windowState() == Qt::WindowMaximized
-                            || m_window->windowState() == Qt::WindowFullScreen
-                            || m_window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen));
+    const bool maximized = (m_window->windowState() == Qt::WindowMaximized || isFullScreen());
     const QIcon icon = maximized ? StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tosmall.svg")
                                  : StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tobig.svg");
     m_btnMax->setIcon(icon);
 
     //全屏不显示最大化最小化按钮（通用做法）
-    if(m_window->windowState() == Qt::WindowFullScreen
-            || m_window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen))
+    if(isFullScreen())
         setButtonsVisible(false,false,true);
     else
         setButtonsVisible(true,true,true);
 }
 
+#ifdef Q_OS_LINUX
 void CustomTitleBar::mousePressEvent(QMouseEvent* e)
 {
     if (!m_window) return;
+    if (m_window->windowState() == Qt::WindowMaximized || isFullScreen()) return;//最大化/全屏禁止拖动
     if (e->button() == Qt::LeftButton) {
         m_dragging = true;
         m_dragStartPos = e->globalPos() - m_window->frameGeometry().topLeft();
@@ -83,9 +82,6 @@ void CustomTitleBar::mousePressEvent(QMouseEvent* e)
 void CustomTitleBar::mouseMoveEvent(QMouseEvent* e)
 {
     if (!m_window) return;
-    if (m_window->windowState() == Qt::WindowMaximized
-            || m_window->windowState() == Qt::WindowFullScreen
-            || m_window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) return;//最大化/全屏禁止拖动
     if (m_dragging) {
         m_window->move(e->globalPos() - m_dragStartPos);
         e->accept();
@@ -115,7 +111,7 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
     }
     QWidget::mouseDoubleClickEvent(e);
 }
-
+#endif
 void CustomTitleBar::initUI()
 {
     m_titleLabel = new QLabel(this);
@@ -187,19 +183,20 @@ void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
 // 简化toggleMaximizeRestore，移除状态记录逻辑
 void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 {
-    Q_UNUSED(isDoubleClick)
     auto *window = qobject_cast<FramelessWidgetWindow *>(m_window);
     if (!window) return;
-    if (window->windowState() == Qt::WindowMaximized ||
-            window->windowState() == Qt::WindowFullScreen ||
-            window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
+
+    if(isDoubleClick && isFullScreen()){
+        return;//全屏双击不生效
+    }
+    if (window->windowState() == Qt::WindowMaximized || isFullScreen()) {
         window->setFramelessWindowState(Normal);
     }
     else {
         window->setFramelessWindowState(Maximized);//默认全部最大化，全屏没有动画效果
     }
 /*#ifdef Q_OS_WIN
-//     if (window->windowState() == Qt::WindowMaximized || window->windowState() == Qt::WindowFullScreen) {
+//     if (window->windowState() == Qt::WindowMaximized || isFullScreen()) {
 //         window->showNormal();
 //     }
 //     else {
@@ -211,8 +208,7 @@ void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 //     animation->setDuration(150);
 //     animation->setEasingCurve(QEasingCurve::OutQuad);
 //     if (m_window->windowState() == Qt::WindowMaximized
-//             || m_window->windowState() == Qt::WindowFullScreen
-//             || window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
+//             || isFullScreen()) {
 //         QRect startGeometry = m_window->geometry();
 //         animation->setStartValue(startGeometry);
 //         animation->setEndValue(normalGeometry);
@@ -240,14 +236,20 @@ void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 //     }
 //     animation->start(QPropertyAnimation::DeleteWhenStopped);
      if (window->windowState() == Qt::WindowMaximized ||
-             window->windowState() == Qt::WindowFullScreen ||
-             window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
+             isFullScreen()) {
          window->setFramelessWindowState(Normal);
      }
      else {
          window->setFramelessWindowState(Maximized);//默认全部最大化，全屏没有动画效果
      }
 // #endif*/
+}
+
+bool CustomTitleBar::isFullScreen()
+{
+    auto *window = qobject_cast<FramelessWidgetWindow *>(m_window);
+    if (!window) return false;
+    return (window->windowState() == Qt::WindowFullScreen || window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen));
 }
 
 void CustomTitleBar::setButtonsVisible(bool showMinimize, bool showMaximize, bool showClose)

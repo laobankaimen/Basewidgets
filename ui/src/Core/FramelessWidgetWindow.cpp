@@ -3,16 +3,10 @@
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
 #include <QVBoxLayout>
-#include <QEvent>
-#include <QMouseEvent>
-#include <QApplication>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QGraphicsDropShadowEffect>
-#include <QRegion>
-#include <QResizeEvent>
 #include <QMenuBar>
-#include <QScreen>
 #include <QShortcut>
 
 #ifdef Q_OS_WIN
@@ -26,6 +20,7 @@
 #elif defined(Q_OS_LINUX)
 #include <QMouseEvent>
 #include <QResizeEvent>
+#include <QApplication>
 #include <QPoint>
 #include <QTimer>
 #include <QX11Info>
@@ -99,7 +94,12 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
     case WM_NCHITTEST:
     {
         *result = 0;
-        
+        //全屏禁止拖动和改变大小
+        if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
+            *result = HTCLIENT;
+            return true;
+        }
+
         const LONG border_width = m_borderWidth;
         RECT winrect;
         GetWindowRect(HWND(winId()), &winrect);
@@ -474,10 +474,18 @@ void FramelessWidgetWindow::initUI()
     auto *shortcut = new QShortcut(QKeySequence(tr("F11")),this);
     connect(shortcut,&QShortcut::activated,[=](){
         //恢复到全屏前的状态
-        if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen))
+        if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
             setFramelessWindowState(Normal);
-        else
+#ifdef Q_OS_LINUX
+            setResizableEdgesEnabled(true);
+#endif
+        }
+        else {
             setFramelessWindowState(FullScreen);
+#ifdef Q_OS_LINUX
+            setResizableEdgesEnabled(false);
+#endif
+        }
     });
 }
 
@@ -494,7 +502,7 @@ void FramelessWidgetWindow::setContentWidget(QWidget* w)
 {
     if (m_contentHost && w) {
         auto* contentLayout = new QVBoxLayout(m_contentHost);
-        contentLayout->setContentsMargins(0, 0, 0, 0);
+        contentLayout->setContentsMargins(5, 5, 5, 5);
         contentLayout->addWidget(w);
     }
 }

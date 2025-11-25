@@ -31,19 +31,20 @@ public slots:
     // 仅用于对话框等场景：按钮显隐与双击开关
     void setButtonsVisible(bool showMinimize, bool showMaximize, bool showClose);
     void setDoubleClickToToggleEnabled(bool enabled);
-
+#ifdef Q_OS_LINUX
 protected:
-    // 移除所有拖动相关的事件处理，让framelesswindow处理
+    //Linux下拖动需要处理
     void mousePressEvent(QMouseEvent* e) override;
     void mouseMoveEvent(QMouseEvent* e) override;
     void mouseReleaseEvent(QMouseEvent* e) override;
     void mouseDoubleClickEvent(QMouseEvent* e) override;
-
+#endif
 private:
     void initUI();
-    // 移除贴边停靠逻辑，让framelesswindow处理
+    // 移除贴边停靠逻辑
     void snapDockIfNeeded(const QPoint& globalReleasePos);
     void toggleMaximizeRestore(bool isDoubleClick = false);
+    bool isFullScreen();
 
 private:
     QWidget* m_window = nullptr;
