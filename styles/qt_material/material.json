@@ -2,26 +2,27 @@
     "name" : "material",
     "icon" : "material_icon.svg",
     "css_template" : "material.css.template",
-    "default_theme" : "dark_teal",
+    "default_theme" : "dark",
 
     "variables" : {
         "font_family" : "Roboto",
         "font_size" : "12px",
         "line_height" : "12px",
-        "danger" :  "#dc3545",
-        "warning" : "#ffc107",
-        "success" : "#17a2b8"
+        "danger" :  "#E6A23C",
+        "warning" : "#E6A23C",
+        "success" : "#67C23A",
+        "info" : "#909399"
     },
 
     "resources" : {
         "primary" : {
             "#0000ff" : "primaryColor",
-            "#ff0000" : "secondaryColor",
+            "#ff0000" : "darkBorderColor",
             "#000000" : "#ffffff00"
         },
         "disabled" : {
-            "#0000ff" : "secondaryLightColor",
-            "#ff0000" : "secondaryColor",
+            "#0000ff" : "lightFillColor",
+            "#ff0000" : "darkBorderColor",
             "#000000" : "#ffffff00"
         }
     },
@@ -34,16 +35,16 @@
         "active" : {
             "Window" : "secondaryDarkColor",
             "WindowText" : "secondaryTextColor",
-            "Base" : "secondaryLightColor",
+            "Base" : "primaryTextColor",
             "AlternateBase" : "",
             "ToolTipBase" : "",
             "ToolTipText" : "",
             "PlaceholderText" : "",
-            "Text" : "primaryColor",
+            "Text" : "primaryTextColor",
             "Button" : "",
-            "ButtonText" : "secondaryTextColor",
+            "ButtonText" : "regularTextColor",
             "BrightText" : "",
-            "Light" : "secondaryColor",
+            "Light" : "lightFillColor",
             "Midlight" : "",
             "Dark" : "",
             "Mid" : "",

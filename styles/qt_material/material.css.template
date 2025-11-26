@@ -4,12 +4,12 @@
 /*  ------------------------------------------------------------------------  */
 
 *{
-  color: {{secondaryTextColor}};
+  color: {{baseBackgroundColor}};
   font-family: {{font_family}};
   line-height: {{line_height}};
   font-size: {{font_size}};
-  selection-background-color: {{primaryLightColor}};
-  selection-color: {{primaryTextColor}};
+  selection-background-color: {{overlayBackgroundColor}};
+  selection-color: {{darkFillColor}};
 }
 
 *:focus {
@@ -35,12 +35,12 @@
 /*  Basic widgets  */
 
 QWidget {
-  background-color: {{secondaryLightColor}};
+  background-color: {{baseBackgroundColor}};
 }
 
 QFrame {
-  background-color: {{secondaryDarkColor}};
-  border: 1px solid {{secondaryColor}};
+  background-color: {{pageBackgroundColor}};
+  border: 1px solid {{darkerBorderColor}};
   border-radius: 4px;
 }
 
@@ -50,8 +50,8 @@ QSplitter {
 }
 
 QStatusBar {
-  color: {{secondaryTextColor}};
-  background-color: {{secondaryLightColor|opacity(0.2)}};
+  color: {{primaryTextColor}};
+  background-color: {{baseFillColor|opacity(0.2)}};
   border-radius: 0px;
 }
 
@@ -76,9 +76,9 @@ QDoubleSpinBox,
 QTextEdit,
 QLineEdit,
 QPushButton {
-  color: {{primaryColor}};
-  background-color: {{secondaryDarkColor}};
-  border: 2px solid {{primaryColor}};
+  color: {{primaryTextColor}};
+  background-color: {{darkFillColor}};
+  border: 1px {{darkerBorderColor}};
   border-radius: 4px;
   padding: 8px 16px ;
   height: 18px;
@@ -93,7 +93,7 @@ QLineEdit,
 QComboBox {
   padding-left: 15px;
   border-radius: 0px;
-  background-color: {{secondaryColor}};
+  background-color: {{baseFillColor}};
   border-width: 0 0 2px 0;
   border-radius: 0px;
   border-top-left-radius: 4px;
@@ -103,8 +103,8 @@ QComboBox {
 QPlainTextEdit {
   border-radius: 4px;
   padding: 8px 16px;
-  background-color: {{secondaryDarkColor}};
-  border: 1px solid {{secondaryColor}};
+  background-color: {{baseFillColor}};
+  border: 1px solid {{darkBorderColor}};
 }
 
 QDateTimeEdit:disabled,
@@ -112,9 +112,9 @@ QSpinBox:disabled,
 QDoubleSpinBox:disabled,
 QTextEdit:disabled,
 QLineEdit:disabled {
-  color: {{primaryColor|opacity(0.2)}};
-  background-color: {{secondaryColor|opacity(0.75)}};
-  border: 2px solid {{primaryColor|opacity(0.2)}};
+  color: {{secondaryTextColor|opacity(0.2)}};
+  background-color: {{baseFillColor|opacity(0.75)}};
+  border: 1px solid {{darkBorderColor|opacity(0.2)}};
   border-width: 0 0 2px 0;
   padding: 8px 16px ;
   border-radius: 0px;
@@ -125,7 +125,7 @@ QLineEdit:disabled {
 QTextEdit {
   padding: 8px;
   border-radius: 4px;
-  background-color: {{secondaryColor}};
+  background-color: {{baseFillColor}};
 }
 
 QDateTimeEdit:disabled,
@@ -133,9 +133,9 @@ QSpinBox:disabled,
 QDoubleSpinBox:disabled,
 QTextEdit:disabled,
 QLineEdit:disabled {
-  color: {{primaryColor|opacity(0.2)}};
-  background-color: {{secondaryColor|opacity(0.75)}};
-  border: 2px solid {{primaryColor|opacity(0.2)}};
+  color: {{secondaryTextColor|opacity(0.2)}};
+  background-color: {{baseFillColor|opacity(0.75)}};
+  border: 1px solid {{darkBorderColor|opacity(0.2)}};
   border-width: 0 0 2px 0;
 }
 

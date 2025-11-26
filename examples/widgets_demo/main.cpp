@@ -1174,9 +1174,9 @@ int main(int argc, char *argv[])
                      [](int index) {
         auto* mgr = StyleManagerAdapter::instance();
         if (index == 0) {
-            mgr->setCurrentTheme("dark_teal");
+            mgr->setCurrentTheme("dark");
         } else {
-            mgr->setCurrentTheme("light_teal");
+            mgr->setCurrentTheme("light");
         }
         mgr->updateStylesheet();
     });
