@@ -11,22 +11,11 @@ ToggleSwitch::ToggleSwitch(QWidget* parent)
     : QAbstractButton(parent)
 {
     initSwitch();
-    setStyleManager(StyleManagerAdapter::instance());
-}
-
-ToggleSwitch::ToggleSwitch(const QString& text, QWidget* parent)
-    : QAbstractButton(parent)
-{
-    setText(text);
-    initSwitch();
-    setStyleManager(StyleManagerAdapter::instance());
-}
-
-ToggleSwitch::ToggleSwitch(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : QAbstractButton(parent)
-{
-    initSwitch();
-    setStyleManager(manager ? manager : StyleManagerAdapter::instance());
+    //主题切换
+    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
+        updateColors();
+        update();
+    });
 }
 
 ToggleSwitch::~ToggleSwitch() = default;
@@ -36,10 +25,11 @@ QSize ToggleSwitch::sizeHint() const
     return QSize(m_w, m_h);
 }
 
-void ToggleSwitch::setStyleManager(acss::QtAdvancedStylesheet* manager)
-{
-    if (m_manager == manager) return;
-    m_manager = manager;
+void ToggleSwitch::updateColors() {
+    QPalette palette = StyleManagerAdapter::instance()->generateThemePalette();
+    setOnColor(palette.base().color());
+    setOffColor(palette.text().color());
+    setKnobColor(palette.light().color());
 }
 
 void ToggleSwitch::setAnimationDuration(int ms)
@@ -51,11 +41,6 @@ void ToggleSwitch::setOffset(qreal v)
 {
     m_offset = v;
     update();
-}
-
-void ToggleSwitch::applyStylesheet()
-{
-    // 组件级样式应用已统一移除，改为应用级统一管理
 }
 
 void ToggleSwitch::paintEvent(QPaintEvent* e)
@@ -97,6 +82,7 @@ void ToggleSwitch::animateTo(bool checked)
 }
 
 void ToggleSwitch::initSwitch() {
+    updateColors();
     setCheckable(true);
     setOffset(isChecked() ? 0.0 : 1.0);
     setCursor(Qt::PointingHandCursor);
