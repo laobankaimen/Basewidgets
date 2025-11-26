@@ -37,7 +37,6 @@ public:
     bool isResizeable() const {return m_bResizeable;};
     void setResizeableAreaWidth(int width = 5);
     void setTitleBar(QWidget* titlebar);
-    void addIgnoreWidget(QWidget* widget);
 
 public slots:
     void showFullScreen();

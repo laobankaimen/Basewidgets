@@ -52,16 +52,10 @@ void FramelessDialog::initUI()
     customBar->setButtonsVisible(false, false, true);
     customBar->setDoubleClickToToggleEnabled(false);
     m_titleBar = customBar;
-    m_titleLabel = nullptr; // 使用 CustomTitleBar 内部的标题标签
 
     // Content host
     m_contentHost = new QWidget(this);
     m_contentHost->setObjectName("FramelessDialogContentHost");
-    m_contentHost->setAttribute(Qt::WA_StyledBackground, true);
-    auto* hostLayout = new QVBoxLayout(m_contentHost);
-    hostLayout->setContentsMargins(12, 12, 12, 12);
-    hostLayout->setSpacing(8);
-    m_contentHost->setLayout(hostLayout);
 
     // Main layout
     auto* mainLayout = new QVBoxLayout(this);
@@ -74,10 +68,6 @@ void FramelessDialog::initUI()
     // Default sizing to avoid too small dialogs
     setMinimumSize(380, 240);
 
-    // 禁用角拖拽缩放
-    // 默认关闭圆角，用户可通过 API 开启
-    setCornerRadius(0);
-
     //主题切换
     connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
         update();
@@ -87,34 +77,15 @@ void FramelessDialog::initUI()
 void FramelessDialog::setTitle(const QString& title)
 {
     setWindowTitle(title);
-    // CustomTitleBar 会通过 windowTitleChanged 信号自动更新
-}
-
-QString FramelessDialog::title() const
-{
-    return m_titleLabel ? m_titleLabel->text() : QString();
 }
 
 void FramelessDialog::setContentWidget(QWidget* w)
 {
-    if (!m_contentHost || !w) return;
-    auto* hostLayout = qobject_cast<QVBoxLayout*>(m_contentHost->layout());
-    if (!hostLayout) return;
-    // clear previous
-    while (hostLayout->count() > 0) {
-        auto* item = hostLayout->takeAt(0);
-        if (item) {
-            if (auto* wid = item->widget()) wid->setParent(nullptr);
-            delete item;
-        }
+    if (m_contentHost && w) {
+        auto* contentLayout = new QVBoxLayout(m_contentHost);
+        contentLayout->setContentsMargins(5, 5, 5, 5);
+        contentLayout->addWidget(w);
     }
-    hostLayout->addWidget(w);
-    // Resize the dialog to fit content while respecting minimum size
-    adjustSize();
-    const QSize sz = size();
-    const int minW = minimumSize().width();
-    const int minH = minimumSize().height();
-    resize(qMax(sz.width(), minW), qMax(sz.height(), minH));
 }
 
 void FramelessDialog::paintEvent(QPaintEvent* e)
@@ -127,76 +98,9 @@ void FramelessDialog::paintEvent(QPaintEvent* e)
     p.setRenderHint(QPainter::SmoothPixmapTransform, true);
     p.setPen(Qt::NoPen);
     p.setBrush(StyleManagerAdapter::instance()->generateThemePalette().window());
-
-    const QRect r = rect();
-    if (m_cornerRadius > 0) {
-        QPainterPath path;
-        path.addRoundedRect(r, m_cornerRadius, m_cornerRadius);
-        p.drawPath(path);
-    } else {
-        p.drawRect(r);
-    }
+    p.drawRect(rect());
 }
 
-void FramelessDialog::setCornerRadius(int radiusPx)
-{
-    const int r = qMax(0, radiusPx);
-    if (m_cornerRadius == r) return;
-    m_cornerRadius = r;
-    if (r > 0) m_lastCornerRadiusNonZero = r;
-    // 启用圆角需要半透明背景以便裁剪
-    setAttribute(Qt::WA_TranslucentBackground, m_cornerRadius > 0);
-    // 同步更新标题栏顶部圆角
-    if (m_titleBar) {
-        auto* customBar = qobject_cast<CustomTitleBar*>(m_titleBar);
-        if (customBar) customBar->setCornerRadius(r);
-    }
-    // 使用窗口遮罩裁剪物理窗口形状，避免四角可见
-    if (m_cornerRadius > 0) {
-        const QRect rct = rect();
-        const int radius = qMin(m_cornerRadius, qMin(rct.width(), rct.height())/2);
-        QPainterPath path;
-        path.addRoundedRect(rct, radius, radius);
-        setMask(QRegion(path.toFillPolygon().toPolygon()));
-    } else {
-        clearMask();
-    }
-    update();
-}
-
-void FramelessDialog::resizeEvent(QResizeEvent* e)
-{
-    QDialog::resizeEvent(e);
-    if (m_cornerRadius > 0) {
-        const QRect rct = rect();
-        const int radius = qMin(m_cornerRadius, qMin(rct.width(), rct.height())/2);
-        QPainterPath path;
-        path.addRoundedRect(rct, radius, radius);
-        setMask(QRegion(path.toFillPolygon().toPolygon()));
-    }
-}
-
-void FramelessDialog::setRoundedCornersEnabled(bool enabled)
-{
-    if (enabled) {
-        // 恢复最近一次非零圆角半径（默认 12）
-        setCornerRadius(m_lastCornerRadiusNonZero > 0 ? m_lastCornerRadiusNonZero : 12);
-    } else {
-        setCornerRadius(0);
-    }
-}
-
-void FramelessDialog::changeEvent(QEvent* e)
-{
-    QDialog::changeEvent(e);
-    if (e->type() == QEvent::WindowStateChange) {
-        auto* customBar = qobject_cast<CustomTitleBar*>(m_titleBar);
-        if (customBar) {
-            const bool noTopRadius = isFullScreen() || isMaximized();
-            customBar->setCornerRadius(noTopRadius ? 0 : m_cornerRadius);
-        }
-    }
-}
 #ifdef Q_OS_WIN
 bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, long *result) {
 #if (QT_VERSION == QT_VERSION_CHECK(5, 11, 1))
@@ -239,6 +143,7 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, lo
                 return true;
             }
         }
+        *result = HTCLIENT;
         return true;
     }
     case WM_NCLBUTTONDBLCLK: {

@@ -13,7 +13,6 @@
 #include <QPaintEvent>
 #include <QPropertyAnimation>
 #include <QTimer>
-#include <QWindowStateChangeEvent>
 
 #include "QtAdvancedUI/Core/FramelessWidgetWindow.h"
 
@@ -40,9 +39,6 @@ void CustomTitleBar::attachToWindow(QWidget* window)
     QObject::connect(m_window, &QWidget::windowTitleChanged, this, &CustomTitleBar::setTitle);
     setTitle(m_window->windowTitle());
     updateForWindowState();
-}
-
-void CustomTitleBar::setCornerRadius(int radiusPx) {
 }
 
 void CustomTitleBar::setTitle(const QString& title)
@@ -172,12 +168,6 @@ void CustomTitleBar::initUI()
     connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
         update();
     });
-}
-
-// 移除贴边停靠逻辑,需要依赖窗管实现
-void CustomTitleBar::snapDockIfNeeded(const QPoint& globalReleasePos)
-{
-    Q_UNUSED(globalReleasePos)
 }
 
 // 简化toggleMaximizeRestore，移除状态记录逻辑

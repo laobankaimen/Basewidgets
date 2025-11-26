@@ -539,9 +539,9 @@ void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
         ::SetWindowLong(hwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX & ~WS_CAPTION);
     }
 
-    //圆角阴影
-    const MARGINS shadow = { 1, 1, 1, 1 };
-    DwmExtendFrameIntoClientArea(hwnd, &shadow);
+    //圆角阴影会导致双击失效
+    //const MARGINS shadow = { 1, 1, 1, 1 };
+    //DwmExtendFrameIntoClientArea(hwnd, &shadow);
 #elif defined(Q_OS_LINUX)
     if (m_bResizeable) {
         qApp->installEventFilter(this);
