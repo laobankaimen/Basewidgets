@@ -13,7 +13,6 @@ class ACSS_UI_EXPORT BusyIndicator : public StyledWidget {
     Q_OBJECT
 public:
     explicit BusyIndicator(QWidget* parent = nullptr);
-    explicit BusyIndicator(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~BusyIndicator() override;
 
     void start();
@@ -26,7 +25,6 @@ public:
 
 protected:
     void paintEvent(QPaintEvent* e) override;
-    void applyStylesheet();
 
 private slots:
     void onTick();
@@ -34,7 +32,7 @@ private slots:
 private:
     QTimer* m_timer = nullptr;
     int m_step = 0;
-    int m_segments = 12;
+    int m_segments = 10;
     int m_interval = 80; // ms
     bool m_running = true;
     QColor m_color = QColor(76, 217, 100); // 近似 iOS 绿

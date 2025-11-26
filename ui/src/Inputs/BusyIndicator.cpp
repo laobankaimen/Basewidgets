@@ -1,4 +1,5 @@
 #include <QtAdvancedUI/Inputs/BusyIndicator.h>
+#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QPainter>
 #include <QTimer>
 #include <QtMath>
@@ -11,15 +12,7 @@ BusyIndicator::BusyIndicator(QWidget* parent)
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &BusyIndicator::onTick);
     setMinimumSize(24, 24);
-    start();
-}
-
-BusyIndicator::BusyIndicator(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : StyledWidget(manager, parent)
-{
-    m_timer = new QTimer(this);
-    connect(m_timer, &QTimer::timeout, this, &BusyIndicator::onTick);
-    setMinimumSize(24, 24);
+    setColor(StyleManagerAdapter::instance()->generateThemePalette().text().color());
     start();
 }
 
@@ -78,11 +71,6 @@ void BusyIndicator::paintEvent(QPaintEvent* e)
         p.setPen(Qt::NoPen);
         p.drawEllipse(center + QPointF(dx, dy), dotR, dotR);
     }
-}
-
-void BusyIndicator::applyStylesheet()
-{
-    // 组件级样式应用已统一移除，改为应用级统一管理
 }
 
 } // namespace QtAdvancedUI
