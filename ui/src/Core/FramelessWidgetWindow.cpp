@@ -529,21 +529,19 @@ void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
     bool visible = isVisible();
     m_bResizeable = enabled;
 #ifdef Q_OS_WIN
+    HWND hwnd = (HWND)this->winId();
+    DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
     if (m_bResizeable){
         setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
-
-        HWND hwnd = (HWND)this->winId();
-        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
         ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CAPTION);
     }else{
         setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
-
-        HWND hwnd = (HWND)this->winId();
-        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
         ::SetWindowLong(hwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX & ~WS_CAPTION);
     }
 
+    //圆角阴影
     const MARGINS shadow = { 1, 1, 1, 1 };
+    DwmExtendFrameIntoClientArea(hwnd, &shadow);
 #elif defined(Q_OS_LINUX)
     if (m_bResizeable) {
         qApp->installEventFilter(this);

@@ -7,7 +7,6 @@
 #include <QScrollArea>
 
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
-#include <QtAdvancedUI/Core/StyledMainWindow.h>
 #include <QtAdvancedUI/Core/FramelessWidgetWindow.h>
 #include <QtAdvancedUI/Core/StyledWidget.h>
 #include <QtAdvancedUI/Containers/MenuBar.h>

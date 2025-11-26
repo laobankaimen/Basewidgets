@@ -24,9 +24,7 @@ set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/QtAdvancedUIExport.h
     include/QtAdvancedUI/Core/StyleManagerAdapter.h
     include/QtAdvancedUI/Core/StyledWidget.h
-    include/QtAdvancedUI/Core/StyledMainWindow.h
-    include/QtAdvancedUI/Core/StyledDialog.h
-    include/QtAdvancedUI/Core/FramelessDialog.h
+        include/QtAdvancedUI/Core/FramelessDialog.h
     include/QtAdvancedUI/Core/CustomTitleBar.h
     include/QtAdvancedUI/Core/FramelessWidgetWindow.h
     include/QtAdvancedUI/Inputs/PushButton.h
@@ -85,9 +83,7 @@ set(UI_PUBLIC_HEADERS
 set(UI_SOURCES
     src/Core/StyleManagerAdapter.cpp
     src/Core/StyledWidget.cpp
-    src/Core/StyledMainWindow.cpp
-    src/Core/StyledDialog.cpp
-    src/Core/FramelessDialog.cpp
+        src/Core/FramelessDialog.cpp
     src/Core/CustomTitleBar.cpp
     src/Core/FramelessWidgetWindow.cpp
     src/Inputs/PushButton.cpp
