@@ -8,7 +8,7 @@
         "font_family" : "Roboto",
         "font_size" : "12px",
         "line_height" : "12px",
-        "danger" :  "#E6A23C",
+        "danger" :  "#F56C6C",
         "warning" : "#E6A23C",
         "success" : "#67C23A",
         "info" : "#909399"

@@ -1034,10 +1034,6 @@ int main(int argc, char *argv[])
     //静态库中的资源需要显式初始化资源才能在主程序使用
     Q_INIT_RESOURCE(images);
 
-    // 设置字体
-    QFont font("Microsoft YaHei UI", 9);
-    app.setFont(font);
-
     // 初始化样式管理器
     StyleManagerAdapter::initialize();
 

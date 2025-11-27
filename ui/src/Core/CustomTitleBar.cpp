@@ -23,7 +23,9 @@ namespace QtAdvancedUI {
 CustomTitleBar::CustomTitleBar(QWidget* parent)
     : QWidget(parent)
 {
-    setObjectName("CustomTitleBar");
+    setObjectName("TitleBar");
+    setAttribute(Qt::WA_StyledBackground, true);
+    setAutoFillBackground(true);
     // 统一标题栏高度，确保在 MainWindow 与 Dialog 中一致
     setFixedHeight(36);
     initUI();
@@ -162,11 +164,6 @@ void CustomTitleBar::initUI()
     connect(m_btnMax, &ToolButton::clicked, this, [this]{ toggleMaximizeRestore(); });
     connect(m_btnClose, &ToolButton::clicked, this, [this]{
         if (m_window) m_window->close();
-    });
-
-    //主题切换
-    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
-        update();
     });
 }
 

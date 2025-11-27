@@ -21,7 +21,6 @@ public:
     QWidget* contentWidget() const { return m_contentHost; }
 
 protected:
-    void paintEvent(QPaintEvent* e) override;
 #ifdef Q_OS_WIN
     //windows下使用窗口管理器处理拖动和缩放
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;

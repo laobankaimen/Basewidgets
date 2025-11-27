@@ -6,6 +6,7 @@
 #include <QMainWindow>
 #include <QShowEvent>
 #include <QCloseEvent>
+#include <QHBoxLayout>
 
 
 enum FramelessWindowState {Maximized,Minimized,FullScreen,Normal};
@@ -73,7 +74,7 @@ private:
 private:
     QWidget* m_contentHost = nullptr;
     QMenuBar* m_menuBar = nullptr;
-
+    QWidget* m_topMenu = nullptr;
     QWidget* m_titlebar = Q_NULLPTR;
 #ifdef Q_OS_WIN
 
@@ -94,7 +95,6 @@ private:
     bool m_bJustMaximized = false;
     bool m_bResizeable = false;
     int m_titlebarHeight = 30;
-
 };
 
 } // namespace QtAdvancedUI

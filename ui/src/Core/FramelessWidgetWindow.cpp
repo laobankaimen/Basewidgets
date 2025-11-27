@@ -10,6 +10,8 @@
 #include <QShortcut>
 #include <QSettings>
 
+#include "QtAdvancedUI/Dialogs/DialogUtils.h"
+
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <winuser.h>
@@ -29,6 +31,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+
 #endif
 
 namespace QtAdvancedUI {
@@ -270,6 +273,7 @@ bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
     QWidget* w = qobject_cast<QWidget*>(watched);
     if (!w || w->window() != this) return QMainWindow::eventFilter(watched, event);
     if (!m_bResizeable) return QMainWindow::eventFilter(watched, event);
+    if (isMaximized()|| isFullScreen()) return QMainWindow::eventFilter(watched, event);
 
     switch (event->type()) {
     case QEvent::MouseMove: {
@@ -448,7 +452,11 @@ void FramelessWidgetWindow::closeEvent(QCloseEvent *ev)
 {
     QSettings setting("ZKHX","MainWindow");
     setting.setValue("geometry",saveGeometry());
-    QMainWindow::closeEvent(ev);
+    //QMainWindow::closeEvent(ev);
+    if(DialogUtils::askQuestion(this, "请确认", "是否关闭软件？"))
+        ev->accept();
+    else
+        ev->ignore();
 }
 
 void FramelessWidgetWindow::showFullScreen()
@@ -476,12 +484,15 @@ void FramelessWidgetWindow::initUI()
     m_contentHost = new QWidget(this);
     m_contentHost->setObjectName("contentHost");
 
+    m_topMenu = new QWidget(this);
+
     auto centralWidget = new QWidget(this);
     auto mainLayout = new QVBoxLayout(centralWidget);
 
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
     mainLayout->addWidget(customTitleBar);
+    mainLayout->addWidget(m_topMenu);
     mainLayout->addWidget(m_contentHost, 1);
     
     setCentralWidget(centralWidget);
@@ -503,6 +514,11 @@ void FramelessWidgetWindow::initUI()
 #endif
         }
     });
+
+    //主题切换
+    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
+        update();
+    });
 }
 
 void FramelessWidgetWindow::setTitle(const QString& title)
@@ -518,7 +534,7 @@ void FramelessWidgetWindow::setContentWidget(QWidget* w)
 {
     if (m_contentHost && w) {
         auto* contentLayout = new QVBoxLayout(m_contentHost);
-        contentLayout->setContentsMargins(5, 5, 5, 5);
+        contentLayout->setContentsMargins(1, 1, 1, 1);
         contentLayout->addWidget(w);
     }
 }
@@ -557,7 +573,12 @@ void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
 
 void FramelessWidgetWindow::setMenuBar(QMenuBar* menuBar)
 {
-    m_menuBar = menuBar;
+    if (m_topMenu && menuBar) {
+        m_menuBar = menuBar;
+        auto* menuLayout = new QVBoxLayout(m_topMenu);
+        menuLayout->setContentsMargins(0, 0, 0, 0);
+        menuLayout->addWidget(m_menuBar);
+    }
 }
 
 QMenuBar* FramelessWidgetWindow::menuBar() const

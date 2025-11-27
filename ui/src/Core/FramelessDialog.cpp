@@ -67,11 +67,6 @@ void FramelessDialog::initUI()
 
     // Default sizing to avoid too small dialogs
     setMinimumSize(380, 240);
-
-    //主题切换
-    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
-        update();
-    });
 }
 
 void FramelessDialog::setTitle(const QString& title)
@@ -86,19 +81,6 @@ void FramelessDialog::setContentWidget(QWidget* w)
         contentLayout->setContentsMargins(5, 5, 5, 5);
         contentLayout->addWidget(w);
     }
-}
-
-void FramelessDialog::paintEvent(QPaintEvent* e)
-{
-    Q_UNUSED(e);
-    // 绘制圆角背景（启用圆角时）
-    QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing, true);
-    p.setRenderHint(QPainter::HighQualityAntialiasing, true);
-    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
-    p.setPen(Qt::NoPen);
-    p.setBrush(StyleManagerAdapter::instance()->generateThemePalette().window());
-    p.drawRect(rect());
 }
 
 #ifdef Q_OS_WIN

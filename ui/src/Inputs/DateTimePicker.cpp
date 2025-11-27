@@ -1,3 +1,4 @@
+#include <QCalendarWidget>
 #include <QtAdvancedUI/Inputs/DateTimePicker.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -10,6 +11,7 @@ DateTimePicker::DateTimePicker(QWidget* parent)
 {
     setCalendarPopup(true);
     setDisplayFormat("yyyy-MM-dd HH:mm:ss");
+    calendarWidget()->setGridVisible(true);
     setStyleManager(StyleManagerAdapter::instance());
 }
 

@@ -2,17 +2,23 @@
 <resources>
   <color name="primaryColor">#409EFF</color>
   <color name="primaryTextColor">#303133</color>
-  <color name="secondaryTextColor">#909399</color>
   <color name="regularTextColor">#606266</color>
+  <color name="secondaryTextColor">#909399</color>
   <color name="placeholderTextColor">#A8ABB2</color>
   <color name="disabledTextColor">#C0C4CC</color>
   <color name="darkerBorderColor">#CDD0D6</color>
   <color name="darkBorderColor">#D4D7DE</color>
   <color name="baseBorderColor">#DCDFE6</color>
+  <color name="lightBorderColor">#E4E7ED</color>
+  <color name="lighterBorderColor">#EBEEF5</color>
   <color name="baseBackgroundColor">#FFFFFF</color>
   <color name="pageBackgroundColor">#F2F3F5</color>
   <color name="overlayBackgroundColor">#FFFFFF</color>
   <color name="baseFillColor">#F0F2F5</color>
-  <color name="darkFillColor">#EBEDF0</color>
+  <color name="darkFillColor">#E6E8EB</color>
+  <color name="darkerFillColor">#424243</color>
   <color name="lightFillColor">#F5F7FA</color>
+  <color name="lighterFillColor">#FAFAFA</color>
+  <color name="basicBlackColor">#000000</color>
+  <color name="basicWhiteColor">#FFFFFF</color>
 </resources>

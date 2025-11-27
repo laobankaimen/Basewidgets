@@ -50,7 +50,9 @@ DateRangePicker::DateRangePicker(acss::QtAdvancedStylesheet* manager, QWidget* p
     setStyleManager(manager ? manager : StyleManagerAdapter::instance());
     m_layout = new QGridLayout(this);
     m_start = new DatePicker(this);
+    m_start->calendarWidget()->setGridVisible(true);
     m_end = new DatePicker(this);
+    m_end->calendarWidget()->setGridVisible(true);
     m_presets = new ComboBox(this);
     m_zoneCombo = new ComboBox(this);
     m_startTime = new TimePicker(this);
