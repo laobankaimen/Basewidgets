@@ -23,7 +23,7 @@ namespace QtAdvancedUI {
 CustomTitleBar::CustomTitleBar(QWidget* parent)
     : QWidget(parent)
 {
-    setObjectName("TitleBar");
+    setProperty("title", QVariant(true));
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
     // 统一标题栏高度，确保在 MainWindow 与 Dialog 中一致
@@ -113,8 +113,7 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
 void CustomTitleBar::initUI()
 {
     m_titleLabel = new QLabel(this);
-    m_titleLabel->setObjectName("CustomTitleLabel");
-    m_titleLabel->setStyleSheet("font-size: 15px; font-weight: 400;");
+    m_titleLabel->setProperty("title", QVariant(true));
 
     m_btnMin = new ToolButton(this);
     m_btnMin->setObjectName("TitleBarMinButton");

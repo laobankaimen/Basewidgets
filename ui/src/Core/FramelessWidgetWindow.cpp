@@ -482,12 +482,11 @@ void FramelessWidgetWindow::initUI()
     setTitleBar(customTitleBar);
 
     m_contentHost = new QWidget(this);
-    m_contentHost->setObjectName("contentHost");
 
     m_topMenu = new QWidget(this);
 
     auto centralWidget = new QWidget(this);
-    auto mainLayout = new QVBoxLayout(centralWidget);
+    mainLayout = new QVBoxLayout(centralWidget);
 
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
@@ -514,11 +513,6 @@ void FramelessWidgetWindow::initUI()
 #endif
         }
     });
-
-    //主题切换
-    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
-        update();
-    });
 }
 
 void FramelessWidgetWindow::setTitle(const QString& title)
@@ -532,10 +526,14 @@ void FramelessWidgetWindow::setTitle(const QString& title)
 
 void FramelessWidgetWindow::setContentWidget(QWidget* w)
 {
-    if (m_contentHost && w) {
-        auto* contentLayout = new QVBoxLayout(m_contentHost);
-        contentLayout->setContentsMargins(1, 1, 1, 1);
-        contentLayout->addWidget(w);
+    if(m_contentHost) {
+        mainLayout->removeWidget(m_contentHost);
+        m_contentHost->deleteLater();
+    }
+    m_contentHost = w;
+    if (m_contentHost) {
+        m_contentHost->setParent(this);
+        mainLayout->addWidget(m_contentHost,1);
     }
 }
 

@@ -55,10 +55,9 @@ void FramelessDialog::initUI()
 
     // Content host
     m_contentHost = new QWidget(this);
-    m_contentHost->setObjectName("FramelessDialogContentHost");
 
     // Main layout
-    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
     mainLayout->addWidget(m_titleBar);
@@ -76,10 +75,14 @@ void FramelessDialog::setTitle(const QString& title)
 
 void FramelessDialog::setContentWidget(QWidget* w)
 {
-    if (m_contentHost && w) {
-        auto* contentLayout = new QVBoxLayout(m_contentHost);
-        contentLayout->setContentsMargins(5, 5, 5, 5);
-        contentLayout->addWidget(w);
+    if(m_contentHost) {
+        mainLayout->removeWidget(m_contentHost);
+        m_contentHost->deleteLater();
+    }
+    m_contentHost = w;
+    if (m_contentHost) {
+        m_contentHost->setParent(this);
+        mainLayout->addWidget(m_contentHost,1);
     }
 }
 

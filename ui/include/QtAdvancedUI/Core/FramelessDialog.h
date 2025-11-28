@@ -5,6 +5,7 @@
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 #include <QWidget>
 #include <QLabel>
+#include <QVBoxLayout>
 
 namespace QtAdvancedUI {
 
@@ -32,6 +33,7 @@ private:
     QWidget* m_titleBar = nullptr;
     QLabel* m_titleLabel = nullptr;
     QWidget* m_contentHost = nullptr;
+    QVBoxLayout* mainLayout = nullptr;
 };
 
 } // namespace QtAdvancedUI

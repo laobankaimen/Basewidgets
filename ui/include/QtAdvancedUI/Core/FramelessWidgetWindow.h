@@ -75,7 +75,8 @@ private:
     QWidget* m_contentHost = nullptr;
     QMenuBar* m_menuBar = nullptr;
     QWidget* m_topMenu = nullptr;
-    QWidget* m_titlebar = Q_NULLPTR;
+    QWidget* m_titlebar = nullptr;
+    QVBoxLayout* mainLayout = nullptr;
 #ifdef Q_OS_WIN
 
 #elif defined(Q_OS_LINUX)

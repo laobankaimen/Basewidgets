@@ -35,11 +35,11 @@
 /*  Basic widgets  */
 
 QWidget {
-  background-color: {{darkerFillColor}};
+  background-color: {{lightFillColor}};
 }
 
-QWidget#TitleBar {
-  background-color: {{lightFillColor}};
+QWidget[title='true'] {
+  background-color: {{baseBackgroundColor}};
 }
 
 QFrame {
@@ -249,7 +249,11 @@ QPushButton:hover {
   background-color: {{darkFillColor|opacity(0.4)}};
 }
 
-QPushButton:checked,
+QPushButton:checked {
+  color: {{primaryTextColor}};
+  background-color: {{primaryColor}};
+}
+
 QPushButton:pressed {
   color: {{primaryTextColor}};
   background-color: {{darkerFillColor|opacity(0.8)}};
@@ -623,8 +627,8 @@ QMenu::item {
 
 QComboBox::item:selected,
 QMenu::item:selected {
-  color: {{primaryColor}};
-  background-color: {{darkFillColor}};
+  color: {{primaryTextColor}};
+  background-color: {{primaryColor|opacity(0.5)}};
   border-radius: 4px;
 }
 
@@ -703,7 +707,6 @@ QMenuBar {
 QMenuBar::item {
   height: 30px;
   padding: 8px;
-  background-color: {{lightFillColor|opacity(0.2)}};
   color: {{regularTextColor}};
 }
 
@@ -824,11 +827,11 @@ QSlider::handle:vertical {
 }
 
 QSlider::add-page {
-background: {{lightFillColor}};
+  background: {{lightFillColor}};
 }
 
 QSlider::sub-page {
-background: {{primaryColor}};
+  background: {{primaryColor}};
 }
 
 /*  ------------------------------------------------------------------------  */
@@ -838,6 +841,12 @@ QLabel {
   border: none;
   background: transparent;
   color: {{regularTextColor}}
+}
+
+QLabel[title='true'] {
+  color: {{primaryTextColor}};
+  font-size: 15px;
+  font-weight: 400;
 }
 
 QLabel:disabled {
@@ -925,7 +934,7 @@ QToolButton:hover {
 }
 
 QToolButton:pressed {
-  background: {{lighterFillColor}};
+  background: {{baseFillColor}};
   border-right: 0px solid {{darkBorderColor}};
   border-left: 0px solid {{darkBorderColor}};
 }
@@ -1165,7 +1174,7 @@ QLCDNumber {
   background-color: transparent;
 }
 
-QCalendarWidget QMenu::item {
+/*QCalendarWidget QMenu::item {
   height: 26px;
   border: 0px solid transparent;
   color: {{regularTextColor}};
@@ -1176,14 +1185,14 @@ QCalendarWidget QMenu::item {
 }
 
 QCalendarWidget QMenu::item:selected {
-  color: {{primaryColor}};
-  background-color: {{darkFillColor}};
+  color: {{primaryTextColor}};
+  background-color: {{primaryColor|opacity(0.3)}};
   border-radius: 4px;
 }
 
 QCalendarWidget QMenu::item:disabled {
   color: {{disabledTextColor|opacity(0.3)}};
-}
+}*/
 
 QCalendarWidget QTableView {
   border: none;
