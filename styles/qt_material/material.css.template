@@ -245,10 +245,14 @@ QPushButton {
   font-weight: bold;
 }
 
+QPushButton:hover {
+  background-color: {{darkFillColor|opacity(0.4)}};
+}
+
 QPushButton:checked,
 QPushButton:pressed {
   color: {{primaryTextColor}};
-  background-color: {{darkerFillColor}};
+  background-color: {{darkerFillColor|opacity(0.8)}};
 }
 
 QPushButton:flat {
@@ -1251,10 +1255,14 @@ QDialogButtonBox QPushButton {
   qproperty-icon: none;
 }
 
-/*QDialogButtonBox QPushButton[PrimaryButton="true"] {
-  background-color: primaryColor;
-  color: primaryTextColor;
-}*/
+QDialogButtonBox QPushButton[primary='true'] {
+  color: {{primaryTextColor}};
+  background-color: {{primaryColor}};
+}
+
+QDialogButtonBox QPushButton[primary='true']:hover {
+  background-color: {{primaryColor|opacity(0.8)}};
+}
 
 /*  ------------------------------------------------------------------------  */
 /*  Custom TitleBar Buttons  */
