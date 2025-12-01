@@ -45,13 +45,15 @@ FramelessDialog::~FramelessDialog() = default;
 void FramelessDialog::initUI()
 {
     // 自定义标题栏（包含最小化/最大化/关闭、拖动/停靠）
-    auto* customBar = new CustomTitleBar(this);
-    customBar->attachToWindow(this);
-    customBar->setTitle(windowTitle());
+    auto* customTitleBar = new CustomTitleBar(this);
+    customTitleBar->attachToWindow(this);
+    customTitleBar->setFixedHeight(m_titlebarHeight);
     // 对话框：仅显示关闭按钮，禁用双击放大
-    customBar->setButtonsVisible(false, false, true);
-    customBar->setDoubleClickToToggleEnabled(false);
-    m_titleBar = customBar;
+    customTitleBar->setButtonsVisible(false, false, true);
+    customTitleBar->setDoubleClickToToggleEnabled(false);
+
+    // 设置标题栏
+    m_titleBar = customTitleBar;
 
     // Content host
     m_contentHost = new QWidget(this);
@@ -70,19 +72,18 @@ void FramelessDialog::initUI()
 
 void FramelessDialog::setTitle(const QString& title)
 {
-    setWindowTitle(title);
+    auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar);
+    if (customTitleBar) {
+        customTitleBar->setTitle(title);
+    }
 }
 
 void FramelessDialog::setContentWidget(QWidget* w)
 {
-    if(m_contentHost) {
-        mainLayout->removeWidget(m_contentHost);
-        m_contentHost->deleteLater();
-    }
-    m_contentHost = w;
-    if (m_contentHost) {
-        m_contentHost->setParent(this);
-        mainLayout->addWidget(m_contentHost,1);
+    if (m_contentHost && w) {
+        auto* contentLayout = new QVBoxLayout(m_contentHost);
+        contentLayout->setContentsMargins(0, 0, 0, 0);
+        contentLayout->addWidget(w);
     }
 }
 

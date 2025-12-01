@@ -39,13 +39,8 @@ namespace QtAdvancedUI {
 // Windows平台实现 - 复刻framelesswindow的代码
 FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
     : QMainWindow(parent),
-      m_contentHost(nullptr),
-      m_menuBar(nullptr),
-      m_titlebar(Q_NULLPTR),
-      m_borderWidth(5),
       m_bJustMaximized(true),
-      m_bResizeable(true),
-      m_titlebarHeight(36)
+      m_bResizeable(true)
 {
     setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
     setAttribute(Qt::WA_StyledBackground, true);
@@ -61,20 +56,6 @@ void FramelessWidgetWindow::setResizeableAreaWidth(int width)
     m_borderWidth = width;
 }
 
-void FramelessWidgetWindow::setTitleBar(QWidget* titlebar)
-{
-    m_titlebar = titlebar;
-    if (!titlebar) return;
-    connect(titlebar, SIGNAL(destroyed(QObject*)), this, SLOT(onTitleBarDestroyed()));
-}
-
-void FramelessWidgetWindow::onTitleBarDestroyed()
-{
-    if (m_titlebar == QObject::sender())
-    {
-        m_titlebar = Q_NULLPTR;
-    }
-}
 #ifdef Q_OS_WIN
 bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void *message, long *result)
 {
@@ -164,11 +145,11 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
         }
         if (0!=*result) return true;
         
-        if (m_titlebar) {
+        if (m_titleBar) {
             double dpr = this->devicePixelRatioF();
-            QPoint titlePos = m_titlebar->mapFromGlobal(QPoint(x/dpr,y/dpr));
+            QPoint titlePos = m_titleBar->mapFromGlobal(QPoint(x/dpr,y/dpr));
 
-            QWidget* child = m_titlebar->childAt(titlePos);
+            QWidget* child = m_titleBar->childAt(titlePos);
             //鼠标标题栏的子控件，让子控件接收事件（过滤掉其他不需要鼠标交互的控件）
             if (child && (child->objectName().contains("TitleBarCloseButton") ||
                 child->objectName().contains("TitleBarMaxButton") ||
@@ -177,7 +158,7 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
                 return true;
             }
             //不在子控件上，且在标题栏内
-            if (m_titlebar->geometry().contains(titlePos)) {
+            if (m_titleBar->geometry().contains(titlePos)) {
                 *result = HTCAPTION;
                 return true;
             }
@@ -479,7 +460,7 @@ void FramelessWidgetWindow::initUI()
     customTitleBar->setFixedHeight(m_titlebarHeight);
 
     // 设置标题栏
-    setTitleBar(customTitleBar);
+    m_titleBar = customTitleBar;
 
     m_contentHost = new QWidget(this);
 
@@ -490,7 +471,7 @@ void FramelessWidgetWindow::initUI()
 
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
-    mainLayout->addWidget(customTitleBar);
+    mainLayout->addWidget(m_titleBar);
     mainLayout->addWidget(m_topMenu);
     mainLayout->addWidget(m_contentHost, 1);
     
@@ -517,8 +498,8 @@ void FramelessWidgetWindow::initUI()
 
 void FramelessWidgetWindow::setTitle(const QString& title)
 {
-    // 由于m_titlebar是QWidget*类型，我们需要转换为CustomTitleBar*
-    auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titlebar);
+    // 由于m_titleBar是QWidget*类型，我们需要转换为CustomTitleBar*
+    auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar);
     if (customTitleBar) {
         customTitleBar->setTitle(title);
     }
@@ -598,8 +579,8 @@ bool FramelessWidgetWindow::nativeEvent(const QByteArray &eventType, void *messa
 void FramelessWidgetWindow::changeEvent(QEvent* e)
 {
     if (e->type() == QEvent::WindowStateChange) {
-        // 由于m_titlebar是QWidget*类型，我们需要转换为CustomTitleBar*
-        auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titlebar);
+        // 由于m_titleBar是QWidget*类型，我们需要转换为CustomTitleBar*
+        auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar);
         if (customTitleBar) {
             customTitleBar->updateForWindowState();
         }

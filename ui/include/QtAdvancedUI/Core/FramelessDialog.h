@@ -4,7 +4,6 @@
 #include <QDialog>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 #include <QWidget>
-#include <QLabel>
 #include <QVBoxLayout>
 
 namespace QtAdvancedUI {
@@ -17,7 +16,6 @@ public:
     ~FramelessDialog() override;
 
     void setTitle(const QString& title);
-
     void setContentWidget(QWidget* w);
     QWidget* contentWidget() const { return m_contentHost; }
 
@@ -31,9 +29,9 @@ private:
 
 private:
     QWidget* m_titleBar = nullptr;
-    QLabel* m_titleLabel = nullptr;
     QWidget* m_contentHost = nullptr;
     QVBoxLayout* mainLayout = nullptr;
+    int m_titlebarHeight = 30;
 };
 
 } // namespace QtAdvancedUI

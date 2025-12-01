@@ -37,7 +37,6 @@ public:
     void setResizableEdgesEnabled(bool enabled = true);
     bool isResizeable() const {return m_bResizeable;};
     void setResizeableAreaWidth(int width = 5);
-    void setTitleBar(QWidget* titlebar);
 
 public slots:
     void showFullScreen();
@@ -65,9 +64,6 @@ protected:
     bool nativeLinuxEvent(const QByteArray &eventType, void *message, long *result);
 #endif
 
-private slots:
-    void onTitleBarDestroyed();
-
 private:
     void initUI();
 
@@ -75,7 +71,7 @@ private:
     QWidget* m_contentHost = nullptr;
     QMenuBar* m_menuBar = nullptr;
     QWidget* m_topMenu = nullptr;
-    QWidget* m_titlebar = nullptr;
+    QWidget* m_titleBar = nullptr;
     QVBoxLayout* mainLayout = nullptr;
 #ifdef Q_OS_WIN
 
@@ -95,7 +91,7 @@ private:
     QMargins m_frames;
     bool m_bJustMaximized = false;
     bool m_bResizeable = false;
-    int m_titlebarHeight = 30;
+    int m_titlebarHeight = 36;
 };
 
 } // namespace QtAdvancedUI

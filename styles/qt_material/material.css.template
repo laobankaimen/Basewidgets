@@ -1263,7 +1263,7 @@ QDialog QToolButton:checked {
 QDialogButtonBox QPushButton {
   qproperty-icon: none;
 }
-
+/*主按钮*/
 QDialogButtonBox QPushButton[primary='true'] {
   color: {{primaryTextColor}};
   background-color: {{primaryColor}};
