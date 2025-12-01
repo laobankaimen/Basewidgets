@@ -13,14 +13,6 @@ TreeView::TreeView(QWidget* parent)
     setStyleManager(StyleManagerAdapter::instance());
 }
 
-TreeView::TreeView(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : QTreeView(parent)
-{
-    setAttribute(Qt::WA_StyledBackground, true);
-    setAutoFillBackground(true);
-    setStyleManager(manager ? manager : StyleManagerAdapter::instance());
-}
-
 TreeView::~TreeView() = default;
 
 void TreeView::setStyleManager(acss::QtAdvancedStylesheet* manager)

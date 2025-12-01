@@ -82,6 +82,8 @@ QPushButton {
   color: {{primaryTextColor}};
   background-color: {{darkFillColor}};
   border: 1px solid {{darkerBorderColor}};
+  selection-color: {{primaryTextColor}};
+  selection-background-color: {{primaryColor}};
   border-radius: 4px;
   padding: 8px 16px ;
   height: 18px;
@@ -422,6 +424,56 @@ QCheckBox {
 QRadioButton:disabled,
 QCheckBox:disabled {
   color: {{disabledTextColor|opacity(0.3)}};
+}
+
+
+/*  ------------------------------------------------------------------------  */
+/*  QTableView  */
+
+QTableView {
+  color: {{primaryTextColor}};
+  gridline-color: {{darkerFillColor}};
+  border: 1px solid {{darkBorderColor}};
+  border-radius: 4px;
+  outline: 0;
+  background-color: {{darkerFillColor|opacity(0.7)}};
+  alternate-background-color: {{baseFillColor|opacity(0.7)}};
+}
+
+QTableView::item,
+QTreeView::item,
+QListView::item {
+  padding: 5px;
+  min-height: 25px;
+  background-color: transparent;
+  color: {{regularTextColor}};
+  selection-color: {{primaryColor}};
+  border-color: transparent;
+}
+
+QTableView::item:disabled,
+QTreeView::item:disabled,
+QListView::item:disabled {
+  color: {{disabledTextColor}};
+}
+
+QTableCornerButton::section {
+  background-color: {{darkerFillColor}};
+  border-radius: 0px;
+  border-right: 1px solid;
+  border-bottom: 1px solid;
+  border-color: {{darkerBorderColor}};
+}
+
+QHeaderView::section {
+  color: {{regularTextColor}};
+  text-transform: uppercase;
+  background-color: {{darkFillColor}};
+  padding: 4px;
+  border-radius: 0px;
+  border-right: 1px solid;
+  border-bottom: 1px solid;
+  border-color: {{darkBorderColor}};
 }
 
 /*  ------------------------------------------------------------------------  */
@@ -942,32 +994,6 @@ QToolButton:checked {
 }
 
 /*  ------------------------------------------------------------------------  */
-/*  General viewers  */
-
-QTableView {
-  background-color: {{darkFillColor}};
-  border: 1px solid {{baseBorderColor}};
-  border-radius: 4px;
-}
-
-QTreeView,
-QListView {
-  border-radius: 4px;
-  padding: 5px;
-  margin: 0px;
-}
-
-QTableView::item,
-QTreeView::item,
-QListView::item {
-  padding: 5px;
-  min-height: 25px;
-  color: {{regularTextColor}};
-  selection-color: {{primaryColor}}; /* For Windows */
-  border-color: transparent;  /* Fix #34 */
-}
-
-/*  ------------------------------------------------------------------------  */
 /*  Items Selection */
 
 QTableView:item:selected,
@@ -979,6 +1005,12 @@ QListView::item:selected {
   selection-color: {{regularTextColor}}; /* For Windows */
 }
 
+QTableView:item:hover,
+QTreeView::item:hover,
+QListView::item:hover {
+  background-color: {{primaryColor|opacity(0.2)}};
+}
+
 QTableView:item:selected:focus,
 QTreeView::item:selected:focus,
 QListView::item:selected:focus {
@@ -986,14 +1018,6 @@ QListView::item:selected:focus {
   selection-background-color: {{primaryColor}};
   color: {{primaryTextColor}};
   selection-color: {{primaryTextColor}}; /* For Windows */
-}
-
-QTableView {
-  selection-background-color: {{primaryColor|opacity(0.2)}};
-}
-
-QTableView:focus {
-  selection-background-color: {{primaryColor}};
 }
 
 QTableView::item:disabled {
@@ -1007,24 +1031,17 @@ QTableView::item:disabled {
 /*  QTreeView  */
 
 QTreeView::branch{
-  background-color: transparent;
+  background: transparent;
+  border-image: none;
 }
 
-QTreeView::branch:closed:has-children:has-siblings,
-QTreeView::branch:closed:has-children:!has-siblings {
-  image: url(icon:/primary/branch-closed.svg);
-
+QTreeView::branch:closed:has-children {
+  image: url(icon:/primary/rightarrow.svg);
 }
 
-QTreeView::branch:open:has-children:!has-siblings,
-QTreeView::branch:open:has-children:has-siblings {
-  image: url(icon:/primary/branch-open.svg);
+QTreeView::branch:open:has-children {
+  image: url(icon:/primary/downarrow.svg);
 }
-
-QTreeView QHeaderView::section {
-  border: none;
-}
-
 
 /*  ------------------------------------------------------------------------  */
 /*  Custom buttons  */
@@ -1090,37 +1107,6 @@ QPushButton.success:flat:pressed,
 QPushButton.success:flat:checked {
   background-color: {{success|opacity(0.1)}};
   color: {{success}};
-}
-
-/*  ------------------------------------------------------------------------  */
-/*  QTableView  */
-
-QTableCornerButton::section {
-  background-color: {{darkerFillColor}};
-  border-radius: 0px;
-  border-right: 1px solid;
-  border-bottom: 1px solid;
-  border-color: {{darkerBorderColor}};
-}
-
-QTableView {
-  alternate-background-color: {{darkerFillColor|opacity(0.7)}};
-}
-
-QHeaderView {
-  border: none;
-}
-
-QHeaderView::section {
-  color: {{regularTextColor|opacity(0.7)}};
-  text-transform: uppercase;
-  background-color: {{darkFillColor}};
-  padding: 0 20px;
-  height: 35px;
-  border-radius: 0px;
-  border-right: 1px solid;
-  border-bottom: 1px solid;
-  border-color: {{darkBorderColor}};
 }
 
 /*  ------------------------------------------------------------------------  */
@@ -1192,15 +1178,18 @@ QCalendarWidget QMenu::item:disabled {
 
 QCalendarWidget QTableView {
   border: none;
-  alternate-background-color: {{darkFillColor}};
   selection-background-color: {{lightFillColor}};
   selection-color: {{primaryColor}};
+  color: {{primaryTextColor}};
+  gridline-color: {{darkerFillColor}};
+  border-radius: 4px;
+  outline: 0;
 }
 
-QCalendarWidget QAbstractItemView:enabled:hover {
-  background-color: {{lighterFillColor}};
-  color: {{primaryColor}};
+QCalendarWidget QTableView:enabled::item {
+  background-color: {{baseFillColor}};
 }
+
 /*  ------------------------------------------------------------------------  */
 /*  Inline QLineEdit  */
 

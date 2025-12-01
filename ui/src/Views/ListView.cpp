@@ -13,14 +13,6 @@ ListView::ListView(QWidget* parent)
     setStyleManager(StyleManagerAdapter::instance());
 }
 
-ListView::ListView(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : QListView(parent)
-{
-    setAttribute(Qt::WA_StyledBackground, true);
-    setAutoFillBackground(true);
-    setStyleManager(manager ? manager : StyleManagerAdapter::instance());
-}
-
 ListView::~ListView() = default;
 
 void ListView::setStyleManager(acss::QtAdvancedStylesheet* manager)

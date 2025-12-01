@@ -16,7 +16,6 @@ public:
     enum Aggregation { NoneR, Sum, Avg, Count };
 
     explicit TreeTable(QWidget* parent = nullptr);
-    explicit TreeTable(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~TreeTable() override;
 
     void setStyleManager(acss::QtAdvancedStylesheet* manager);

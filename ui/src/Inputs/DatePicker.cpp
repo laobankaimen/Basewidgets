@@ -13,7 +13,7 @@ DatePicker::DatePicker(QWidget* parent)
     setDisplayFormat("yyyy-MM-dd");
     setStyleManager(StyleManagerAdapter::instance());
     calendarWidget()->setGridVisible(true);
-    setWeekNumbersEnabled(true);
+    calendarWidget()->setDateEditEnabled(true);
 }
 
 DatePicker::DatePicker(acss::QtAdvancedStylesheet* manager, QWidget* parent)

@@ -11,14 +11,7 @@ TableView::TableView(QWidget* parent)
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
     setStyleManager(StyleManagerAdapter::instance());
-}
-
-TableView::TableView(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : QTableView(parent)
-{
-    setAttribute(Qt::WA_StyledBackground, true);
-    setAutoFillBackground(true);
-    setStyleManager(manager ? manager : StyleManagerAdapter::instance());
+    setAlternatingRowColors(true);//交替行颜色
 }
 
 TableView::~TableView() = default;

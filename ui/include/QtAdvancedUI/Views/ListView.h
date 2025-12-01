@@ -12,7 +12,6 @@ class ACSS_UI_EXPORT ListView : public QListView
     Q_OBJECT
 public:
     explicit ListView(QWidget* parent = nullptr);
-    explicit ListView(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~ListView() override;
 
     void setStyleManager(acss::QtAdvancedStylesheet* manager);

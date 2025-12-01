@@ -12,7 +12,6 @@ class ACSS_UI_EXPORT TableView : public QTableView
     Q_OBJECT
 public:
     explicit TableView(QWidget* parent = nullptr);
-    explicit TableView(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~TableView() override;
 
     void setStyleManager(acss::QtAdvancedStylesheet* manager);

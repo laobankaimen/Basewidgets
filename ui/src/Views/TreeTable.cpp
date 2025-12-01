@@ -18,18 +18,6 @@ TreeTable::TreeTable(QWidget* parent)
     setStyleManager(StyleManagerAdapter::instance());
 }
 
-TreeTable::TreeTable(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : QTreeView(parent)
-{
-    setAttribute(Qt::WA_StyledBackground, true);
-    setAutoFillBackground(true);
-    setVirtualizationEnabled(true);
-    setRootIsDecorated(true);
-    setItemsExpandable(true);
-    setExpandsOnDoubleClick(true);
-    setStyleManager(manager ? manager : StyleManagerAdapter::instance());
-}
-
 TreeTable::~TreeTable() = default;
 
 void TreeTable::setStyleManager(acss::QtAdvancedStylesheet* manager)

@@ -12,7 +12,6 @@ class ACSS_UI_EXPORT TreeView : public QTreeView
     Q_OBJECT
 public:
     explicit TreeView(QWidget* parent = nullptr);
-    explicit TreeView(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~TreeView() override;
 
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
