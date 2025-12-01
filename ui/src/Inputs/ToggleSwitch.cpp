@@ -26,10 +26,9 @@ QSize ToggleSwitch::sizeHint() const
 }
 
 void ToggleSwitch::updateColors() {
-    QPalette palette = StyleManagerAdapter::instance()->generateThemePalette();
-    setOnColor(palette.base().color());
-    setOffColor(palette.text().color());
-    setKnobColor(palette.light().color());
+    setOnColor(StyleManagerAdapter::instance()->themeColor("primaryColor"));
+    setOffColor(StyleManagerAdapter::instance()->themeColor("placeholderTextColor"));
+    setKnobColor(StyleManagerAdapter::instance()->themeColor("lightFillColor"));
 }
 
 void ToggleSwitch::setAnimationDuration(int ms)

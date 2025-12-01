@@ -6,8 +6,8 @@
   <color name="secondaryTextColor">#A3A6AD</color>
   <color name="placeholderTextColor">#8D9095</color>
   <color name="disabledTextColor">#6C6E72</color>
-  <color name="darkerBorderColor">#636466</color>
-  <color name="darkBorderColor">#58585B</color>
+  <color name="darkerBorderColor">#58585B</color>
+  <color name="darkBorderColor">#636466</color>
   <color name="baseBorderColor">#4C4D4F</color>
   <color name="lightBorderColor">#414243</color>
   <color name="lighterBorderColor">#363637</color>
@@ -18,7 +18,7 @@
   <color name="darkFillColor">#39393A</color>
   <color name="darkerFillColor">#424243</color>
   <color name="lightFillColor">#262727</color>
-  <color name="lighterFillColor">#262727</color>
+  <color name="lighterFillColor">#1D1D1D</color>
   <color name="basicBlackColor">#000000</color>
   <color name="basicWhiteColor">#FFFFFF</color>
 </resources>

@@ -35,11 +35,11 @@
 /*  Basic widgets  */
 
 QWidget {
-  background-color: {{lightFillColor}};
+  background-color: {{baseFillColor}};
 }
 
 QWidget[title='true'] {
-  background-color: {{baseBackgroundColor}};
+  background-color: {{lightFillColor}};
 }
 
 QFrame {
@@ -77,10 +77,9 @@ QTabWidget::pane {
 QDateTimeEdit,
 QSpinBox,
 QDoubleSpinBox,
-QTextEdit,
 QLineEdit,
 QPushButton {
-  color: {{regularTextColor}};
+  color: {{primaryTextColor}};
   background-color: {{darkFillColor}};
   border: 1px solid {{darkerBorderColor}};
   border-radius: 4px;
@@ -104,10 +103,13 @@ QComboBox {
   border-top-right-radius: 4px;
 }
 
+QTextEdit,
 QPlainTextEdit {
   border-radius: 4px;
   padding: 8px 16px;
-  background-color: {{overlayBackgroundColor}};
+  background-color: {{darkFillColor}};
+  selection-color: {{primaryTextColor}};
+  selection-background-color: {{primaryColor}};
   border: 1px solid {{darkBorderColor}};
 }
 
@@ -124,12 +126,6 @@ QLineEdit:disabled {
   border-radius: 0px;
   border-top-left-radius: 4px;
   border-top-right-radius: 4px;
-}
-
-QTextEdit {
-  padding: 8px;
-  border-radius: 4px;
-  background-color: {{baseFillColor}};
 }
 
 QDateTimeEdit:disabled,
@@ -1174,7 +1170,7 @@ QLCDNumber {
   background-color: transparent;
 }
 
-/*QCalendarWidget QMenu::item {
+QCalendarWidget QMenu::item {
   height: 26px;
   border: 0px solid transparent;
   color: {{regularTextColor}};
@@ -1192,7 +1188,7 @@ QCalendarWidget QMenu::item:selected {
 
 QCalendarWidget QMenu::item:disabled {
   color: {{disabledTextColor|opacity(0.3)}};
-}*/
+}
 
 QCalendarWidget QTableView {
   border: none;
@@ -1240,7 +1236,8 @@ QToolTip {
 /*  QDialog  */
 
 QDialog {
-  background-color: {{pageBackgroundColor}};
+  background-color: {{darkerFillColor}};
+  border: 1px {{lightFillColor}};
 }
 
 QDialog QToolButton,

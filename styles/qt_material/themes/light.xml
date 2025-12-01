@@ -15,8 +15,8 @@
   <color name="pageBackgroundColor">#F2F3F5</color>
   <color name="overlayBackgroundColor">#FFFFFF</color>
   <color name="baseFillColor">#F0F2F5</color>
-  <color name="darkFillColor">#E6E8EB</color>
-  <color name="darkerFillColor">#424243</color>
+  <color name="darkFillColor">#EBEDF0</color>
+  <color name="darkerFillColor">#E6E8EB</color>
   <color name="lightFillColor">#F5F7FA</color>
   <color name="lighterFillColor">#FAFAFA</color>
   <color name="basicBlackColor">#000000</color>

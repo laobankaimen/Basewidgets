@@ -456,7 +456,7 @@ void DialogUtils::messageInfo(QWidget* parent, const QString& title, const QStri
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
         okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
+        //okBtn->setProperty("primary", QVariant(true));
     }
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
 
@@ -485,7 +485,7 @@ void DialogUtils::messageWarning(QWidget* parent, const QString& title, const QS
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
         okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
+        //okBtn->setProperty("primary", QVariant(true));
     }
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
  
@@ -514,7 +514,7 @@ void DialogUtils::messageError(QWidget* parent, const QString& title, const QStr
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
         okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
+        //okBtn->setProperty("primary", QVariant(true));
     }
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
 
@@ -543,7 +543,7 @@ void DialogUtils::messageSuccess(QWidget* parent, const QString& title, const QS
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
         okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
+        //okBtn->setProperty("primary", QVariant(true));
     }
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
 

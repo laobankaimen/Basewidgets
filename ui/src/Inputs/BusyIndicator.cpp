@@ -12,7 +12,7 @@ BusyIndicator::BusyIndicator(QWidget* parent)
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &BusyIndicator::onTick);
     setMinimumSize(24, 24);
-    setColor(StyleManagerAdapter::instance()->generateThemePalette().text().color());
+    setColor(StyleManagerAdapter::instance()->themeColor("regularTextColor"));
     start();
 }
 
