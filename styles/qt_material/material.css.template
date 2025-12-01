@@ -691,7 +691,7 @@ QMenu::item {
 QComboBox::item:selected,
 QMenu::item:selected {
   color: {{primaryTextColor}};
-  background-color: {{primaryColor|opacity(0.5)}};
+  background-color: {{primaryColor|opacity(0.2)}};
   border-radius: 2px;
 }
 
@@ -724,7 +724,7 @@ QMenu::right-arrow{
 }
 
 QMenu::right-arrow:selected{
-  image: url(icon:/disabled/rightarrow.svg);
+  image: url(icon:/primary/rightarrow.svg);
 }
 
 QMenu::indicator:non-exclusive:unchecked {
@@ -732,7 +732,7 @@ QMenu::indicator:non-exclusive:unchecked {
 }
 
 QMenu::indicator:non-exclusive:unchecked:selected {
-  image: url(icon:/primary/check_box_unchecked_invert.svg);
+  image: url(icon:/primary/check_box_unchecked.svg);
 }
 
 QMenu::indicator:non-exclusive:checked {
@@ -740,7 +740,7 @@ QMenu::indicator:non-exclusive:checked {
 }
 
 QMenu::indicator:non-exclusive:checked:selected {
-  image: url(icon:/primary/check_box_checked_invert.svg);
+  image: url(icon:/primary/check_box_checked.svg);
 }
 
 QMenu::indicator:exclusive:unchecked {
@@ -748,7 +748,7 @@ QMenu::indicator:exclusive:unchecked {
 }
 
 QMenu::indicator:exclusive:unchecked:selected {
-  image: url(icon:/primary/radiobutton_unchecked_invert.svg);
+  image: url(icon:/primary/radiobutton_unchecked.svg);
 }
 
 QMenu::indicator:exclusive:checked {
@@ -756,7 +756,7 @@ QMenu::indicator:exclusive:checked {
 }
 
 QMenu::indicator:exclusive:checked:selected {
-  image: url(icon:/primary/radiobutton_checked_invert.svg);
+  image: url(icon:/primary/radiobutton_checked.svg);
 }
 
 /*  ------------------------------------------------------------------------  */
@@ -777,6 +777,95 @@ QMenuBar::item:selected,
 QMenuBar::item:pressed {
   color: {{primaryTextColor}};
   background-color: {{lightFillColor}};
+}
+
+/*  ------------------------------------------------------------------------  */
+/*  Pagination (Web-like)  */
+
+QWidget[pagination='true'] {
+  background-color: transparent;
+  padding: 8px 0;
+}
+
+QWidget[pagination='true'] QLabel {
+  color: {{secondaryTextColor}};
+}
+
+QWidget[pagination='true'] QPushButton {
+  color: {{primaryTextColor}};
+  background-color: {{baseFillColor}};
+  border: 1px solid {{baseBorderColor}};
+  border-radius: 6px;
+  padding: 4px 12px;
+  min-height: 28px;
+  margin-right: 8px;
+  font-size: {{font_size}};
+}
+
+QWidget[pagination='true'] QPushButton:hover {
+  background-color: {{darkFillColor}};
+  border-color: {{primaryColor|opacity(0.5)}};
+}
+
+QWidget[pagination='true'] QPushButton:disabled {
+  color: {{disabledTextColor}};
+  background-color: {{baseFillColor|opacity(0.5)}};
+  border-color: {{darkBorderColor|opacity(0.4)}};
+}
+
+QWidget[pagination='true'] QPushButton[primary='true'] {
+  color: {{baseBackgroundColor}};
+  background-color: {{primaryColor}};
+  border-color: {{primaryColor}};
+}
+
+QWidget[pagination='true'] QPushButton[primary='true']:hover {
+  background-color: {{primaryColor|opacity(0.85)}};
+}
+
+QWidget[pagination='true'] QPushButton#PrevPageBtn:disabled,
+QWidget[pagination='true'] QPushButton#NextPageBtn:disabled {
+  opacity: 0.8;
+}
+
+QWidget[pagination='true'] QPushButton[page='true'] {
+  color: {{regularTextColor}};
+  background-color: {{baseBackgroundColor}};
+  border: 1px solid {{baseBorderColor}};
+  border-radius: 6px;
+  padding: 3px 10px;
+  min-width: 32px;
+  min-height: 28px;
+}
+
+QWidget[pagination='true'] QPushButton[page='true']:hover {
+  background-color: {{lightFillColor}};
+  border-color: {{primaryColor|opacity(0.5)}};
+}
+
+QWidget[pagination='true'] QPushButton[page='true'][active='true'] {
+  color: {{baseBackgroundColor}};
+  background-color: {{primaryColor}};
+  border-color: {{primaryColor}};
+}
+
+/* 固定前面导航按钮尺寸，防止布局跳动 */
+QWidget[pagination='true'] QPushButton#PrevPageBtn,
+QWidget[pagination='true'] QPushButton#NextPageBtn {
+  min-width: 72px;
+}
+
+QWidget[pagination='true'] QPushButton#FirstPageBtn,
+QWidget[pagination='true'] PushButton#LastPageBtn {
+  min-width: 72px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-weight: 600;
+}
+
+/* 页码滚动区固定高度，避免随内容抖动 */
+QScrollArea#PageScroll {
+  min-height: 36px;
 }
 
 /*  ------------------------------------------------------------------------  */

@@ -4,6 +4,7 @@
 #include <QtAdvancedUI/Core/StyledWidget.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 #include <QtAdvancedUI/Views/PagedProxyModel.h>
+#include <QScrollArea>
 
 class QAbstractItemModel;
 class QSortFilterProxyModel;
@@ -54,6 +55,11 @@ public:
     void setTopBarVisible(bool visible);
     void setExportButtonVisible(bool visible);
     void setColumnVisibilityMenuVisible(bool visible);
+    void setFilterControlVisible(bool visible);
+    void setColumnSelectorVisible(bool visible);
+    void setPageSizeSelectorVisible(bool visible);
+    void setJumpControlVisible(bool visible);
+    void setPaginationBarVisible(bool visible);
 
 signals:
     void filterChanged(const QString& text, int column);
@@ -68,14 +74,28 @@ private:
     void initUi();
     void bindSignals();
     void rebuildColumnUi();
+    void rebuildPaginationUi();
     QStringList currentHeaderLabels() const;
 
 private:
     // 顶部工具条
     QWidget* m_topBar = nullptr;
+    QWidget* m_bottomBar = nullptr;
+    QWidget* m_pageNumbers = nullptr;
+    PushButton* m_firstBtn = nullptr;
+    PushButton* m_lastBtn = nullptr;
+    QScrollArea* m_pageScroll = nullptr;
+    ComboBox* m_pageSizeBottom = nullptr;
+    Label* m_totalLabel = nullptr;
+    SpinBox* m_pageJumpBottom = nullptr;
+    QList<PushButton*> m_pageButtons;
+    Label* m_filterLabel = nullptr;
     LineEdit* m_filterEdit = nullptr;
+    Label* m_columnLabel = nullptr;
     ComboBox* m_columnCombo = nullptr;
+    Label* m_pageSizeLabel = nullptr;
     ComboBox* m_pageSizeCombo = nullptr;
+    Label* m_jumpLabel = nullptr;
     SpinBox* m_jumpSpin = nullptr;
     ToolButton* m_columnsBtn = nullptr;
     QMenu* m_columnsMenu = nullptr;

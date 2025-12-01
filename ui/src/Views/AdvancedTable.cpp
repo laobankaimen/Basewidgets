@@ -1,5 +1,6 @@
 #include <QtAdvancedUI/Views/AdvancedTable.h>
 
+#include <QScrollBar>
 #include <QtAdvancedUI/Inputs/Label.h>
 #include <QtAdvancedUI/Inputs/LineEdit.h>
 #include <QtAdvancedUI/Inputs/ComboBox.h>
@@ -48,16 +49,16 @@ void AdvancedTable::initUi()
 
     // 顶部筛选、列选择、每页条数、跳页与列可见性
     auto* topRow = new QHBoxLayout();
-    auto* filterLabel = new Label("过滤：", this);
+    m_filterLabel = new Label("过滤：", this);
     m_filterEdit = new LineEdit(this);
     m_filterEdit->setPlaceholderText("输入关键字，支持任意列匹配");
-    auto* columnLabel = new Label("列：", this);
+    m_columnLabel = new Label("列：", this);
     m_columnCombo = new ComboBox(this);
-    auto* pageSizeLabel = new Label("每页：", this);
+    m_pageSizeLabel = new Label("每页：", this);
     m_pageSizeCombo = new ComboBox(this);
     m_pageSizeCombo->addItems({"20", "50", "100"});
     m_pageSizeCombo->setCurrentText("20");
-    auto* jumpLabel = new Label("跳页：", this);
+    m_jumpLabel = new Label("跳页：", this);
     m_jumpSpin = new SpinBox(this);
     m_jumpSpin->setMinimum(1);
     m_jumpSpin->setMaximum(1);
@@ -67,16 +68,16 @@ void AdvancedTable::initUi()
     m_columnsMenu = new QMenu(m_columnsBtn);
     m_columnsBtn->setMenu(m_columnsMenu);
     m_columnsBtn->setPopupMode(QToolButton::InstantPopup);
-    topRow->addWidget(filterLabel);
+    topRow->addWidget(m_filterLabel);
     topRow->addWidget(m_filterEdit, 1);
     topRow->addSpacing(10);
-    topRow->addWidget(columnLabel);
+    topRow->addWidget(m_columnLabel);
     topRow->addWidget(m_columnCombo);
     topRow->addSpacing(10);
-    topRow->addWidget(pageSizeLabel);
+    topRow->addWidget(m_pageSizeLabel);
     topRow->addWidget(m_pageSizeCombo);
     topRow->addSpacing(10);
-    topRow->addWidget(jumpLabel);
+    topRow->addWidget(m_jumpLabel);
     topRow->addWidget(m_jumpSpin);
     topRow->addSpacing(10);
     topRow->addWidget(m_columnsBtn);
@@ -106,23 +107,70 @@ void AdvancedTable::initUi()
 
     // 底部分页工具栏
     auto* bottomRow = new QHBoxLayout();
-    m_pageInfo = new Label(this);
     m_prevBtn = new PushButton("上一页", this);
     m_nextBtn = new PushButton("下一页", this);
     m_exportBtn = new PushButton("导出CSV", this);
+    m_prevBtn->setObjectName("PrevPageBtn");
+    m_nextBtn->setObjectName("NextPageBtn");
+    m_exportBtn->setObjectName("ExportCsvBtn");
+    m_nextBtn->setProperty("primary", true);
+    m_pageSizeBottom = new ComboBox(this);
+    m_pageSizeBottom->addItems({"10", "20", "50"});
+    m_pageSizeBottom->setCurrentText("20");
+    QObject::connect(m_pageSizeBottom, static_cast<void(ComboBox::*)(const QString&)>(&ComboBox::currentTextChanged), [this](const QString& s){
+        m_paged->setPageSize(s.toInt());
+        if (m_pageSizeCombo) m_pageSizeCombo->setCurrentText(s);
+    });
+
+    m_totalLabel = new Label(this);
+    m_totalLabel->setText("共0条数据");
+
+    m_pageNumbers = new QWidget(this);
+    auto* numsLayout = new QHBoxLayout(m_pageNumbers);
+    numsLayout->setContentsMargins(0,0,0,0);
+    numsLayout->setSpacing(6);
+    m_pageScroll = new QScrollArea(this);
+    m_pageScroll->setObjectName("PageScroll");
+    m_pageScroll->setWidgetResizable(true);
+    m_pageScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_pageScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_pageScroll->setFrameShape(QFrame::NoFrame);
+    m_pageScroll->setWidget(m_pageNumbers);
+
+    m_pageJumpBottom = new SpinBox(this);
+    m_pageJumpBottom->setMinimum(1);
+    QObject::connect(m_pageJumpBottom, static_cast<void(SpinBox::*)(int)>(&SpinBox::valueChanged), [this](int val){
+        m_paged->setCurrentPage(qMax(0, val - 1));
+    });
+
+    bottomRow->addWidget(new Label("每页显示记录数", this));
+    bottomRow->addWidget(m_pageSizeBottom);
+    bottomRow->addSpacing(12);
+    bottomRow->addWidget(m_totalLabel);
+    bottomRow->addStretch();
     bottomRow->addWidget(m_prevBtn);
     bottomRow->addWidget(m_nextBtn);
-    bottomRow->addSpacing(12);
-    bottomRow->addWidget(m_pageInfo);
+    bottomRow->addSpacing(8);
+    bottomRow->addWidget(m_pageScroll, 1);
+    bottomRow->addSpacing(8);
+    bottomRow->addWidget(new Label("跳转", this));
+    bottomRow->addWidget(m_pageJumpBottom);
     bottomRow->addSpacing(12);
     bottomRow->addWidget(m_exportBtn);
-    bottomRow->addStretch();
 
     m_topBar = new QWidget(this);
     m_topBar->setLayout(topRow);
+    // 移除顶部重复的分页功能（每页与跳页），保留下部
+    if (m_pageSizeLabel) m_pageSizeLabel->setVisible(false);
+    if (m_pageSizeCombo) m_pageSizeCombo->setVisible(false);
+    if (m_jumpLabel) m_jumpLabel->setVisible(false);
+    if (m_jumpSpin) m_jumpSpin->setVisible(false);
     outer->addWidget(m_topBar);
     outer->addWidget(m_tableView);
-    outer->addLayout(bottomRow);
+    m_bottomBar = new QWidget(this);
+    m_bottomBar->setProperty("pagination", true);
+    m_bottomBar->setLayout(bottomRow);
+    outer->addWidget(m_bottomBar);
     setLayout(outer);
 }
 
@@ -157,16 +205,20 @@ void AdvancedTable::bindSignals()
         m_paged->setCurrentPage(val - 1);
     });
     QObject::connect(m_paged, &PagedProxyModel::pageChanged, [this](){
-        m_pageInfo->setText(QString("第 %1 / %2 页，当前行 %3-%4，共 %5")
-                          .arg(m_paged->currentPage() + 1)
-                          .arg(m_paged->pageCount())
-                          .arg(m_paged->currentPage() * m_paged->pageSize() + 1)
-                          .arg(qMin((m_paged->currentPage() + 1) * m_paged->pageSize(), m_paged->totalRows()))
-                          .arg(m_paged->totalRows()));
+        if (m_totalLabel) {
+            m_totalLabel->setText(QString("共%5条数据 | 当前页 %1 / %2 | 当前行 %3~%4")
+                                  .arg(m_paged->currentPage() + 1)
+                                  .arg(m_paged->pageCount())
+                                  .arg(m_paged->currentPage() * m_paged->pageSize() + 1)
+                                  .arg(qMin((m_paged->currentPage() + 1) * m_paged->pageSize(), m_paged->totalRows()))
+                                  .arg(m_paged->totalRows()));
+        }
         m_jumpSpin->setMaximum(qMax(1, m_paged->pageCount()));
         m_jumpSpin->setValue(m_paged->currentPage() + 1);
         m_prevBtn->setEnabled(m_paged->currentPage() > 0);
         m_nextBtn->setEnabled(m_paged->currentPage() + 1 < m_paged->pageCount());
+        if (m_pageJumpBottom) m_pageJumpBottom->setMaximum(qMax(1, m_paged->pageCount()));
+        rebuildPaginationUi();
     });
 
     // 右键菜单：复制选中行为 CSV
@@ -236,6 +288,75 @@ void AdvancedTable::rebuildColumnUi()
     m_columnCombo->addItem("全部列");
     for (const QString& h : headers) m_columnCombo->addItem(h);
     m_columnCombo->setCurrentIndex(0);
+}
+
+void AdvancedTable::rebuildPaginationUi()
+{
+    if (!m_pageNumbers) return;
+    auto* layout = qobject_cast<QHBoxLayout*>(m_pageNumbers->layout());
+    if (!layout) return;
+    for (auto* b : m_pageButtons) { b->deleteLater(); }
+    m_pageButtons.clear();
+
+    int pc = m_paged ? m_paged->pageCount() : 1;
+    int cur = m_paged ? m_paged->currentPage() + 1 : 1;
+
+    auto addBtn = [this, layout](int n, bool active){
+        auto* btn = new PushButton(QString::number(n), this);
+        btn->setProperty("page", true);
+        btn->setProperty("active", active);
+        QObject::connect(btn, &PushButton::clicked, [this, n](){ m_paged->setCurrentPage(n - 1); });
+        layout->addWidget(btn);
+        m_pageButtons.append(btn);
+    };
+
+    auto addEllipsis = [layout, this](){
+        auto* ellipsis = new Label("...", this);
+        layout->addWidget(ellipsis);
+    };
+
+    while (layout->count() > 0) {
+        if (auto* item = layout->takeAt(0)) { if (item->widget()) item->widget()->deleteLater(); }
+    }
+
+    // 导航按钮（仅保留首页/尾页）
+    m_firstBtn = new PushButton("首页", this);
+    m_lastBtn = new PushButton("尾页", this);
+    for (auto* nav : {m_firstBtn, m_lastBtn}) {
+        nav->setProperty("page", true);
+        layout->addWidget(nav);
+    }
+    m_firstBtn->setEnabled(cur > 1);
+    m_lastBtn->setEnabled(cur < pc);
+    QObject::connect(m_firstBtn, &PushButton::clicked, [this](){ m_paged->setCurrentPage(0); });
+    QObject::connect(m_lastBtn, &PushButton::clicked, [this, pc](){ m_paged->setCurrentPage(pc - 1); });
+
+    // 页码窗口（中心跟随当前页）
+    const int window = 7; // 显示窗口大小
+    const int side = 2;   // 当前页左右保留页数
+    if (pc <= window) {
+        for (int i = 1; i <= pc; ++i) addBtn(i, i == cur);
+    } else {
+        addBtn(1, cur == 1);
+        if (cur > side + 2) addEllipsis();
+        int start = qMax(2, cur - side);
+        int end = qMin(pc - 1, cur + side);
+        for (int i = start; i <= end; ++i) addBtn(i, i == cur);
+        if (cur < pc - (side + 1)) addEllipsis();
+        addBtn(pc, cur == pc);
+    }
+
+    // 将当前页居中到滚动区域
+    if (m_pageScroll) {
+        // 查找active按钮
+        PushButton* activeBtn = nullptr;
+        for (auto* b : m_pageButtons) { if (b->property("active").toBool()) { activeBtn = b; break; } }
+        if (activeBtn) {
+            auto* hsb = m_pageScroll->horizontalScrollBar();
+            int target = activeBtn->x() + activeBtn->width()/2 - m_pageScroll->viewport()->width()/2;
+            hsb->setValue(qBound(0, target, hsb->maximum()));
+        }
+    }
 }
 
 QStringList AdvancedTable::currentHeaderLabels() const
@@ -357,6 +478,35 @@ void AdvancedTable::setExportButtonVisible(bool visible)
 void AdvancedTable::setColumnVisibilityMenuVisible(bool visible)
 {
     if (m_columnsBtn) m_columnsBtn->setVisible(visible);
+}
+
+void AdvancedTable::setFilterControlVisible(bool visible)
+{
+    if (m_filterLabel) m_filterLabel->setVisible(visible);
+    if (m_filterEdit) m_filterEdit->setVisible(visible);
+}
+
+void AdvancedTable::setColumnSelectorVisible(bool visible)
+{
+    if (m_columnLabel) m_columnLabel->setVisible(visible);
+    if (m_columnCombo) m_columnCombo->setVisible(visible);
+}
+
+void AdvancedTable::setPageSizeSelectorVisible(bool visible)
+{
+    if (m_pageSizeLabel) m_pageSizeLabel->setVisible(visible);
+    if (m_pageSizeCombo) m_pageSizeCombo->setVisible(visible);
+}
+
+void AdvancedTable::setJumpControlVisible(bool visible)
+{
+    if (m_jumpLabel) m_jumpLabel->setVisible(visible);
+    if (m_jumpSpin) m_jumpSpin->setVisible(visible);
+}
+
+void AdvancedTable::setPaginationBarVisible(bool visible)
+{
+    if (m_bottomBar) m_bottomBar->setVisible(visible);
 }
 
 } // namespace QtAdvancedUI
