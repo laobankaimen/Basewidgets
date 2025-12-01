@@ -45,7 +45,7 @@ QWidget[title='true'] {
 QFrame {
   background-color: {{overlayBackgroundColor}};
   border: 1px solid {{darkerBorderColor}};
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 QSplitter {
@@ -84,7 +84,7 @@ QPushButton {
   border: 1px solid {{darkerBorderColor}};
   selection-color: {{primaryTextColor}};
   selection-background-color: {{primaryColor}};
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 8px 16px ;
   height: 18px;
 }
@@ -107,7 +107,7 @@ QComboBox {
 
 QTextEdit,
 QPlainTextEdit {
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 8px 16px;
   background-color: {{darkFillColor}};
   selection-color: {{primaryTextColor}};
@@ -180,7 +180,7 @@ QComboBox::down-arrow:disabled {
 QComboBox QAbstractItemView {
   background-color: {{baseFillColor}};
   border: 2px solid {{baseBorderColor}};
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 QComboBox[frame='false'] {
@@ -391,7 +391,7 @@ QTabBar::close-button:hover {
 
 QGroupBox {
   background-color: {{baseFillColor}};
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 15px;
   padding-top: 30px;
   line-height: 13px;
@@ -433,8 +433,8 @@ QCheckBox:disabled {
 QTableView {
   color: {{primaryTextColor}};
   gridline-color: {{darkerFillColor}};
-  border: 1px solid {{darkBorderColor}};
-  border-radius: 4px;
+  border: 0px;
+  border-radius: 2px;
   outline: 0;
   background-color: {{darkerFillColor|opacity(0.7)}};
   alternate-background-color: {{baseFillColor|opacity(0.7)}};
@@ -482,7 +482,7 @@ QHeaderView::section {
 QGroupBox::indicator {
   width: 18px;
   height: 18px;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 QMenu::indicator,
@@ -492,7 +492,7 @@ QRadioButton::indicator,
 QCheckBox::indicator {
   width: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 /*  ------------------------------------------------------------------------  */
@@ -638,7 +638,7 @@ QDockWidget {
   border: 2px solid {{darkBorderColor}};
   titlebar-close-icon: url(icon:/primary/close.svg);
   titlebar-normal-icon: url(icon:/primary/float.svg);
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 QDockWidget::title {
@@ -677,7 +677,7 @@ QComboBox::item:selected,
 QMenu::item:selected {
   color: {{primaryTextColor}};
   background-color: {{primaryColor|opacity(0.5)}};
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 QComboBox::item:disabled,
@@ -691,7 +691,7 @@ QMenu::item:disabled {
 QMenu {
   background-color: {{darkFillColor}};
   border: 1px solid {{baseBorderColor}};
-  border-radius: 4px;
+  border-radius: 2px;
   margin-top: 1px;
 }
 
@@ -771,7 +771,7 @@ QToolBox::tab {
   background-color: {{darkerFillColor}};
   color: {{secondaryTextColor}};
   text-transform: uppercase;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 QToolBox::tab:selected,
@@ -1116,7 +1116,7 @@ QLCDNumber {
   color: {{primaryColor}};
   background-color: {{primaryColor|opacity(0.1)}};
   border: 1px solid {{primaryColor|opacity(0.3)}};
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 /*  ------------------------------------------------------------------------  */
@@ -1169,7 +1169,7 @@ QCalendarWidget QMenu::item {
 QCalendarWidget QMenu::item:selected {
   color: {{primaryTextColor}};
   background-color: {{primaryColor|opacity(0.3)}};
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 QCalendarWidget QMenu::item:disabled {
@@ -1182,7 +1182,7 @@ QCalendarWidget QTableView {
   selection-color: {{primaryColor}};
   color: {{primaryTextColor}};
   gridline-color: {{darkerFillColor}};
-  border-radius: 4px;
+  border-radius: 2px;
   outline: 0;
 }
 
@@ -1216,7 +1216,7 @@ QListView QLineEdit {
 QToolTip {
   padding: 5px;
   border: 1px {{darkerBorderColor}};
-  border-radius: 4px;
+  border-radius: 2px;
   color: {{secondaryTextColor}};
   background-color: {{darkerFillColor}};
 }
