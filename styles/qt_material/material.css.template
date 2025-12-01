@@ -244,7 +244,7 @@ QPushButton {
 }
 
 QPushButton:hover {
-  background-color: {{darkFillColor|opacity(0.4)}};
+  color: {{primaryColor|opacity(0.8)}};
 }
 
 QPushButton:checked {
@@ -253,8 +253,8 @@ QPushButton:checked {
 }
 
 QPushButton:pressed {
-  color: {{primaryTextColor}};
-  background-color: {{darkerFillColor|opacity(0.8)}};
+  color: {{primaryColor|opacity(0.8)}};
+  border-color: {{primaryColor|opacity(0.8)}};
 }
 
 QPushButton:flat {
