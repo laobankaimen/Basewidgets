@@ -329,6 +329,13 @@ void MultiSelectComboBox::showPopup()
         QTimer::singleShot(0, this, [this]{ if (lineEdit()) lineEdit()->setFocus(Qt::OtherFocusReason); });
         QObject::connect(lineEdit(), &QLineEdit::textChanged, this, &MultiSelectComboBox::filterOptions);
     }
+    if (view() && model()) {
+        int startRow = (m_showSelectAll ? 1 : 0);
+        if (model()->rowCount() > startRow) {
+            QModelIndex idx = model()->index(startRow, 0);
+            view()->setCurrentIndex(idx);
+        }
+    }
 }
 
 void MultiSelectComboBox::hidePopup()
@@ -376,6 +383,21 @@ bool MultiSelectComboBox::eventFilter(QObject* obj, QEvent* e)
             return true; // 阻止默认在释放时触发的关闭逻辑
         case QEvent::MouseButtonDblClick:
             return true; // 消费事件，不让默认处理关闭弹层
+        case QEvent::KeyPress: {
+            auto* ke = static_cast<QKeyEvent*>(e);
+            if (ke->key() == Qt::Key_Space) {
+                QModelIndex idx = view()->currentIndex();
+                if (idx.isValid()) toggleItem(idx.row());
+                return true;
+            } else if (ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter) {
+                if (m_popupOpen) hidePopup();
+                return true;
+            } else if (ke->key() == Qt::Key_Escape) {
+                if (m_popupOpen) hidePopup();
+                return true;
+            }
+            break;
+        }
         default:
             break;
         }

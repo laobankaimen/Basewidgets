@@ -134,7 +134,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     QObject::connect(multiCombo, &MultiSelectComboBox::selectionLimitReached,
         multiCombo, [multiCombo](int limit){
             DialogUtils::messageWarning(multiCombo, "选择上限",
-                QString("已选择数量超过上限 %1，仍允许选择。可在接口中调整上限。").arg(limit));
+                QString("不允许超过上限 %1，请取消部分选择。").arg(limit));
         });
     // 示例中不设置图标以保持纯文字
     auto* slider = new Slider(Qt::Horizontal, inputGroup);
