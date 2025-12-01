@@ -1,5 +1,6 @@
 #include <QtAdvancedUI/Views/TableView.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <QHeaderView>
 
 using namespace acss;
 
@@ -10,6 +11,14 @@ TableView::TableView(QWidget* parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
+    if (auto* vh = verticalHeader()) {
+        vh->setAttribute(Qt::WA_StyledBackground, true);
+        vh->setAutoFillBackground(true);
+    }
+    if (auto* hh = horizontalHeader()) {
+        hh->setAttribute(Qt::WA_StyledBackground, true);
+        hh->setAutoFillBackground(true);
+    }
     setStyleManager(StyleManagerAdapter::instance());
     setAlternatingRowColors(true);//交替行颜色
 }

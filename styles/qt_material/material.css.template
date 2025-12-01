@@ -465,6 +465,21 @@ QTableCornerButton::section {
   border-color: {{darkerBorderColor}};
 }
 
+/* 统一表头空白区背景，避免未填充区域出现黑块 */
+QHeaderView {
+  background-color: {{baseFillColor}};
+  border: none;
+}
+
+QHeaderView:vertical {
+  background-color: {{baseFillColor}};
+}
+
+QTableView QHeaderView,
+QTableWidget QHeaderView {
+  background-color: {{baseFillColor}};
+}
+
 QHeaderView::section {
   color: {{regularTextColor}};
   text-transform: uppercase;
