@@ -129,6 +129,7 @@ void AdvancedTable::initUi()
     auto* numsLayout = new QHBoxLayout(m_pageNumbers);
     numsLayout->setContentsMargins(0,0,0,0);
     numsLayout->setSpacing(6);
+    numsLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_pageScroll = new QScrollArea(this);
     m_pageScroll->setObjectName("PageScroll");
     m_pageScroll->setWidgetResizable(true);
@@ -136,6 +137,10 @@ void AdvancedTable::initUi()
     m_pageScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_pageScroll->setFrameShape(QFrame::NoFrame);
     m_pageScroll->setWidget(m_pageNumbers);
+    m_pageScroll->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    m_pageScroll->setMaximumHeight(48);
+    m_pageScroll->setStyleSheet("#PageScroll, #PageScroll QWidget, #PageScroll QScrollArea, #PageScroll > QWidget { background: transparent; }");
+    if (m_pageScroll->viewport()) m_pageScroll->viewport()->setAutoFillBackground(false);
 
     m_pageJumpBottom = new SpinBox(this);
     m_pageJumpBottom->setMinimum(1);
@@ -143,9 +148,11 @@ void AdvancedTable::initUi()
         m_paged->setCurrentPage(qMax(0, val - 1));
     });
 
+    bottomRow->setContentsMargins(6, 6, 6, 6);
+    bottomRow->setSpacing(8);
     bottomRow->addWidget(new Label("每页显示记录数", this));
     bottomRow->addWidget(m_pageSizeBottom);
-    bottomRow->addSpacing(12);
+    bottomRow->addSpacing(8);
     bottomRow->addWidget(m_totalLabel);
     bottomRow->addStretch();
     bottomRow->addWidget(m_prevBtn);
@@ -155,7 +162,7 @@ void AdvancedTable::initUi()
     bottomRow->addSpacing(8);
     bottomRow->addWidget(new Label("跳转", this));
     bottomRow->addWidget(m_pageJumpBottom);
-    bottomRow->addSpacing(12);
+    bottomRow->addSpacing(8);
     bottomRow->addWidget(m_exportBtn);
 
     m_topBar = new QWidget(this);
@@ -170,6 +177,7 @@ void AdvancedTable::initUi()
     m_bottomBar = new QWidget(this);
     m_bottomBar->setProperty("pagination", true);
     m_bottomBar->setLayout(bottomRow);
+    m_bottomBar->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     outer->addWidget(m_bottomBar);
     setLayout(outer);
 }
