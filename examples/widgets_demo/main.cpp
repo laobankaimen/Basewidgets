@@ -1094,6 +1094,7 @@ int main(int argc, char *argv[])
     
     // 添加带下拉菜单的工具按钮
     auto* moreButton = new ToolButton(toolBar);
+    moreButton->setProperty("menu", QVariant(true));//不设置下拉箭头就会与文字重叠
     moreButton->setText("更多选项");
     moreButton->setPopupMode(QToolButton::MenuButtonPopup);
     auto* moreMenu = new QMenu(moreButton);

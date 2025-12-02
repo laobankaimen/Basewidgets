@@ -679,13 +679,13 @@ QComboBox::indicator:checked:selected {
 
 QComboBox::item,
 QMenu::item {
-  height: 28px;
+  height: 26px;
   border: 1px solid transparent;
   color: {{regularTextColor}};
 }
 
 QMenu::item {
-  padding: 0px 20px 0px 36px; /* 为左侧indicator预留空间，避免与文字重叠 */
+  padding: 0px 25px 0px 20px;
 }
 
 QComboBox::item:selected,
@@ -887,14 +887,15 @@ QToolBox::tab:hover {
 /*  QProgressBar  */
 
 QProgressBar {
-  border-radius: 0;
+  border: 1px solid {{baseBorderColor}};
   background-color: {{secondaryLightColor}};
   text-align: center;
-  color: transparent;
+  color: {{primaryTextColor}};
 }
 
 QProgressBar::chunk {
   background-color: {{primaryColor}};
+  border-radius: 4px
 }
 
 /*  ------------------------------------------------------------------------  */
@@ -1072,16 +1073,13 @@ QToolButton {
   border-left: 0px solid {{darkBorderColor}};
 }
 
-QToolButton {
-  padding-right: 28px;
+QToolButton[menu='true'] {
+  padding-right: 10px;
 }
 
 QToolButton::menu-indicator {
-  subcontrol-origin: padding;
-  subcontrol-position: right;
-  width: 14px;
-  height: 14px;
-  margin-right: 6px;
+  subcontrol-origin: margin;
+  subcontrol-position: bottom center;
   image: url(icon:/primary/downarrow.svg);
 }
 
