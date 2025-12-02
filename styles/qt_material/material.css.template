@@ -235,16 +235,18 @@ QSpinBox::down-button:disabled {
 
 QPushButton {
   text-transform: uppercase;
+  background-color: {{baseFillColor}};
   margin: 0px;
   padding: 0px 16px;
   height: 34px;
   min-height: 34px;
   max-height: 34px;
   font-weight: bold;
+  outline: none;
 }
 
 QPushButton:hover {
-  color: {{primaryColor|opacity(0.8)}};
+  background-color: {{primaryColor|opacity(0.2)}};
 }
 
 QPushButton:checked {
@@ -253,7 +255,6 @@ QPushButton:checked {
 }
 
 QPushButton:pressed {
-  color: {{primaryColor|opacity(0.8)}};
   border-color: {{primaryColor|opacity(0.8)}};
 }
 
