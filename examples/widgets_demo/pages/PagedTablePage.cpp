@@ -16,7 +16,7 @@ PagedTablePage::PagedTablePage(QWidget* parent)
     outer->setContentsMargins(8, 8, 8, 8);
     outer->setSpacing(10);
 
-    auto* gb = new GroupBox("自定义表格（筛选 / 排序 / 分页）", this);
+    auto* gb = new GroupBox("", this);
     auto* vbox = new QVBoxLayout(gb);
     vbox->setContentsMargins(10, 10, 10, 10);
     vbox->setSpacing(8);

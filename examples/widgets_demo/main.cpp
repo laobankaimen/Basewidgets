@@ -78,7 +78,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     layout->setVerticalSpacing(2);
 
     // 按钮组
-    auto* buttonGroup = new GroupBox("按钮控件", content);
+    auto* buttonGroup = new GroupBox("", content);
     auto* buttonLayout = new QGridLayout(buttonGroup);
     buttonLayout->setContentsMargins(4, 4, 4, 4);
     buttonLayout->setHorizontalSpacing(8);
@@ -106,7 +106,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     buttonGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
     // 输入框组
-    auto* inputGroup = new GroupBox("输入控件", content);
+    auto* inputGroup = new GroupBox("", content);
     auto* inputLayout = new QGridLayout(inputGroup);
     inputLayout->setContentsMargins(4, 4, 4, 4);
     inputLayout->setHorizontalSpacing(8);
@@ -153,7 +153,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     inputLayout->addWidget(slider, 4, 1);
 
     // 日期时间控件组
-    auto* datetimeGroup = new GroupBox("日期时间", content);
+    auto* datetimeGroup = new GroupBox("", content);
     auto* dtLayout = new QGridLayout(datetimeGroup);
     dtLayout->setContentsMargins(4, 4, 4, 4);
     dtLayout->setHorizontalSpacing(8);
@@ -178,7 +178,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     inputGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
     
     // 选择控件组
-    auto* selectGroup = new GroupBox("选择控件", content);
+    auto* selectGroup = new GroupBox("", content);
     // 改为两列横排布局
     auto* selectLayout = new QGridLayout(selectGroup);
     // 压缩选择组内部边距与间距
@@ -205,7 +205,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     selectGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
     
     // 进度指示器组
-    auto* progressGroup = new GroupBox("进度指示器", content);
+    auto* progressGroup = new GroupBox("", content);
     auto* progressLayout = new QVBoxLayout(progressGroup);
     progressLayout->setContentsMargins(4, 4, 4, 4);
     progressLayout->setSpacing(4);
@@ -223,7 +223,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     progressGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     // 右侧：Dialogs 组件演示区域
-    auto* dialogsGroup = new GroupBox("Dialogs 组件演示", content);
+    auto* dialogsGroup = new GroupBox("", content);
     auto* dialogsLayout = new QGridLayout(dialogsGroup);
     dialogsLayout->setHorizontalSpacing(10);
     dialogsLayout->setVerticalSpacing(20);
@@ -415,7 +415,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
 
     // 视图控件组（合并自“视图图表”页）
     {
-        auto* viewGroup = new GroupBox("视图控件", content);
+        auto* viewGroup = new GroupBox("", content);
         auto* viewLayout = new QGridLayout(viewGroup);
 
         auto* listView = new ListView(viewGroup);
@@ -479,7 +479,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
 
     // 文本编辑器组与示例容器（合并自“文本对话框”页）
     {
-        auto* textGroup = new GroupBox("文本编辑器", content);
+        auto* textGroup = new GroupBox("", content);
         auto* textLayout = new QGridLayout(textGroup);
         auto* textEdit = new TextEdit(textGroup);
         textEdit->setPlainText("这是一个富文本编辑器\n支持多种格式");
@@ -494,7 +494,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
         // 文本编辑器组置于右列第四行
         layout->addWidget(textGroup, 3, 1);
 
-        auto* dialogGroup = new GroupBox("对话框和工具", content);
+        auto* dialogGroup = new GroupBox("", content);
         auto* dialogLayout = new QVBoxLayout(dialogGroup);
         auto* frameExample = new Frame(dialogGroup);
         frameExample->setMinimumHeight(80);
@@ -538,7 +538,7 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     layout->setContentsMargins(16, 16, 16, 16);
     layout->setSpacing(16);
     // 图表控件组（折线图、柱状图与瀑布图分离展示）
-    auto* chartGroup = new GroupBox("图表控件", content);
+    auto* chartGroup = new GroupBox("", content);
     auto* chartLayout = new QGridLayout(chartGroup);
 
     // 折线图 Plot（独立，使用通用基类封装交互与主题）
@@ -815,7 +815,7 @@ StyledWidget* createGaugesShowcase(QWidget* parent) {
     layout->setContentsMargins(16, 16, 16, 16);
     layout->setSpacing(16);
 
-    auto* gaugeGroup = new GroupBox("仪表盘控件", content);
+    auto* gaugeGroup = new GroupBox("", content);
     auto* gaugeLayout = new QGridLayout(gaugeGroup);
 
     // Basic 速度表
@@ -963,7 +963,7 @@ StyledWidget* createTextDialogShowcase(QWidget* parent) {
     layout->setSpacing(16);
 
     // 文本编辑器组
-    auto* textGroup = new GroupBox("文本编辑器", content);
+    auto* textGroup = new GroupBox("", content);
     auto* textLayout = new QGridLayout(textGroup);
     
     auto* textEdit = new TextEdit(textGroup);
@@ -980,7 +980,7 @@ StyledWidget* createTextDialogShowcase(QWidget* parent) {
     textLayout->addWidget(plainTextEdit, 1, 1);
     
     // 对话框和工具组
-    auto* dialogGroup = new GroupBox("对话框和工具", content);
+    auto* dialogGroup = new GroupBox("", content);
     auto* dialogLayout = new QVBoxLayout(dialogGroup);
     
     
@@ -1104,6 +1104,11 @@ int main(int argc, char *argv[])
     moreMenu->addAction("设置");
     moreButton->setMenu(moreMenu);
     toolBar->addWidget(moreButton);
+
+    auto* themeCombo = new ComboBox(toolBar);
+    themeCombo->addItem("深色主题");
+    themeCombo->addItem("浅色主题");
+    toolBar->addWidget(themeCombo);
     
     rootLayout->addWidget(toolBar);
 
@@ -1149,11 +1154,7 @@ int main(int argc, char *argv[])
     auto* themeToolbar = new ToolBar(contentRoot);
     themeToolbar->setMovable(false);
     rootLayout->addWidget(themeToolbar);
-    auto* themeCombo = new ComboBox(themeToolbar);
-    themeCombo->addItem("深色主题");
-    themeCombo->addItem("浅色主题");
-    themeToolbar->addWidget(new Label("主题:", themeToolbar));
-    themeToolbar->addWidget(themeCombo);
+    themeToolbar->addWidget(new Label("二号工具栏", themeToolbar));
 
     // 主内容
     rootLayout->addWidget(centralWidget, 1);

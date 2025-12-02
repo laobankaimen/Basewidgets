@@ -57,6 +57,7 @@ void FramelessDialog::initUI()
 
     // Content host
     m_contentHost = new QWidget(this);
+    m_contentHost->setProperty("msgContainer", QVariant(true));
 
     // Main layout
     mainLayout = new QVBoxLayout(this);
@@ -81,6 +82,7 @@ void FramelessDialog::setTitle(const QString& title)
 void FramelessDialog::setContentWidget(QWidget* w)
 {
     if (m_contentHost && w) {
+        w->setProperty("msgContent", QVariant(true));
         auto* contentLayout = new QVBoxLayout(m_contentHost);
         contentLayout->setContentsMargins(0, 0, 0, 0);
         contentLayout->addWidget(w);
