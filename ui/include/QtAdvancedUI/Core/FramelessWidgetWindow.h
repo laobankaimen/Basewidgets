@@ -91,7 +91,7 @@ private:
     QMargins m_frames;
     bool m_bJustMaximized = false;
     bool m_bResizeable = false;
-    int m_titlebarHeight = 36;
+    int m_titlebarHeight = 40;
 };
 
 } // namespace QtAdvancedUI

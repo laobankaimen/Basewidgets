@@ -28,7 +28,7 @@
     },
     
     "icon_colors" : {
-        "#03b8e5" : "secondaryTextColor"
+        "#03b8e5" : "primaryTextColor"
     },    
 
     "palette" : {

@@ -73,27 +73,13 @@ QWidget[title='true'] {
 QDialog {
   background-color: {{baseBackgroundColor}};
   border: 1px solid {{darkerBorderColor}};
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 /*弹窗主内容*/
 QWidget[msgContainer='true'],
 QWidget[msgContent='true'] {
   background-color: transparent;
-}
-
-QDialog QToolButton,
-QDialog QToolButton:hover,
-QDialog QToolButton:pressed,
-QDialog QToolButton:checked {
-  background: transparent;
-  background-color: transparent;
-  border: 0px;
-  height: auto;
-  margin: 0px;
-  padding: 0px;
-  border-right: 0px;
-  border-left: 0px;
 }
 
 QFrame {
@@ -245,7 +231,8 @@ QPushButton {
 }
 
 QPushButton:hover {
-  background-color: {{primaryColor|opacity(0.6)}};
+  background-color: {{darkFillColor}};
+  border: 1px solid {{lightBorderColor}};
 }
 
 QPushButton:checked {
@@ -254,18 +241,7 @@ QPushButton:checked {
 }
 
 QPushButton:pressed {
-  border-color: {{primaryColor|opacity(0.8)}};
-}
-
-/*主按钮*/
-QPushButton[primary='true'] {
-  color: {{primaryTextColor}};
-  background-color: {{primaryColor}};
-  border-color: {{primaryColor}};
-}
-
-QPushButton[primary='true']:hover {
-  background-color: {{primaryColor|opacity(0.8)}};
+  background-color: {{darkerBorderColor}};
 }
 
 QPushButton:flat {
@@ -469,7 +445,6 @@ QComboBox::item {
 }
 
 QComboBox::item:selected {
-color: {{primaryTextColor}};
   background-color: {{primaryColor}};
   border-radius: 2px;
 }
@@ -508,6 +483,11 @@ QComboBox QAbstractItemView {
   color: {{primaryTextColor}};
   selection-background-color: {{primaryColor}};
   outline: none;
+}
+
+QComboBox QAbstractItemView::item:hover {
+  background-color: {{primaryColor}};
+  color: {{primaryTextColor}};
 }
 
 QComboBox[frame='false'] {
@@ -599,8 +579,7 @@ QCheckBox:disabled {
 /*  ------------------------------------------------------------------------  */
 /*  QTableView  */
 
-QTableView,
-QTableWidget {
+QTableView {
   color: {{primaryTextColor}};
   gridline-color: {{darkerBorderColor}};
   border: 1px solid {{darkerBorderColor}};
@@ -608,6 +587,13 @@ QTableWidget {
   outline: none;
   background-color: {{overlayBackgroundColor}};
   alternate-background-color: {{darkFillColor}};
+  selection-background-color: {{primaryColor}};
+}
+
+QTableView:disabled {
+  background-color: {{baseBackgroundColor}};
+  color: {{disabledTextColor}};
+  border: 1px solid {{darkerBorderColor}};
 }
 
 /* 统一表头空白区背景，避免未填充区域出现黑块 */
@@ -621,19 +607,19 @@ QTableCornerButton::section {
 
 QHeaderView::section {
   color: {{secondaryTextColor}};
-  background-color: {{baseBackgroundColor}};
-  padding: 8px;
+  background-color: {{baseFillColor}};
+  padding: 8px 12px;
   border: none;
+  border-bottom: 1px solid {{darkerBorderColor}};
   border-right: 1px solid {{darkerBorderColor}};
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /*  ------------------------------------------------------------------------  */
 /*  QTreeView  */
 
-QTreeView,
-QListView {
-  padding-left: 15px;
+QTreeView {
   background-color: {{overlayBackgroundColor}};
   color: {{primaryTextColor}};
   border: 1px solid {{darkerBorderColor}};
@@ -654,6 +640,31 @@ QTreeView::branch:open:has-children {
   image: url(icon:/primary/downarrow.svg);
 }
 
+QTreeView:disabled {
+  background-color: {{baseBackgroundColor}};
+  color: {{disabledTextColor}};
+  border: 1px solid {{darkerBorderColor}};
+}
+
+/*  ------------------------------------------------------------------------  */
+/*  QListView  */
+
+QListView {
+  background-color: {{overlayBackgroundColor}};
+  alternate-background-color: {{darkFillColor}};
+  color: {{primaryTextColor}};
+  border: 1px solid {{darkerBorderColor}};
+  border-radius: 2px;
+  outline: none;
+  font-size: 13px;
+}
+
+QListView:disabled {
+  background-color: {{baseBackgroundColor}};
+  color: {{disabledTextColor}};
+  border: 1px solid {{darkerBorderColor}};
+}
+
 /*  ------------------------------------------------------------------------  */
 /*  General Indicators  */
 
@@ -665,7 +676,6 @@ QGroupBox::indicator {
 
 QMenu::indicator,
 QListView::indicator,
-QTableWidget::indicator,
 QRadioButton::indicator,
 QCheckBox::indicator {
   width: 24px;
@@ -840,6 +850,36 @@ QComboBox::indicator:checked:selected {
 /*  ------------------------------------------------------------------------  */
 /*  Menu Items  */
 
+/*QMenu::item {
+  background-color: transparent;
+  color: {{primaryTextColor}};
+  padding: 8px 24px 8px 24px;
+  margin: 2px 2px;
+  spacing: 20px;
+}
+
+QMenu::item:has-icon {
+  padding: 8px 24px 8px 24px;
+}
+
+QMenu::item:!has-icon {
+  padding: 8px 24px 8px 24px;
+}
+
+QMenu::icon {
+  width: 16px;
+  height: 16px;
+  margin-left: 10px;
+}
+
+QMenu::item:selected {
+  background-color: {{primaryColor|opacity(0.6)}};
+  border: 1px solid {{lightBorderColor}};
+}
+
+QMenu::item:disabled {
+  color: {{disabledTextColor|opacity(0.3)}};
+}*/
 QMenu::item {
   padding: 8px 16px 8px 16px;
   background-color: transparent;
@@ -1091,8 +1131,8 @@ QToolBar::separator:horizontal {
 }
 
 QToolBar::separator:vertical {
-  margin: 4px 2px;
-    background:{{darkerBorderColor}};
+  margin: 2px 4px;
+  background:{{darkerBorderColor}};
   height: 1px;
 }
 
@@ -1100,82 +1140,177 @@ QToolBar::separator:vertical {
 /*  QToolButton  */
 
 QToolButton {
-  background: {{darkFillColor}};
-  border: 0px;
-  height: 40px;
-  margin: 0px;
-  padding: 0px;
-  border-right: 0px solid {{darkBorderColor}};
-  border-left: 0px solid {{darkBorderColor}};
-}
-
-QToolButton[menu='true'] {
-  padding-right: 10px;
-}
-
-QToolButton::menu-indicator {
-  subcontrol-origin: margin;
-  subcontrol-position: bottom center;
-  image: url(icon:/primary/downarrow.svg);
+  background-color: transparent;
+  color: {{secondaryTextColor}};
+  border: none;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: normal;
+  text-align: center;
+  spacing: 4px;
+  margin: 1px;
 }
 
 QToolButton:hover {
-  background: {{lightFillColor}};
-  border-right: 0px solid {{darkBorderColor}};
-  border-left: 0px solid {{darkBorderColor}};
+  background-color: {{darkFillColor}};
+  color: {{primaryTextColor}};
 }
 
 QToolButton:pressed {
-  background: {{baseFillColor}};
-  border-right: 0px solid {{darkBorderColor}};
-  border-left: 0px solid {{darkBorderColor}};
+  background-color: {{darkerBorderColor}};
 }
 
 QToolButton:checked {
-  background: {{primaryColor}};
-  border-left: 0px solid {{darkBorderColor}};
-  border-right: 0px solid {{darkBorderColor}};
+  background-color: {{primaryColor}};
+  color: {{primaryTextColor}};
+}
+
+QToolButton:checked:hover {
+  background-color: {{primaryColor|opacity(0.5)}};
+}
+
+QToolButton:disabled {
+  background-color: transparent;
+  color: {{placeholderTextColor}};
+}
+
+/*图标按钮（仅图标）*/
+QToolButton[iconOnly='true'] {
+  padding: 8px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 2px;
+}
+
+QToolButton[iconOnly='true']::menu-indicator {
+  image: none;
+  width: 0px;
+}
+
+/*下拉菜单按钮*/
+QToolButton::menu-indicator {
+  image: none;
+  subcontrol-origin: padding;
+  subcontrol-position: right center;
+  width: 16px;
+  height: 16px;
+}
+
+QToolButton::menu-arrow {
+  image: url(icon:/primary/downarrow.svg);
+  margin-left: 10px;
+}
+
+QToolButton::menu-button {
+  border: none;
+  width: 20px;
+  margin-right: 2px;
+}
+
+/*  标题栏关闭按钮特殊处理  */
+QToolButton#TitleBarCloseButton:hover{
+  background-color: {{danger}};
+}
+
+QToolButton#TitleBarCloseButton:pressed {
+  background-color: {{danger}};
 }
 
 /*  ------------------------------------------------------------------------  */
-/*  Items Selection */
+/*  QTableView Items Selection */
 
-QTableView:item,
-QTreeView::item,
-QListView::item {
-  padding: 6px;
-  border-bottom: 1px solid {{darkFillColor}};
+QTableView:item {
+  border-bottom: 1px solid {{darkFillColor}};;
+  padding: 2px;
 }
 
-QTableView:item:selected,
-QTreeView::item:selected,
+QTableView:item:selected:focus {
+  background-color: {{primaryColor}};
+  color: {{primaryTextColor}};
+}
+
+QTableView:item:hover {
+  background-color: {{darkFillColor}};
+  border: 1px solid {{lightBorderColor}};
+}
+
+QTableView:item:selected:!active {
+  background-color: {{baseFillColor}};
+}
+
+QTableView::item:disabled {
+  color: {{placeholderTextColor}};
+  background-color: transparent;
+}
+
+/*  ------------------------------------------------------------------------  */
+/*  QTreeView Items Selection */
+
+QTreeView::item {
+  border-bottom: 1px solid transparent;
+    padding: 2px;
+}
+
+QTreeView::item:selected:focus {
+  background-color: {{primaryColor}};
+  color: {{primaryTextColor}};
+}
+
+QTreeView::item:hover {
+  background-color: {{darkFillColor}};
+  border: 1px solid {{lightBorderColor}};
+}
+
+QTreeView::item:selected:!active {
+  background-color: {{darkerFillColor}};
+  color: {{secondaryTextColor}};
+  border: 1px solid {{darkerBorderColor}};
+}
+
+QTreeView::item:disabled {
+  color: {{placeholderTextColor}};
+  background-color: transparent;
+}
+
+/*  ------------------------------------------------------------------------  */
+/*  QListView Items Selection */
+
+QListView::item {
+  background-color: transparent;
+  color: {{primaryTextColor}};
+  border: none;
+  padding: 6px 8px;
+  margin: 1px 2px;
+  border-radius: 2px;
+  height: 25px;
+}
+
 QListView::item:selected {
   background-color: {{darkFillColor|opacity(0.2)}};
   selection-background-color: {{darkerFillColor|opacity(0.2)}};
   color: {{regularTextColor}};
-  selection-color: {{regularTextColor}}; /* For Windows */
+  selection-color: {{regularTextColor}};
 }
 
-QTableView:item:hover,
-QTreeView::item:hover,
 QListView::item:hover {
-  background-color: {{primaryColor|opacity(0.2)}};
+  background-color: {{darkFillColor}};
+  border: 1px solid {{lightBorderColor}};
 }
 
-QTableView:item:selected:focus,
-QTreeView::item:selected:focus,
-QListView::item:selected:focus {
-  background-color: {{primaryColor}};
-  selection-background-color: {{primaryColor}};
-  color: {{primaryTextColor}};
-  selection-color: {{primaryTextColor}}; /* For Windows */
+QListView::item:selected:!active {
+  background-color: {{darkerFillColor}};
+  color: {{secondaryTextColor}};
+  border: 1px solid {{darkerBorderColor}};
 }
 
-QTableView::item:disabled {
-  color: {{disabledTextColor|opacity(0.3)}};
-  selection-color: {{disabledTextColor|opacity(0.3)}};
-  background-color: {{overlayBackgroundColor}};
-  selection-background-color: {{overlayBackgroundColor}};
+QListView::item:focus {
+  background-color: {{darkFillColor}};
+  border: 1px solid {{primaryColor}};
+}
+
+QListView::item:disabled {
+  color: {{placeholderTextColor}};
+  background-color: transparent;
 }
 
 /*  ------------------------------------------------------------------------  */
@@ -1363,35 +1498,26 @@ QToolTip {
 
 QDialogButtonBox QPushButton {
   qproperty-icon: none;
+  background-color: transparent;
+  color: {{secondaryTextColor}};
+  border: 1px solid {{darkerBorderColor}};
 }
 
-/*  ------------------------------------------------------------------------  */
-/*  Custom TitleBar Buttons  */
-
-QToolButton#TitleBarMinButton,
-QToolButton#TitleBarMaxButton,
-QToolButton#TitleBarCloseButton {
-  background: transparent;
-  border: 0px;
-  height: auto;
-  margin: 0px;
-  padding: 0px;
+QDialogButtonBox QPushButton:hover {
+  background-color: {{darkFillColor|opacity(0.5)}};
+  color: {{primaryTextColor}};
+  border: 1px solid {{lightBorderColor}};
 }
 
-QToolButton#TitleBarMinButton:hover,
-QToolButton#TitleBarMaxButton:hover {
-  background-color: {{darkFillColor}};
-}
-QToolButton#TitleBarCloseButton:hover{
-  background-color: {{danger}};
+/*主按钮*/
+QDialogButtonBox QPushButton[primary='true'] {
+  color: {{primaryTextColor}};
+  background-color: {{primaryColor}};
+  border: 1px solid {{primaryColor}};
 }
 
-QToolButton#TitleBarMinButton:pressed,
-QToolButton#TitleBarMaxButton:pressed {
-  background-color: {{darkFillColor|opacity(0.4)}};
-}
-QToolButton#TitleBarCloseButton:pressed {
-  background-color: {{danger|opacity(0.4)}};
+QDialogButtonBox QPushButton[primary='true']:hover {
+  background-color: {{primaryColor|opacity(0.8)}};
 }
 
 /*  ------------------------------------------------------------------------  */

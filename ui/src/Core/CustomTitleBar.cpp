@@ -27,7 +27,7 @@ CustomTitleBar::CustomTitleBar(QWidget* parent)
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
     // 统一标题栏高度，确保在 MainWindow 与 Dialog 中一致
-    setFixedHeight(36);
+    setFixedHeight(40);
     initUI();
 }
 
@@ -115,39 +115,42 @@ void CustomTitleBar::initUI()
     m_titleLabel = new QLabel(this);
     m_titleLabel->setProperty("title", QVariant(true));
 
+    QSize buttonSize = QSize(height()+5, height());
+    QSize iconSize = QSize(18, 18);
+
     m_btnMin = new ToolButton(this);
     m_btnMin->setObjectName("TitleBarMinButton");
-    m_btnMin->setToolTip(tr("最小化"));
+    // m_btnMin->setToolTip(tr("最小化"));
     m_btnMin->setCursor(Qt::PointingHandCursor);
     m_btnMin->setAutoRaise(false);
     m_btnMin->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnMin->setFixedSize(QSize(30, 30));
+    m_btnMin->setFixedSize(buttonSize);
     m_btnMin->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_hide.svg"));
-    m_btnMin->setIconSize(QSize(18, 18));
+    m_btnMin->setIconSize(iconSize);
 
     m_btnMax = new ToolButton(this);
     m_btnMax->setObjectName("TitleBarMaxButton");
-    m_btnMax->setToolTip(tr("最大化/还原"));
+    // m_btnMax->setToolTip(tr("最大化/还原"));
     m_btnMax->setCursor(Qt::PointingHandCursor);
     m_btnMax->setAutoRaise(false);
     m_btnMax->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnMax->setFixedSize(QSize(30, 30));
+    m_btnMax->setFixedSize(buttonSize);
     m_btnMax->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tobig.svg"));
-    m_btnMax->setIconSize(QSize(18, 18));
+    m_btnMax->setIconSize(iconSize);
 
     m_btnClose = new ToolButton(this);
     m_btnClose->setObjectName("TitleBarCloseButton");
-    m_btnClose->setToolTip(tr("关闭"));
+    // m_btnClose->setToolTip(tr("关闭"));
     m_btnClose->setCursor(Qt::PointingHandCursor);
     m_btnClose->setAutoRaise(false);
     m_btnClose->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnClose->setFixedSize(QSize(30, 30));
+    m_btnClose->setFixedSize(buttonSize);
     m_btnClose->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_close.svg"));
-    m_btnClose->setIconSize(QSize(18, 18));
+    m_btnClose->setIconSize(iconSize);
 
     auto* h = new QHBoxLayout(this);
-    h->setContentsMargins(10, 0, 5, 0);
-    h->setSpacing(8);
+    h->setContentsMargins(5, 0, 0, 0);
+    h->setSpacing(1);
     h->addWidget(m_titleLabel, 1);
     h->addWidget(m_btnMin, 0);
     h->addWidget(m_btnMax, 0);

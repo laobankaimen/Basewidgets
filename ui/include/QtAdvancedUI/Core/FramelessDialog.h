@@ -31,7 +31,7 @@ private:
     QWidget* m_titleBar = nullptr;
     QWidget* m_contentHost = nullptr;
     QVBoxLayout* mainLayout = nullptr;
-    int m_titlebarHeight = 30;
+    int m_titlebarHeight = 40;
 };
 
 } // namespace QtAdvancedUI

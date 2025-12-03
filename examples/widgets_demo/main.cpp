@@ -1060,6 +1060,8 @@ int main(int argc, char *argv[])
     auto* fileMenu = menuBar->addMenu("文件(&F)");
     fileMenu->addAction("新建(&N)", [](){});
     fileMenu->addAction("打开(&O)", [](){});
+    /*QAction *openAct = new QAction(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/user.svg"), "用户(&U)");
+    fileMenu->addAction(openAct);*/
     fileMenu->addSeparator();
     auto* recentMenu = fileMenu->addMenu("最近文件(&R)");
     recentMenu->addAction("文件1.txt");
@@ -1094,9 +1096,8 @@ int main(int argc, char *argv[])
     
     // 添加带下拉菜单的工具按钮
     auto* moreButton = new ToolButton(toolBar);
-    moreButton->setProperty("menu", QVariant(true));//不设置下拉箭头就会与文字重叠
     moreButton->setText("更多选项");
-    moreButton->setPopupMode(QToolButton::MenuButtonPopup);
+    moreButton->setPopupMode(QToolButton::InstantPopup);
     auto* moreMenu = new QMenu(moreButton);
     moreMenu->addAction("导出数据");
     moreMenu->addAction("导入配置");
