@@ -74,7 +74,7 @@ private:
     QWidget* m_titleBar = nullptr;
     QVBoxLayout* mainLayout = nullptr;
 #ifdef Q_OS_WIN
-
+    Qt::WindowStates m_wasMaxmizedBeforeMinimized;
 #elif defined(Q_OS_LINUX)
     enum ResizeRegion { NoneR, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
     ResizeRegion m_resizeRegion = NoneR;

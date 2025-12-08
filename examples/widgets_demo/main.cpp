@@ -1042,12 +1042,12 @@ int main(int argc, char *argv[])
     window->setTitle("QtAdvancedUI 组件全面展示");
 
     //初始化居中显示
-    auto primary_screen = QGuiApplication::primaryScreen();
+    /*auto primary_screen = QGuiApplication::primaryScreen();
     if(primary_screen) {
         QSize diff_size = primary_screen->geometry().size() - window->size();
         window->move(primary_screen->geometry().x() + diff_size.width() / 2,
              primary_screen->geometry().y() + diff_size.height() / 2);
-    }
+    }*/
     //window->showFullScreen();//默认全屏
 
     // 创建菜单栏

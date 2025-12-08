@@ -113,6 +113,7 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
 void CustomTitleBar::initUI()
 {
     m_titleLabel = new QLabel(this);
+    m_titleLabel->setObjectName("TitleLabel");
     m_titleLabel->setProperty("title", QVariant(true));
 
     QSize buttonSize = QSize(height()+5, height());

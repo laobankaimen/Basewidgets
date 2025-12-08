@@ -39,15 +39,19 @@ namespace QtAdvancedUI {
 // Windows平台实现 - 复刻framelesswindow的代码
 FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
     : QMainWindow(parent),
-      m_bJustMaximized(true),
+      m_bJustMaximized(false),
       m_bResizeable(true)
 {
     setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint);
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
-    
-    setResizableEdgesEnabled(m_bResizeable);
+
     initUI();
+    setResizableEdgesEnabled(m_bResizeable);
+
+    //获取初始化显示大小
+    QSettings setting("ZKHX","MainWindow");
+    restoreGeometry(setting.value("geometry").toByteArray());
 }
 
 void FramelessWidgetWindow::setResizeableAreaWidth(int width)
@@ -67,135 +71,143 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
     
     switch (msg->message)
     {
-    case WM_NCCALCSIZE:
-    {
-        NCCALCSIZE_PARAMS& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam);
-        if (params.rgrc[0].top != 0)
-            params.rgrc[0].top -= 1;
-        
-        *result = WVR_REDRAW;
-        return true;
-    }
-    case WM_NCHITTEST:
-    {
-        *result = 0;
-        //全屏禁止拖动和改变大小
-        if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
-            *result = HTCLIENT;
+        case WM_NCCALCSIZE:
+        {
+            NCCALCSIZE_PARAMS& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam);
+            if (params.rgrc[0].top != 0)
+                params.rgrc[0].top -= 1;
+
+            *result = WVR_REDRAW;
             return true;
         }
-
-        const LONG border_width = m_borderWidth;
-        RECT winrect;
-        GetWindowRect(HWND(winId()), &winrect);
-        
-        long x = GET_X_LPARAM(msg->lParam);
-        long y = GET_Y_LPARAM(msg->lParam);
-        
-        if(m_bResizeable)
+        case WM_NCHITTEST:
         {
-            bool resizeWidth = minimumWidth() != maximumWidth();
-            bool resizeHeight = minimumHeight() != maximumHeight();
-            
-            if(resizeWidth)
-            {
-                if (x >= winrect.left && x < winrect.left + border_width)
-                {
-                    *result = HTLEFT;
-                }
-                if (x < winrect.right && x >= winrect.right - border_width)
-                {
-                    *result = HTRIGHT;
-                }
-            }
-            if(resizeHeight)
-            {
-                if (y < winrect.bottom && y >= winrect.bottom - border_width)
-                {
-                    *result = HTBOTTOM;
-                }
-                if (y >= winrect.top && y < winrect.top + border_width)
-                {
-                    *result = HTTOP;
-                }
-            }
-            if(resizeWidth && resizeHeight)
-            {
-                if (x >= winrect.left && x < winrect.left + border_width &&
-                        y < winrect.bottom && y >= winrect.bottom - border_width)
-                {
-                    *result = HTBOTTOMLEFT;
-                }
-                if (x < winrect.right && x >= winrect.right - border_width &&
-                        y < winrect.bottom && y >= winrect.bottom - border_width)
-                {
-                    *result = HTBOTTOMRIGHT;
-                }
-                if (x >= winrect.left && x < winrect.left + border_width &&
-                        y >= winrect.top && y < winrect.top + border_width)
-                {
-                    *result = HTTOPLEFT;
-                }
-                if (x < winrect.right && x >= winrect.right - border_width &&
-                        y >= winrect.top && y < winrect.top + border_width)
-                {
-                    *result = HTTOPRIGHT;
-                }
-            }
-        }
-        if (0!=*result) return true;
-        
-        if (m_titleBar) {
-            double dpr = this->devicePixelRatioF();
-            QPoint titlePos = m_titleBar->mapFromGlobal(QPoint(x/dpr,y/dpr));
-
-            QWidget* child = m_titleBar->childAt(titlePos);
-            //鼠标标题栏的子控件，让子控件接收事件（过滤掉其他不需要鼠标交互的控件）
-            if (child && (child->objectName().contains("TitleBarCloseButton") ||
-                child->objectName().contains("TitleBarMaxButton") ||
-                child->objectName().contains("TitleBarMinButton"))) {
+            *result = 0;
+            //全屏禁止拖动和改变大小
+            if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
                 *result = HTCLIENT;
                 return true;
             }
-            //不在子控件上，且在标题栏内
-            if (m_titleBar->geometry().contains(titlePos)) {
-                *result = HTCAPTION;
-                return true;
-            }
-        }
 
-        return false;
-    }
-    case WM_GETMINMAXINFO:
-    {
-        if (::IsZoomed(msg->hwnd)) {
-            RECT frame = { 0, 0, 0, 0 };
-            AdjustWindowRectEx(&frame, WS_OVERLAPPEDWINDOW, FALSE, 0);
-            
-            double dpr = this->devicePixelRatioF();
-            
-            m_frames.setLeft(abs(frame.left)/dpr+0.5);
-            m_frames.setTop(abs(frame.bottom)/dpr+0.5);
-            m_frames.setRight(abs(frame.right)/dpr+0.5);
-            m_frames.setBottom(abs(frame.bottom)/dpr+0.5);
-            
-            QMainWindow::setContentsMargins(m_frames.left()+m_margins.left(), 
-                                            m_frames.top()+m_margins.top(), 
-                                            m_frames.right()+m_margins.right(), 
-                                            m_frames.bottom()+m_margins.bottom());
-            m_bJustMaximized = true;
-        }else {
-            if (m_bJustMaximized)
+            const LONG border_width = m_borderWidth;
+            RECT winrect;
+            GetWindowRect(HWND(winId()), &winrect);
+
+            long x = GET_X_LPARAM(msg->lParam);
+            long y = GET_Y_LPARAM(msg->lParam);
+
+            if(m_bResizeable)
             {
-                QMainWindow::setContentsMargins(m_margins);
-                m_frames = QMargins();
-                m_bJustMaximized = false;
+                bool resizeWidth = minimumWidth() != maximumWidth();
+                bool resizeHeight = minimumHeight() != maximumHeight();
+
+                if(resizeWidth)
+                {
+                    //left border
+                    if (x >= winrect.left && x < winrect.left + border_width)
+                    {
+                        *result = HTLEFT;
+                    }
+                    //right border
+                    if (x < winrect.right && x >= winrect.right - border_width)
+                    {
+                        *result = HTRIGHT;
+                    }
+                }
+                if(resizeHeight)
+                {
+                    //bottom border
+                    if (y < winrect.bottom && y >= winrect.bottom - border_width)
+                    {
+                        *result = HTBOTTOM;
+                    }
+                    //top border
+                    if (y >= winrect.top && y < winrect.top + border_width)
+                    {
+                        *result = HTTOP;
+                    }
+                }
+                if(resizeWidth && resizeHeight)
+                {
+                    //bottom left corner
+                    if (x >= winrect.left && x < winrect.left + border_width &&
+                            y < winrect.bottom && y >= winrect.bottom - border_width)
+                    {
+                        *result = HTBOTTOMLEFT;
+                    }
+                    //bottom right corner
+                    if (x < winrect.right && x >= winrect.right - border_width &&
+                            y < winrect.bottom && y >= winrect.bottom - border_width)
+                    {
+                        *result = HTBOTTOMRIGHT;
+                    }
+                    //top left corner
+                    if (x >= winrect.left && x < winrect.left + border_width &&
+                            y >= winrect.top && y < winrect.top + border_width)
+                    {
+                        *result = HTTOPLEFT;
+                    }
+                    //top right corner
+                    if (x < winrect.right && x >= winrect.right - border_width &&
+                            y >= winrect.top && y < winrect.top + border_width)
+                    {
+                        *result = HTTOPRIGHT;
+                    }
+                }
             }
+            if (0!=*result) return true;
+
+            if (m_titleBar) {
+                double dpr = this->devicePixelRatioF();
+                QPoint titlePos = m_titleBar->mapFromGlobal(QPoint(x/dpr,y/dpr));
+
+                QWidget* child = m_titleBar->childAt(titlePos);
+                //鼠标标题栏的子控件，让子控件接收事件（过滤掉其他不需要鼠标交互的控件）
+                if (child && (child->objectName().contains("TitleBarCloseButton") ||
+                    child->objectName().contains("TitleBarMaxButton") ||
+                    child->objectName().contains("TitleBarMinButton"))) {
+                    *result = HTCLIENT;
+                    return true;
+                    }
+                //不在子控件上，且在标题栏内
+                if (m_titleBar->geometry().contains(titlePos)) {
+                    *result = HTCAPTION;
+                    return true;
+                }
+            }
+            return false;
         }
-        return false;
-    }
-    default:
-        return QMainWindow::nativeEvent(eventType, message, result);
+        case WM_GETMINMAXINFO:
+        {
+            if (::IsZoomed(msg->hwnd)) {
+                RECT frame = { 0, 0, 0, 0 };
+                AdjustWindowRectEx(&frame, WS_OVERLAPPEDWINDOW, FALSE, 0);
+
+                //record frame area data
+                double dpr = this->devicePixelRatioF();
+
+                m_frames.setLeft(abs(frame.left)/dpr+0.5);
+                m_frames.setTop(abs(frame.bottom)/dpr+0.5);
+                m_frames.setRight(abs(frame.right)/dpr+0.5);
+                m_frames.setBottom(abs(frame.bottom)/dpr+0.5);
+
+                QMainWindow::setContentsMargins(m_frames.left()+m_margins.left(),
+                                                m_frames.top()+m_margins.top(),
+                                                m_frames.right()+m_margins.right(),
+                                                m_frames.bottom()+m_margins.bottom());
+                m_bJustMaximized = true;
+            }else {
+                if (m_bJustMaximized)
+                {
+                    QMainWindow::setContentsMargins(m_margins);
+                    m_frames = QMargins();
+                    m_bJustMaximized = false;
+                }
+            }
+            return false;
+        }
+        default:
+            return QMainWindow::nativeEvent(eventType, message, result);
     }
 }
 
@@ -424,8 +436,6 @@ void FramelessWidgetWindow::setFramelessWindowState(FramelessWindowState state)
 
 void FramelessWidgetWindow::showEvent(QShowEvent *ev)
 {
-    QSettings setting("ZKHX","MainWindow");
-    restoreGeometry(setting.value("geometry").toByteArray());
     QMainWindow::showEvent(ev);
 }
 
@@ -527,6 +537,7 @@ void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
     HWND hwnd = (HWND)this->winId();
     DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
     if (m_bResizeable){
+        //此行代码可以带回Aero效果，同时也带回了标题栏和边框,在nativeEvent()会再次去掉标题栏
         setWindowFlags(windowFlags() | Qt::WindowMaximizeButtonHint);
         ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CAPTION);
     }else{
