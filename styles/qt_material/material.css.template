@@ -221,13 +221,13 @@ QMenuBar::item:pressed {
 QPushButton {
   background-color: {{darkerFillColor}};
   color: {{primaryTextColor}};
-  border: 1px solid {{darkerBorderColor}};
+  border: none;
   border-radius: 4px;
   padding: 8px 16px;
-  min-width: 60px;
-  min-height: 22px;
+  min-width: 80px;
+  min-height: 30px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: bold;
   outline: none;
 }
 
@@ -243,6 +243,8 @@ QPushButton:checked {
 
 QPushButton:pressed {
   background-color: {{darkerBorderColor}};
+  padding-top: 9px;
+  padding-left: 17px;
 }
 
 QPushButton:flat {
@@ -628,8 +630,9 @@ QTreeView {
   outline: none;
 }
 
+/*不是设置颜色会导致linux和windows实现效果不一致*/
 QTreeView::branch {
-  background: transparent;
+  background-color: {{overlayBackgroundColor}};
   border-image: none;
 }
 
@@ -1266,7 +1269,7 @@ QTableView::item:disabled {
 
 QTreeView::item {
   border-bottom: 1px solid transparent;
-    padding: 2px;
+  padding: 2px;
 }
 
 QTreeView::item:selected:focus {
