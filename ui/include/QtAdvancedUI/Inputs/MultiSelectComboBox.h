@@ -10,7 +10,6 @@ class ACSS_UI_EXPORT MultiSelectComboBox : public ComboBox {
     Q_OBJECT
 public:
     explicit MultiSelectComboBox(QWidget* parent = nullptr);
-    explicit MultiSelectComboBox(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~MultiSelectComboBox() override;
 
     void setOptions(const QStringList& options);

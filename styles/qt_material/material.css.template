@@ -66,7 +66,8 @@ QWidget:disabled {
 QWidget[title='true'] {
   background-color: qlineargradient(x1:0 y1:0 x2:0 y2:1,
   stop:0 {{darkFillColor}},
-  stop:1 {{baseBackgroundColor}});
+  stop:0.5 {{baseBackgroundColor}},
+  stop:1 {{darkFillColor}});
   border-bottom: 1px solid {{darkerBorderColor}};
 }
 
@@ -627,7 +628,7 @@ QTreeView {
   outline: none;
 }
 
-QTreeView::branch{
+QTreeView::branch {
   background: transparent;
   border-image: none;
 }
@@ -1004,7 +1005,7 @@ QToolBox::tab:hover {
 
 QProgressBar {
   border: 1px solid {{darkerBorderColor}};
-  background-color: {{darkFillColor}};
+  background-color: {{baseFillColor}};
   border-radius: 4px;
   text-align: center;
   color: {{primaryTextColor}};
@@ -1012,18 +1013,35 @@ QProgressBar {
 
 QProgressBar::chunk {
   background-color: {{primaryColor}};
-  border-radius: 3px;
+  border-radius: 4px;
+  border: none;
 }
 
-QProgressBar[success='true']::chunk {
+QProgressBar:indeterminate {
+  border: 1px solid {{darkerBorderColor}};
+  background-color: {{baseFillColor}};
+  border-radius: 4px;
+}
+
+QProgressBar:indeterminate::chunk {
+  background-color: {{primaryTextColor}};
+  border-radius: 3px;
+  width: 20px;
+}
+
+QProgressBar:disabled::chunk {
+  background-color: {{placeholderTextColor}};
+}
+
+QProgressBar[state='success']::chunk {
   background-color: {{success}};
 }
 
-QProgressBar[danger='true']::chunk {
+QProgressBar[state='danger']::chunk {
   background-color: {{danger}};
 }
 
-QProgressBar[warning='true']::chunk {
+QProgressBar[state='warning']::chunk {
   background-color: {{warning}};
 }
 /*  ------------------------------------------------------------------------  */

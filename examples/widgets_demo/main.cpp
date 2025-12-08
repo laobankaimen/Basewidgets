@@ -210,14 +210,33 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     progressLayout->setContentsMargins(4, 4, 4, 4);
     progressLayout->setSpacing(4);
     
-    auto* progressBar = new ProgressBar(progressGroup);
-    progressBar->setValue(65);
+    auto* progressBar1 = new ProgressBar(progressGroup);
+    progressBar1->setValue(30);
+    auto* progressBar2 = new ProgressBar(progressGroup);
+    progressBar2->setProperty("state", QVariant("success"));
+    progressBar2->setValue(40);
+    auto* progressBar3 = new ProgressBar(progressGroup);
+    progressBar3->setProperty("state", QVariant("danger"));
+    progressBar3->setValue(50);
+    auto* progressBar4 = new ProgressBar(progressGroup);
+    progressBar4->setProperty("state", QVariant("warning"));
+    progressBar4->setValue(60);
+    auto* progressBar5 = new ProgressBar(progressGroup);
+    progressBar5->setRange(0,0);
+    auto* progressBar6 = new ProgressBar(progressGroup);
+    progressBar6->setValue(70);
+    progressBar6->setDisabled(true);
     auto* busyIndicator = new BusyIndicator(progressGroup);
     busyIndicator->start();
     
     progressLayout->addWidget(new Label("进度条:", progressGroup));
-    progressLayout->addWidget(progressBar);
+    progressLayout->addWidget(progressBar1);
+    progressLayout->addWidget(progressBar2);
+    progressLayout->addWidget(progressBar3);
+    progressLayout->addWidget(progressBar4);
+    progressLayout->addWidget(progressBar6);
     progressLayout->addWidget(new Label("忙碌指示器:", progressGroup));
+    progressLayout->addWidget(progressBar5);
     progressLayout->addWidget(busyIndicator);
     progressGroup->setMaximumWidth(420);
     progressGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);

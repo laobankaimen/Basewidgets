@@ -26,6 +26,7 @@ MultiSelectComboBox::MultiSelectComboBox(QWidget* parent)
     : ComboBox(parent)
 {
     setEditable(true);
+    setSearchEnabled(true);
     if (lineEdit()) {
         lineEdit()->setReadOnly(true);
         lineEdit()->installEventFilter(this); // 支持双击与键盘输入进入搜索
@@ -41,33 +42,11 @@ MultiSelectComboBox::MultiSelectComboBox(QWidget* parent)
         emit selectionChanged(selectedOptions());
     });
     // 防止选择行为改变当前索引导致关闭：禁用选择、禁用编辑
-    if (view()) {
+    /*if (view()) {
         view()->setSelectionMode(QAbstractItemView::NoSelection);
         view()->setEditTriggers(QAbstractItemView::NoEditTriggers);
         if (view()->viewport()) view()->viewport()->installEventFilter(this);
-    }
-}
-
-MultiSelectComboBox::MultiSelectComboBox(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : ComboBox(manager, parent)
-{
-    setEditable(true);
-    if (lineEdit()) {
-        lineEdit()->setReadOnly(true);
-        lineEdit()->installEventFilter(this);
-    }
-    setInsertPolicy(QComboBox::NoInsert);
-    initModel();
-    QObject::connect(view(), &QAbstractItemView::pressed, [this](const QModelIndex& idx){
-        toggleItem(idx.row());
-        if (!m_popupOpen) updateDisplayText();
-        emit selectionChanged(selectedOptions());
-    });
-    if (view()) {
-        view()->setSelectionMode(QAbstractItemView::NoSelection);
-        view()->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        if (view()->viewport()) view()->viewport()->installEventFilter(this);
-    }
+    }*/
 }
 
 MultiSelectComboBox::~MultiSelectComboBox() = default;

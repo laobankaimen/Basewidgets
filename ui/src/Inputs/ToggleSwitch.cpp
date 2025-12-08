@@ -76,14 +76,14 @@ void ToggleSwitch::animateTo(bool checked)
 {
     m_anim->stop();
     m_anim->setStartValue(m_offset);
-    m_anim->setEndValue(checked ? 0.0 : 1.0);
+    m_anim->setEndValue(checked ? 1.0 : 0.0);
     m_anim->start();
 }
 
 void ToggleSwitch::initSwitch() {
     updateColors();
     setCheckable(true);
-    setOffset(isChecked() ? 0.0 : 1.0);
+    setOffset(isChecked() ? 1.0 : 0.0);
     setCursor(Qt::PointingHandCursor);
     m_anim = new QPropertyAnimation(this, "offset");
     m_anim->setDuration(120);
