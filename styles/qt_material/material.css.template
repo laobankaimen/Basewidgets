@@ -9,7 +9,7 @@
   line-height: {{line_height}};
   font-size: {{font_size}};
   selection-background-color: {{primaryColor}};
-  selection-color: {{secondaryTextColor}};
+  selection-color: {{primaryTextColor}};
 }
 
 *:focus {
@@ -72,7 +72,7 @@ QWidget[title='true'] {
 
 QDialog {
   background-color: {{baseBackgroundColor}};
-  border: 1px solid {{darkerBorderColor}};
+  border: 0px solid {{darkerBorderColor}};
   border-radius: 2px;
 }
 
@@ -289,8 +289,8 @@ QLabel {
 
 QLabel[title='true'] {
   color: {{primaryTextColor}};
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 300;
   padding: 8px 12px;
 }
 
@@ -1077,21 +1077,21 @@ QSlider::groove:horizontal {
 
 QSlider::groove:vertical {
   width: 4px;
-  background: {{darkFillColor}};;
+  background: {{darkFillColor}};
   border-radius: 2px;
 }
 
 QSlider::handle:horizontal {
   image: url(icon:/primary/slider.svg);
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   margin: -6px 0px;
 }
 
 QSlider::handle:vertical {
   image: url(icon:/primary/slider.svg);
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   margin: 0px -6px;
 }
 

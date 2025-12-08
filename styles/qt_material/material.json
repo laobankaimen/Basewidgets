@@ -5,9 +5,9 @@
     "default_theme" : "dark",
 
     "variables" : {
-        "font_family" : "Roboto",
+        "font_family" : "\"Microsoft YaHei\", \"Noto Sans CJK SC\",Roboto, Arial, sans-serif",
         "font_size" : "12px",
-        "line_height" : "12px",
+        "line_height" : "1.5",
         "danger" :  "#F56C6C",
         "warning" : "#E6A23C",
         "success" : "#67C23A",
