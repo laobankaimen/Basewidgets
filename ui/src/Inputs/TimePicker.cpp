@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Inputs/TimePicker.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -45,3 +49,4 @@ void TimePicker::applyStylesheet()
 }
 
 } // namespace QtAdvancedUI
+

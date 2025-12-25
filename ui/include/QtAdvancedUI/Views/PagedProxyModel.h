@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_PAGEDPROXYMODEL_H
 #define QTADVANCEDUI_PAGEDPROXYMODEL_H
 
@@ -51,3 +55,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_PAGEDPROXYMODEL_H
+

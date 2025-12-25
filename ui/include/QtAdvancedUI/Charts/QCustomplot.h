@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 /***************************************************************************
 **                                                                        **
 **  QCustomPlot, an easy to use, modern plotting widget for Qt            **
@@ -7798,4 +7802,5 @@ Q_DECLARE_TYPEINFO(QtAdvancedUI::QCPErrorBarsData, Q_PRIMITIVE_TYPE);
 
 
 #endif // GL_QCUSTOMPLOT_H
+
 

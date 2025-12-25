@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 /***************************************************************************
 **                                                                        **
 **  QCustomPlot, an easy to use, modern plotting widget for Qt            **
@@ -35631,3 +35635,4 @@ QVector<QPointF> QCPPolarGraph::dataToLines(const QVector<QCPGraphData> &data) c
 /* end of 'src/polar/polargraph.cpp' */
 
 }
+

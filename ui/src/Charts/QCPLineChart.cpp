@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Charts/QCPLineChart.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -100,3 +104,4 @@ void QCPLineChart::applyThemeBackground()
 }
 
 } // namespace QtAdvancedUI
+

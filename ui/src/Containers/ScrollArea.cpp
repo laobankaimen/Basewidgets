@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Containers/ScrollArea.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -45,3 +49,4 @@ void ScrollArea::applyStylesheet()
 }
 
 } // namespace QtAdvancedUI
+

@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Core/FramelessWidgetWindow.h>
 #include <QtAdvancedUI/Core/CustomTitleBar.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
@@ -599,3 +603,4 @@ void FramelessWidgetWindow::changeEvent(QEvent* e)
 }
 
 } // namespace QtAdvancedUI
+

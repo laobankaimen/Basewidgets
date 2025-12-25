@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_TIMEPICKER_H
 #define QTADVANCEDUI_TIMEPICKER_H
 
@@ -34,3 +38,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_TIMEPICKER_H
+

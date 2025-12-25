@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_EXPORT_H
 #define QTADVANCEDUI_EXPORT_H
 
@@ -10,3 +14,4 @@
 #endif
 
 #endif // QTADVANCEDUI_EXPORT_H
+

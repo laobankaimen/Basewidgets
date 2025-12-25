@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Inputs/ComboBox.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -43,3 +47,4 @@ void ComboBox::applyStylesheet()
 }
 
 } // namespace QtAdvancedUI
+

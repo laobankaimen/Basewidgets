@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_STYLEMANAGERADAPTER_H
 #define QTADVANCEDUI_STYLEMANAGERADAPTER_H
 
@@ -28,3 +32,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_STYLEMANAGERADAPTER_H
+

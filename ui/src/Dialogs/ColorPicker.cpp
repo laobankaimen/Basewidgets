@@ -1,3 +1,8 @@
+/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
+
 #include "ColorPicker.h"
 
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
@@ -6,13 +11,13 @@
 #include <QColor>
 #include <QEvent>
 #include <QFrame>
-#include <QGridLayout>
-#include <QGroupBox>
+#include <QPainterPath>
 #include <QHBoxLayout>
 #include <QImage>
 #include <QLabel>
 #include <QLineEdit>
 #include <QComboBox>
+#include <QButtonGroup>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPixmap>
@@ -21,48 +26,78 @@
 #include <QSlider>
 #include <QSpinBox>
 #include <QVBoxLayout>
+#include <QToolButton>
 #include <QScreen>
 #include <QGuiApplication>
 #include <QCursor>
+#include <QStyleOptionSlider>
+#include <QWindow>
+#include <QApplication>
+#include <QTimer>
+#include <QKeyEvent>
+#include <QDebug>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 using namespace acss;
 
 namespace QtAdvancedUI
 {
 
-// 简易 2D 颜色选择区域：水平为色相 H(0..359)，垂直为饱和度 S(0..255)
+// 2D Color Area: Saturation (X) vs Value (Y) for a fixed Hue
 class ColorArea : public QWidget
 {
     Q_OBJECT
 public:
     explicit ColorArea(QWidget* parent = nullptr) : QWidget(parent)
     {
-        setFixedSize(200, 160);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        setMinimumHeight(200);
         setMouseTracking(true);
-        regenerate();
     }
-    void setHS(int h, int s)
+
+    void setHue(int h)
     {
         h_ = qBound(0, h, 359);
-        s_ = qBound(0, s, 255);
+        regenerate();
         update();
     }
+
+    void setSV(int s, int v)
+    {
+        s_ = qBound(0, s, 255);
+        v_ = qBound(0, v, 255);
+        update();
+    }
+
 signals:
-    void hsChanged(int h, int s);
+    void svChanged(int s, int v);
 
 protected:
     void paintEvent(QPaintEvent*) override
     {
         QPainter p(this);
+        if (img_.isNull() || img_.size() != size())
+            regenerate();
+        
         p.drawImage(rect(), img_);
-        // 绘制选择指示器
-        QPoint pt = mapFromHS(h_, s_);
+
+        // Draw indicator
+        QPoint pt = mapFromSV(s_, v_);
         p.setRenderHint(QPainter::Antialiasing);
         p.setPen(QPen(Qt::black, 2));
         p.drawEllipse(pt, 6, 6);
         p.setPen(QPen(Qt::white, 2));
         p.drawEllipse(pt, 8, 8);
     }
+
+    void resizeEvent(QResizeEvent*) override
+    {
+        regenerate();
+    }
+
     void mousePressEvent(QMouseEvent* e) override { applyPoint(e->pos()); }
     void mouseMoveEvent(QMouseEvent* e) override
     {
@@ -73,455 +108,730 @@ protected:
 private:
     void regenerate()
     {
-        img_ = QImage(size(), QImage::Format_RGB32);
-        for (int y = 0; y < img_.height(); ++y) {
-            for (int x = 0; x < img_.width(); ++x) {
-                int h = x * 360 / img_.width();
-                int s = y * 255 / img_.height();
-                QColor c;
-                c.setHsv(h, s, 255);
-                img_.setPixelColor(x, y, c);
-            }
-        }
+        if (width() <= 0 || height() <= 0) return;
+        
+        QImage sv(size(), QImage::Format_ARGB32_Premultiplied);
+        
+        // 1. Fill with Hue color
+        QColor hueColor;
+        hueColor.setHsv(h_, 255, 255);
+        sv.fill(hueColor);
+
+        QPainter p(&sv);
+        // 2. Saturation Gradient: White (Left) -> Transparent (Right)
+        sv.fill(Qt::transparent);
+        p.setCompositionMode(QPainter::CompositionMode_Source);
+        
+        QLinearGradient satGrad(0, 0, width(), 0);
+        satGrad.setColorAt(0, Qt::white);
+        satGrad.setColorAt(1, hueColor);
+        p.fillRect(sv.rect(), satGrad);
+        
+        // 3. Value Gradient: Transparent (Top) -> Black (Bottom)
+        p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        QLinearGradient valGrad(0, 0, 0, height());
+        valGrad.setColorAt(0, Qt::transparent);
+        valGrad.setColorAt(1, Qt::black);
+        p.fillRect(sv.rect(), valGrad);
+        
+        p.end();
+        img_ = sv;
     }
-    QPoint mapFromHS(int h, int s) const
+
+    QPoint mapFromSV(int s, int v) const
     {
-        int x = h * width() / 360;
-        int y = s * height() / 255;
+        int x = s * width() / 255;
+        int y = (255 - v) * height() / 255;
         return QPoint(x, y);
     }
+
     void applyPoint(const QPoint& pt)
     {
         int x = qBound(0, pt.x(), width() - 1);
         int y = qBound(0, pt.y(), height() - 1);
-        int h = x * 360 / width();
-        int s = y * 255 / height();
-        if (h != h_ || s != s_) {
-            h_ = h;
+        
+        int s = x * 255 / width();
+        int v = 255 - (y * 255 / height());
+        
+        if (s != s_ || v != v_) {
             s_ = s;
-            emit hsChanged(h_, s_);
+            v_ = v;
+            emit svChanged(s_, v_);
             update();
         }
     }
+
     int h_ = 0;
     int s_ = 0;
+    int v_ = 255;
     QImage img_;
+};
+
+// Hue Slider with Rainbow Gradient
+class HueSlider : public QSlider
+{
+    Q_OBJECT
+public:
+    explicit HueSlider(QWidget* parent = nullptr) : QSlider(Qt::Horizontal, parent)
+    {
+        setRange(0, 359);
+    }
+
+protected:
+    void paintEvent(QPaintEvent* ev) override
+    {
+        QPainter p(this);
+        QStyleOptionSlider opt;
+        initStyleOption(&opt);
+
+        QRect groove = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
+        QRect handle = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
+
+        // Draw Rainbow Groove
+        QLinearGradient grad(groove.left(), 0, groove.right(), 0);
+        for (int i = 0; i <= 360; i += 60) {
+            QColor c;
+            c.setHsv(i % 360, 255, 255);
+            grad.setColorAt(i / 360.0, c);
+        }
+        grad.setColorAt(1.0, QColor::fromHsv(0, 255, 255)); // Wrap around
+
+        p.setRenderHint(QPainter::Antialiasing);
+        
+        // Draw rounded groove
+        QPainterPath path;
+        path.addRoundedRect(groove, 4, 4);
+        p.fillPath(path, grad);
+
+        // Draw Handle
+        p.setBrush(Qt::white);
+        p.setPen(QPen(QColor(0xCCCCCC), 1));
+        
+        int hSize = handle.width();
+        QRect customHandle = handle; 
+        
+        // Draw handle shadow/border
+        p.setBrush(Qt::white);
+        p.setPen(QPen(Qt::lightGray, 1));
+        p.drawEllipse(customHandle.center(), hSize/2, hSize/2);
+        
+        // Inner blue dot
+        QColor hueColor;
+        hueColor.setHsv(value(), 255, 255);
+        p.setBrush(hueColor);
+        p.setPen(Qt::NoPen);
+        p.drawEllipse(customHandle.center(), hSize/4, hSize/4);
+    }
+};
+
+// Screen Picker Logic
+class ScreenPicker : public QObject
+{
+    Q_OBJECT
+public:
+    explicit ScreenPicker(QObject* parent = nullptr) : QObject(parent)
+    {
+        m_timer = new QTimer(this);
+        m_timer->setInterval(50); // Check every 50ms
+        connect(m_timer, &QTimer::timeout, this, &ScreenPicker::checkMouse);
+    }
+
+    void start()
+    {
+#ifdef Q_OS_WIN
+        m_isPicking = true;
+        m_timer->start();
+#else
+        // Linux/Mac fallback: Use Qt's cursor tracking (simplified)
+        // For strict system API requirements on Linux, X11/XCB calls would be needed,
+        // but this provides a functional fallback using Qt's abstraction.
+        m_isPicking = true;
+        m_timer->start();
+#endif
+    }
+
+    void stop()
+    {
+        m_isPicking = false;
+        m_timer->stop();
+    }
+
+signals:
+    void colorPicked(const QColor& c);
+
+private slots:
+    void checkMouse()
+    {
+        if (!m_isPicking) return;
+
+#ifdef Q_OS_WIN
+        // Windows System API Implementation
+        
+        // 1. Check for cancellation keys (Esc, Right Click)
+        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000 || GetAsyncKeyState(VK_RBUTTON) & 0x8000) {
+            stop();
+            return;
+        }
+
+        // 2. Get Cursor Position
+        POINT pt;
+        if (GetCursorPos(&pt)) {
+            // 3. Get Color at Cursor
+            HDC hdc = GetDC(NULL);
+            if (hdc) {
+                COLORREF color = GetPixel(hdc, pt.x, pt.y);
+                ReleaseDC(NULL, hdc);
+                
+                // Optional: Emit a "preview" signal if we wanted to show live color
+                // emit colorPreview(QColor(GetRValue(color), GetGValue(color), GetBValue(color)));
+
+                // 4. Check for Click (Left Button)
+                // Use 0x8000 to check if currently down. 
+                // Note: This might pass the click through to the underlying window.
+                if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
+                    QColor c(GetRValue(color), GetGValue(color), GetBValue(color));
+                    emit colorPicked(c);
+                    stop();
+                    
+                    // Consume the click? Hard without hooks.
+                    // We accept that it might click the window below.
+                }
+            }
+        }
+#else
+        // Linux/Generic Qt Implementation
+        // Uses Qt to poll global cursor position and grab pixel
+        
+        // Check for Esc key (requires window focus usually, so this is a limitation of polling)
+        // But we can check mouse buttons via Qt::GuiApplication if supported
+        
+        QPoint pos = QCursor::pos();
+        QScreen* screen = QGuiApplication::screenAt(pos);
+        if (!screen) screen = QGuiApplication::primaryScreen();
+        
+        if (screen) {
+            // Grab 1x1 pixel
+            QPixmap px = screen->grabWindow(0, pos.x(), pos.y(), 1, 1);
+            if (!px.isNull()) {
+                QColor c = px.toImage().pixelColor(0, 0);
+                
+                // Detect click - In generic Qt without a window grab, it's hard to detect global clicks.
+                // We'll rely on a "hover to pick, click to confirm" strategy?
+                // Or simply: On Linux, we might MUST use the invisible window approach.
+                // But user asked for System API. 
+                // Since we are on Windows env now, we provide this placeholder.
+                
+                if (QGuiApplication::mouseButtons() & Qt::LeftButton) {
+                    emit colorPicked(c);
+                    stop();
+                }
+            }
+        }
+#endif
+    }
+
+private:
+    QTimer* m_timer;
+    bool m_isPicking = false;
+};
+
+// Custom Color Button for Recent/Presets
+class ColorButton : public QAbstractButton
+{
+public:
+    explicit ColorButton(const QColor& c, int size, QWidget* parent = nullptr) 
+        : QAbstractButton(parent), m_color(c)
+    {
+        setCheckable(true);
+        setFixedSize(size, size);
+        setCursor(Qt::PointingHandCursor);
+    }
+
+protected:
+    void paintEvent(QPaintEvent*) override
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        // Margin for border (2px)
+        QRect r = rect().adjusted(3, 3, -3, -3);
+
+        // Fill Color
+        p.setBrush(m_color);
+        p.setPen(Qt::NoPen);
+        p.drawRoundedRect(r, 2, 2);
+
+        // Draw Border
+        if (isChecked()) {
+            // Selected: White inner border + Blue/Theme outer border?
+            // Or just a strong double border.
+            // Inner white
+            p.setBrush(Qt::NoBrush);
+            p.setPen(QPen(Qt::white, 2));
+            p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 2, 2);
+            
+            // Outer highlight (blue-ish or contrast)
+            p.setPen(QPen(QColor(0x21, 0x96, 0xF3), 2)); // Material Blue
+            p.drawRoundedRect(rect().adjusted(1, 1, -1, -1), 4, 4);
+        }
+        else if (underMouse()) {
+            // Hover: White border
+            p.setBrush(Qt::NoBrush);
+            p.setPen(QPen(Qt::white, 2));
+            p.drawRoundedRect(r, 2, 2);
+            
+            // Outer gray ring
+            p.setPen(QPen(QColor(100, 100, 100, 50), 1));
+            p.drawRoundedRect(rect().adjusted(0,0,-1,-1), 3, 3);
+        } else {
+            // Normal: Light gray border
+            p.setBrush(Qt::NoBrush);
+            p.setPen(QPen(QColor(0xCC, 0xCC, 0xCC), 1));
+            p.drawRoundedRect(r, 2, 2);
+        }
+    }
+    
+    void enterEvent(QEvent* e) override {
+        update();
+        QAbstractButton::enterEvent(e);
+    }
+    
+    void leaveEvent(QEvent* e) override {
+        update();
+        QAbstractButton::leaveEvent(e);
+    }
+
+private:
+    QColor m_color;
 };
 
 #include "ColorPicker.moc"
 
-QWidget* ColorPicker::makeColorPickerBody(QWidget* parent, const QColor& initial, QColor* currentOut)
+QVector<QColor> ColorPickerWidget::s_customColors;
+
+ColorPickerWidget::ColorPickerWidget(QWidget* parent, const QColor& initial)
+    : QWidget(parent), m_color(initial)
 {
-    QWidget* body = new QWidget(parent);
-    auto* v = new QVBoxLayout(body);
-    v->setContentsMargins(0, 0, 0, 0);
-    v->setSpacing(8);
+    // Initialize custom colors if empty
+    if (s_customColors.isEmpty()) {
+        s_customColors = {
+            QColor("#F44336"), QColor("#E91E63"), QColor("#9C27B0"), QColor("#673AB7"),
+            QColor("#3F51B5"), QColor("#2196F3"), QColor("#03A9F4"), QColor("#00BCD4"),
+            QColor("#009688"), QColor("#4CAF50"), QColor("#8BC34A"), QColor("#CDDC39"),
+            QColor("#FFEB3B"), QColor("#FFC107"), QColor("#FF9800"), QColor("#FF5722")
+        };
+    }
+    
+    m_colorGroup = new QButtonGroup(this);
+    m_colorGroup->setExclusive(true);
 
-    QLabel* preview = new QLabel(body);
-    preview->setFixedSize(64, 32);
-    preview->setFrameShape(QFrame::Box);
+    setupUi(initial);
+}
 
-    auto setPreview = [&](const QColor& c) {
-        QPalette pal = preview->palette();
-        pal.setColor(QPalette::Window, c);
-        preview->setAutoFillBackground(true);
-        preview->setPalette(pal);
+QColor ColorPickerWidget::currentColor() const
+{
+    return m_color;
+}
+
+void ColorPickerWidget::setupUi(const QColor& initial)
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setSpacing(10);
+
+    setFixedWidth(600); // Try a fixed width to ensure compactness
+
+    // 1. Color Area (S-V)
+    m_svArea = new ColorArea(this);
+    mainLayout->addWidget(m_svArea);
+
+    // 2. Hue Slider
+    m_hueSlider = new HueSlider(this);
+    mainLayout->addWidget(m_hueSlider);
+
+    // 3. Mode & Inputs
+    m_inputContainer = new QWidget(this);
+    auto* inputLayout = new QHBoxLayout(m_inputContainer);
+    inputLayout->setContentsMargins(0, 0, 0, 0);
+    inputLayout->setSpacing(8);
+
+    m_modeCombo = new QComboBox(this);
+    m_modeCombo->addItems({"RGB", "HEX"});
+    m_modeCombo->setFixedWidth(80);
+    inputLayout->addWidget(m_modeCombo);
+
+    // RGB Inputs - Fix stretch
+    m_rgbWidget = new QWidget(this);
+    auto* rgbLayout = new QHBoxLayout(m_rgbWidget);
+    rgbLayout->setContentsMargins(0, 0, 0, 0);
+    rgbLayout->setSpacing(5);
+    
+    auto createSpin = [&](QSpinBox** sp) {
+        *sp = new QSpinBox(this);
+        (*sp)->setRange(0, 255);
+        (*sp)->setAlignment(Qt::AlignCenter);
+        (*sp)->setButtonSymbols(QAbstractSpinBox::NoButtons);
+        // FIX: Remove Expanding policy, set FixedWidth
+        (*sp)->setFixedWidth(60); 
+        rgbLayout->addWidget(*sp);
     };
+    createSpin(&m_rSpin);
+    createSpin(&m_gSpin);
+    createSpin(&m_bSpin);
+    // Add stretch to push inputs to left (or center them if preferred, but usually left next to label is better)
+    // Actually, user said "input box pulled too long", so we constrain them.
+    // If we want them to fill the space but not be HUGE, we can use stretch factors.
+    // But FixedWidth is safer for "too long".
+    rgbLayout->addStretch(); 
+    
+    inputLayout->addWidget(m_rgbWidget);
 
-    auto* form = new QWidget(body);
-    auto* grid = new QGridLayout(form);
-    grid->setContentsMargins(0, 0, 0, 0);
-    grid->setHorizontalSpacing(6);
-    grid->setVerticalSpacing(4);
+    // Hex Input - Fix stretch
+    m_hexWidget = new QWidget(this);
+    auto* hexLayout = new QHBoxLayout(m_hexWidget);
+    hexLayout->setContentsMargins(0, 0, 0, 0);
+    m_hexEdit = new QLineEdit(this);
+    m_hexEdit->setAlignment(Qt::AlignCenter);
+    m_hexEdit->setFixedWidth(100); // Constrain width
+    hexLayout->addWidget(m_hexEdit);
+    hexLayout->addStretch();
+    
+    inputLayout->addWidget(m_hexWidget);
+    m_hexWidget->setVisible(false);
 
-    auto addRow = [&](int row, const QString& name, int value, QSlider** outSl, QSpinBox** outSp) {
-        QLabel* lbl = new QLabel(name, form);
-        QSlider* sl = new QSlider(Qt::Horizontal, form);
-        sl->setRange(0, 255);
-        sl->setValue(value);
-        QSpinBox* sp = new QSpinBox(form);
-        sp->setRange(0, 255);
-        sp->setValue(value);
-        QObject::connect(sl, &QSlider::valueChanged, sp, &QSpinBox::setValue);
-        grid->addWidget(lbl, row, 0);
-        grid->addWidget(sl, row, 1);
-        grid->addWidget(sp, row, 2);
-        *outSl = sl;
-        *outSp = sp;
-    };
+    inputLayout->addStretch(); // Push everything to left, except "Pick" button
 
-    QSlider *slR, *slG, *slB;
-    QSpinBox *spR, *spG, *spB;
-    addRow(0, QObject::tr("红"), initial.red(), &slR, &spR);
-    addRow(1, QObject::tr("绿"), initial.green(), &slG, &spG);
-    addRow(2, QObject::tr("蓝"), initial.blue(), &slB, &spB);
+    // Screen Pick Button
+    QPushButton* screenPickBtn = new QPushButton(this);
+    screenPickBtn->setIcon(QIcon::fromTheme("color-picker"));
+    screenPickBtn->setText(tr("取色"));
+    screenPickBtn->setFixedWidth(60);
+    inputLayout->addWidget(screenPickBtn);
 
-    QLineEdit* hexEdit = new QLineEdit(form);
-    hexEdit->setPlaceholderText("#RRGGBB");
-    auto updateHexFromRGB = [&]() {
-        QColor c(spR->value(), spG->value(), spB->value());
-        hexEdit->setText('#' + c.name(QColor::HexRgb).mid(1));
-        setPreview(c);
-        if (currentOut)
-            *currentOut = c;
-    };
-    auto updateRGBFromHex = [&]() {
-        QString s = hexEdit->text().trimmed();
-        if (s.startsWith('#'))
-            s = s.mid(1);
-        if (s.size() == 6) {
-            QColor c('#' + s);
-            if (c.isValid()) {
-                slR->setValue(c.red());
-                spR->setValue(c.red());
-                slG->setValue(c.green());
-                spG->setValue(c.green());
-                slB->setValue(c.blue());
-                spB->setValue(c.blue());
-                setPreview(c);
-                if (currentOut)
-                    *currentOut = c;
+    mainLayout->addWidget(m_inputContainer);
+
+    // 4. Recent Colors - Fix Vertical Alignment
+    auto* recentLblRow = new QHBoxLayout();
+    auto* recentLbl = new QLabel(tr("最近使用颜色"), this);
+    recentLblRow->addWidget(recentLbl);
+    recentLblRow->addStretch();
+    
+    auto* btnAdd = new QToolButton(this);
+    btnAdd->setText("+");
+    btnAdd->setToolTip(tr("添加当前颜色"));
+    btnAdd->setAutoRaise(true);
+    // Make button larger and text larger
+    btnAdd->setFixedSize(30, 30);
+    btnAdd->setIcon(QIcon("icon:window_buttons/hx_custom_add.svg"));
+    recentLblRow->addWidget(btnAdd);
+    
+    // Align text and button vertically center
+    recentLblRow->setAlignment(Qt::AlignVCenter);
+    mainLayout->addLayout(recentLblRow);
+
+    m_recentColorsWidget = new QWidget(this);
+    m_recentLayout = new QHBoxLayout(m_recentColorsWidget);
+    m_recentLayout->setContentsMargins(0, 0, 0, 0);
+    m_recentLayout->setSpacing(4);
+    // Align Center to center the color blocks
+    m_recentLayout->setAlignment(Qt::AlignCenter); 
+    mainLayout->addWidget(m_recentColorsWidget);
+
+    rebuildRecentColors();
+
+    // 5. Preset Colors - Fix Vertical Alignment
+    auto* presetLbl = new QLabel(tr("系统预设颜色"), this);
+    mainLayout->addWidget(presetLbl); // Default alignment usually fine, but can ensure
+    
+    auto* presetWidget = new QWidget(this);
+    auto* presetLayout = new QVBoxLayout(presetWidget);
+    presetLayout->setContentsMargins(0, 0, 0, 0);
+    presetLayout->setSpacing(2);
+    // Align Center to center the grid
+    presetLayout->setAlignment(Qt::AlignHCenter | Qt::AlignTop); 
+    createPresetColors(presetWidget, presetLayout);
+    mainLayout->addWidget(presetWidget);
+    
+
+    // Connections
+    connect(m_hueSlider, &QSlider::valueChanged, this, &ColorPickerWidget::updateFromHue);
+    connect(m_svArea, &ColorArea::svChanged, this, &ColorPickerWidget::updateFromSV);
+    
+    connect(m_rSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ColorPickerWidget::updateFromRGB);
+    connect(m_gSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ColorPickerWidget::updateFromRGB);
+    connect(m_bSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ColorPickerWidget::updateFromRGB);
+    
+    connect(m_hexEdit, &QLineEdit::editingFinished, this, &ColorPickerWidget::updateFromHex);
+
+    connect(m_modeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index){
+        m_rgbWidget->setVisible(index == 0);
+        m_hexWidget->setVisible(index == 1);
+        updateInputs();
+    });
+
+    connect(btnAdd, &QToolButton::clicked, [this](){
+        addRecentColor(m_color);
+    });
+
+    // Screen pick logic - System API Based
+    connect(screenPickBtn, &QPushButton::clicked, [this](){
+        auto* picker = new ScreenPicker(this);
+        connect(picker, &ScreenPicker::colorPicked, this, [this, picker](const QColor& c){
+             m_color = c;
+             m_h = c.hue(); if(m_h < 0) m_h = 0;
+             m_s = c.saturation();
+             m_v = c.value();
+             
+             QSignalBlocker b1(m_hueSlider), b2(m_svArea);
+             m_hueSlider->setValue(m_h);
+             m_svArea->setHue(m_h);
+             m_svArea->setSV(m_s, m_v);
+             
+             updateInputs();
+             emit colorChanged(m_color);
+             
+             picker->deleteLater();
+             // Restore cursor
+             QApplication::restoreOverrideCursor();
+        });
+        
+        // Change cursor to crosshair globally
+        QApplication::setOverrideCursor(Qt::CrossCursor);
+        picker->start();
+    });
+
+    // Initial State
+    m_h = initial.hue(); if(m_h < 0) m_h = 0;
+    m_s = initial.saturation();
+    m_v = initial.value();
+    
+    m_hueSlider->setValue(m_h);
+    m_svArea->setHue(m_h);
+    m_svArea->setSV(m_s, m_v);
+    
+    updateInputs();
+}
+
+void ColorPickerWidget::updateFromHue(int h)
+{
+    m_h = h;
+    m_svArea->setHue(h);
+    m_color.setHsv(m_h, m_s, m_v);
+    
+    // Clear selection from presets
+    if (m_colorGroup) {
+        if (QAbstractButton* b = m_colorGroup->checkedButton()) {
+            m_colorGroup->setExclusive(false);
+            b->setChecked(false);
+            m_colorGroup->setExclusive(true);
+        }
+    }
+
+    updateInputs();
+    emit colorChanged(m_color);
+}
+
+void ColorPickerWidget::updateFromSV(int s, int v)
+{
+    m_s = s;
+    m_v = v;
+    m_color.setHsv(m_h, m_s, m_v);
+    
+    // Clear selection
+    if (m_colorGroup) {
+        if (QAbstractButton* b = m_colorGroup->checkedButton()) {
+            m_colorGroup->setExclusive(false);
+            b->setChecked(false);
+            m_colorGroup->setExclusive(true);
+        }
+    }
+
+    updateInputs();
+    emit colorChanged(m_color);
+}
+
+void ColorPickerWidget::updateFromRGB()
+{
+    QColor c(m_rSpin->value(), m_gSpin->value(), m_bSpin->value());
+    if (c.isValid()) {
+        m_color = c;
+        m_h = c.hue(); if(m_h < 0) m_h = 0;
+        m_s = c.saturation();
+        m_v = c.value();
+        
+        // Block signals to prevent loop
+        QSignalBlocker b1(m_hueSlider), b2(m_svArea);
+        m_hueSlider->setValue(m_h);
+        m_svArea->setHue(m_h);
+        m_svArea->setSV(m_s, m_v);
+        
+        // Clear selection
+        if (m_colorGroup) {
+            if (QAbstractButton* b = m_colorGroup->checkedButton()) {
+                m_colorGroup->setExclusive(false);
+                b->setChecked(false);
+                m_colorGroup->setExclusive(true);
             }
         }
-    };
-    QObject::connect(spR, QOverload<int>::of(&QSpinBox::valueChanged), [&](int) { updateHexFromRGB(); });
-    QObject::connect(spG, QOverload<int>::of(&QSpinBox::valueChanged), [&](int) { updateHexFromRGB(); });
-    QObject::connect(spB, QOverload<int>::of(&QSpinBox::valueChanged), [&](int) { updateHexFromRGB(); });
-    QObject::connect(hexEdit, &QLineEdit::textChanged, [&](const QString&) { updateRGBFromHex(); });
-
-    grid->addWidget(new QLabel(QObject::tr("十六进制"), form), 3, 0);
-    grid->addWidget(hexEdit, 3, 1, 1, 2);
-    form->setLayout(grid);
-
-    // 屏幕取色器按钮
-    QPushButton* screenPick = new QPushButton(QObject::tr("屏幕取色器"), body);
-    v->addWidget(preview, 0, Qt::AlignLeft);
-    v->addWidget(screenPick, 0, Qt::AlignLeft);
-    v->addWidget(form);
-    // 自定义色板
-    {
-        auto* paletteRow = new QHBoxLayout();
-        QList<QColor> paletteColors = {QColor("#000000"),
-                                     QColor("#FFFFFF"),
-                                     QColor("#FF0000"),
-                                     QColor("#00FF00"),
-                                     QColor("#0000FF"),
-                                     QColor("#FFFF00"),
-                                     QColor("#FF00FF"),
-                                     QColor("#00FFFF"),
-                                     QColor("#FFA500"),
-                                     QColor("#808080")};
-        for (const QColor& pc : paletteColors) {
-            QPushButton* b = new QPushButton(" ", body);
-            b->setFixedSize(20, 20);
-            
-            QPixmap pix(18, 18);
-            pix.fill(pc);
-            QPainter p(&pix);
-            p.setPen(QColor(0x999999));
-            p.drawRect(0, 0, 17, 17);
-            b->setIcon(QIcon(pix));
-            b->setIconSize(QSize(18, 18));
-            b->setFlat(true); // Make it flat to show icon clearly without button borders interfering too much? 
-            // Actually, standard push button with icon is fine, but we want it to look like a color swatch.
-            // Let's just set the icon. The border logic "border:1px solid #999" was in CSS.
-            // I'll draw the border in the pixmap.
-
-            QObject::connect(b, &QPushButton::clicked, [&, pc]() {
-                slR->setValue(pc.red());
-                spR->setValue(pc.red());
-                slG->setValue(pc.green());
-                spG->setValue(pc.green());
-                slB->setValue(pc.blue());
-                spB->setValue(pc.blue());
-                updateHexFromRGB();
-            });
-            paletteRow->addWidget(b);
+        
+        if (m_modeCombo->currentIndex() == 1) {
+             m_hexEdit->setText(m_color.name().toUpper());
         }
-        paletteRow->addStretch();
-        v->addLayout(paletteRow);
+        
+        emit colorChanged(m_color);
     }
-    // 扩展：模式切换 RGB/HSV/HSL + 交互式区域 + Alpha
-    {
-        auto* modeRow = new QHBoxLayout();
-        QLabel* modeLbl = new QLabel(QObject::tr("模式"), body);
-        QComboBox* modeBox = new QComboBox(body);
-        modeBox->addItems({QObject::tr("RGB"), QObject::tr("HSV"), QObject::tr("HSL")});
-        modeRow->addWidget(modeLbl);
-        modeRow->addWidget(modeBox);
-        modeRow->addStretch();
-        v->addLayout(modeRow);
+}
 
-        QWidget* formHSV = new QWidget(body);
-        auto* gridHSV = new QGridLayout(formHSV);
-        gridHSV->setContentsMargins(0, 0, 0, 0);
-        gridHSV->setHorizontalSpacing(6);
-        gridHSV->setVerticalSpacing(4);
+void ColorPickerWidget::updateFromHex()
+{
+    QColor c(m_hexEdit->text());
+    if (c.isValid()) {
+        m_color = c;
+        m_h = c.hue(); if(m_h < 0) m_h = 0;
+        m_s = c.saturation();
+        m_v = c.value();
+        
+        QSignalBlocker b1(m_hueSlider), b2(m_svArea);
+        m_hueSlider->setValue(m_h);
+        m_svArea->setHue(m_h);
+        m_svArea->setSV(m_s, m_v);
+        
+        // Clear selection
+        if (m_colorGroup) {
+            if (QAbstractButton* b = m_colorGroup->checkedButton()) {
+                m_colorGroup->setExclusive(false);
+                b->setChecked(false);
+                m_colorGroup->setExclusive(true);
+            }
+        }
+        
+        // Update RGB
+        QSignalBlocker b3(m_rSpin), b4(m_gSpin), b5(m_bSpin);
+        m_rSpin->setValue(c.red());
+        m_gSpin->setValue(c.green());
+        m_bSpin->setValue(c.blue());
+        
+        emit colorChanged(m_color);
+    }
+}
 
-        // 顶部 2D 颜色区域（H/S），右侧明度滑条（V）
-        auto* topRow = new QHBoxLayout();
-        ColorArea* area = new ColorArea(formHSV);
-        QSlider* slV = new QSlider(Qt::Vertical, formHSV);
-        slV->setRange(0, 255);
-        slV->setValue(initial.value());
-        topRow->addWidget(area);
-        topRow->addWidget(slV);
-        gridHSV->addLayout(topRow, 0, 0, 1, 3);
+void ColorPickerWidget::updateInputs()
+{
+    QSignalBlocker b1(m_rSpin), b2(m_gSpin), b3(m_bSpin), b4(m_hexEdit);
+    m_rSpin->setValue(m_color.red());
+    m_gSpin->setValue(m_color.green());
+    m_bSpin->setValue(m_color.blue());
+    m_hexEdit->setText(m_color.name().toUpper());
+}
 
-        // 数值行：H / S / V
-        auto addHSVRow =
-            [&](int row, const QString& name, int min, int max, int value, QSlider** outSl, QSpinBox** outSp) {
-                QLabel* lbl = new QLabel(name, formHSV);
-                QSlider* sl = new QSlider(Qt::Horizontal, formHSV);
-                sl->setRange(min, max);
-                sl->setValue(value);
-                QSpinBox* sp = new QSpinBox(formHSV);
-                sp->setRange(min, max);
-                sp->setValue(value);
-                QObject::connect(sl, &QSlider::valueChanged, sp, &QSpinBox::setValue);
-                gridHSV->addWidget(lbl, row, 0);
-                gridHSV->addWidget(sl, row, 1);
-                gridHSV->addWidget(sp, row, 2);
-                *outSl = sl;
-                *outSp = sp;
-            };
-        int initH = initial.hue();
-        if (initH < 0)
-            initH = 0;
-        int initS = initial.saturation();
-        QSlider *slH, *slS;
-        QSpinBox *spH, *spS, *spV;
-        addHSVRow(1, QObject::tr("色相"), 0, 359, initH, &slH, &spH);
-        addHSVRow(2, QObject::tr("饱和度"), 0, 255, initS, &slS, &spS);
-        // 明度滑条已在右侧，值同步到 SpinBox
-        spV = new QSpinBox(formHSV);
-        spV->setRange(0, 255);
-        spV->setValue(slV->value());
-        gridHSV->addWidget(new QLabel(QObject::tr("明度"), formHSV), 3, 0);
-        gridHSV->addWidget(new QWidget(formHSV), 3, 1);
-        gridHSV->addWidget(spV, 3, 2);
+void ColorPickerWidget::addRecentColor(const QColor& c)
+{
+    // Check duplicates
+    if (s_customColors.contains(c)) return;
+    
+    s_customColors.prepend(c);
+    if (s_customColors.size() > 10) s_customColors.removeLast(); // Limit to 10
+    
+    rebuildRecentColors();
+}
 
-        // Alpha 通道（可选）
-        QCheckBox* useAlpha = new QCheckBox(QObject::tr("使用 Alpha"), body);
-        QSlider* slA = new QSlider(Qt::Horizontal, body);
-        slA->setRange(0, 255);
-        slA->setValue(initial.alpha());
-        QSpinBox* spA = new QSpinBox(body);
-        spA->setRange(0, 255);
-        spA->setValue(initial.alpha());
-        QObject::connect(slA, &QSlider::valueChanged, spA, &QSpinBox::setValue);
-        auto* alphaRow = new QHBoxLayout();
-        alphaRow->addWidget(useAlpha);
-        alphaRow->addWidget(slA, 1);
-        alphaRow->addWidget(spA);
-        v->addLayout(alphaRow);
-
-        auto applyHSV = [&]() {
-            QColor c;
-            c.setHsv(spH->value(), spS->value(), spV->value());
-            if (useAlpha->isChecked())
-                c.setAlpha(spA->value());
-            slR->setValue(c.red());
-            spR->setValue(c.red());
-            slG->setValue(c.green());
-            spG->setValue(c.green());
-            slB->setValue(c.blue());
-            spB->setValue(c.blue());
-            hexEdit->setText('#' + c.name(QColor::HexRgb).mid(1));
-            setPreview(c);
-            if (currentOut)
-                *currentOut = c;
-        };
-        area->setHS(initH, initS);
-        QObject::connect(spH, QOverload<int>::of(&QSpinBox::valueChanged), [&](int) {
-            area->setHS(spH->value(), spS->value());
-            applyHSV();
+void ColorPickerWidget::rebuildRecentColors()
+{
+    // Clear layout
+    QLayoutItem* item;
+    while ((item = m_recentLayout->takeAt(0)) != nullptr) {
+        delete item->widget();
+        delete item;
+    }
+    
+    // 30px size for better visibility
+    int btnSize = 30;
+    
+    for (const QColor& c : s_customColors) {
+        ColorButton* btn = new ColorButton(c, btnSize, this);
+        m_colorGroup->addButton(btn); // Add to group for mutual exclusion
+        
+        connect(btn, &ColorButton::clicked, [this, c](){
+             m_color = c;
+             m_h = c.hue(); if(m_h < 0) m_h = 0;
+             m_s = c.saturation();
+             m_v = c.value();
+             
+             QSignalBlocker b1(m_hueSlider), b2(m_svArea);
+             m_hueSlider->setValue(m_h);
+             m_svArea->setHue(m_h);
+             m_svArea->setSV(m_s, m_v);
+             
+             updateInputs();
+             emit colorChanged(m_color);
         });
-        QObject::connect(spS, QOverload<int>::of(&QSpinBox::valueChanged), [&](int) {
-            area->setHS(spH->value(), spS->value());
-            applyHSV();
-        });
-        QObject::connect(spV, QOverload<int>::of(&QSpinBox::valueChanged), [&](int) { applyHSV(); });
-        QObject::connect(slV, &QSlider::valueChanged, spV, &QSpinBox::setValue);
-        QObject::connect(area, &ColorArea::hsChanged, [&](int h, int s) {
-            spH->setValue(h);
-            spS->setValue(s);
-            applyHSV();
-        });
-
-        formHSV->setLayout(gridHSV);
-        v->addWidget(formHSV);
-        formHSV->setVisible(false);
-
-        // HSL 形态
-        QWidget* formHSL = new QWidget(body);
-        auto* gridHSL = new QGridLayout(formHSL);
-        gridHSL->setContentsMargins(0, 0, 0, 0);
-        gridHSL->setHorizontalSpacing(6);
-        gridHSL->setVerticalSpacing(4);
-        auto* topRowHSL = new QHBoxLayout();
-        ColorArea* areaHSL = new ColorArea(formHSL);
-        QSlider* slL = new QSlider(Qt::Vertical, formHSL);
-        slL->setRange(0, 255);
-        slL->setValue(initial.lightness());
-        topRowHSL->addWidget(areaHSL);
-        topRowHSL->addWidget(slL);
-        gridHSL->addLayout(topRowHSL, 0, 0, 1, 3);
-
-        auto addHSLRow = [&](int row, const QString& name, int min, int max, int value, QSlider** outSl, QSpinBox** outSp) {
-            QLabel* lbl = new QLabel(name, formHSL);
-            QSlider* sl = new QSlider(Qt::Horizontal, formHSL);
-            sl->setRange(min, max);
-            sl->setValue(value);
-            QSpinBox* sp = new QSpinBox(formHSL);
-            sp->setRange(min, max);
-            sp->setValue(value);
-            QObject::connect(sl, &QSlider::valueChanged, sp, &QSpinBox::setValue);
-            gridHSL->addWidget(lbl, row, 0);
-            gridHSL->addWidget(sl, row, 1);
-            gridHSL->addWidget(sp, row, 2);
-            *outSl = sl;
-            *outSp = sp;
-        };
-        int initHHSL = initial.hue(); if (initHHSL < 0) initHHSL = 0;
-        int initSHSL = initial.hslSaturation();
-        QSlider *slHHSL, *slSHSL;
-        QSpinBox *spHHSL, *spSHSL, *spL;
-        addHSLRow(1, QObject::tr("色相"), 0, 359, initHHSL, &slHHSL, &spHHSL);
-        addHSLRow(2, QObject::tr("饱和度"), 0, 255, initSHSL, &slSHSL, &spSHSL);
-        spL = new QSpinBox(formHSL);
-        spL->setRange(0, 255);
-        spL->setValue(slL->value());
-        gridHSL->addWidget(new QLabel(QObject::tr("亮度"), formHSL), 3, 0);
-        gridHSL->addWidget(new QWidget(formHSL), 3, 1);
-        gridHSL->addWidget(spL, 3, 2);
-
-        auto applyHSL = [&]() {
-            QColor c; c.setHsl(spHHSL->value(), spSHSL->value(), spL->value());
-            if (useAlpha->isChecked()) c.setAlpha(spA->value());
-            slR->setValue(c.red()); spR->setValue(c.red());
-            slG->setValue(c.green()); spG->setValue(c.green());
-            slB->setValue(c.blue()); spB->setValue(c.blue());
-            hexEdit->setText('#' + c.name(QColor::HexRgb).mid(1));
-            setPreview(c);
-            if (currentOut) *currentOut = c;
-        };
-
-        areaHSL->setHS(initHHSL, initSHSL);
-        QObject::connect(spHHSL, QOverload<int>::of(&QSpinBox::valueChanged), [&](int){ areaHSL->setHS(spHHSL->value(), spSHSL->value()); applyHSL(); });
-        QObject::connect(spSHSL, QOverload<int>::of(&QSpinBox::valueChanged), [&](int){ areaHSL->setHS(spHHSL->value(), spSHSL->value()); applyHSL(); });
-        QObject::connect(spL, QOverload<int>::of(&QSpinBox::valueChanged), [&](int){ applyHSL(); });
-        QObject::connect(slL, &QSlider::valueChanged, spL, &QSpinBox::setValue);
-        QObject::connect(areaHSL, &ColorArea::hsChanged, [&](int h, int s){ spHHSL->setValue(h); spSHSL->setValue(s); applyHSL(); });
-
-        formHSL->setLayout(gridHSL);
-        v->addWidget(formHSL);
-        formHSL->setVisible(false);
-
-        // 模式切换可见性
-        QObject::connect(modeBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [=](int idx){
-            bool rgb = (idx == 0), hsv = (idx == 1), hsl = (idx == 2);
-            form->setVisible(rgb);
-            formHSV->setVisible(hsv);
-            formHSL->setVisible(hsl);
-        });
-
-        // 屏幕取色器：读取鼠标所在像素
-        QObject::connect(screenPick, &QPushButton::clicked, [=](){
-            QPoint gpos = QCursor::pos();
-            QScreen* sc = QGuiApplication::screenAt(gpos);
-            if (!sc) sc = QGuiApplication::primaryScreen();
-            if (!sc) return;
-            QPixmap px = sc->grabWindow(0, gpos.x(), gpos.y(), 1, 1);
-            QImage im = px.toImage();
-            if (im.isNull()) return;
-            QColor c = QColor::fromRgb(im.pixel(0,0));
-            useAlpha->setChecked(false);
-            slR->setValue(c.red()); spR->setValue(c.red());
-            slG->setValue(c.green()); spG->setValue(c.green());
-            slB->setValue(c.blue()); spB->setValue(c.blue());
-            hexEdit->setText('#' + c.name(QColor::HexRgb).mid(1));
-            setPreview(c);
-            if (currentOut) *currentOut = c;
-            // 同步模式页面的指示器
-            area->setHS(c.hue() < 0 ? 0 : c.hue(), c.saturation());
-            spH->setValue(c.hue() < 0 ? 0 : c.hue());
-            spS->setValue(c.saturation());
-            spV->setValue(c.value());
-            areaHSL->setHS(c.hue() < 0 ? 0 : c.hue(), c.hslSaturation());
-            spHHSL->setValue(c.hue() < 0 ? 0 : c.hue());
-            spSHSL->setValue(c.hslSaturation());
-            spL->setValue(c.lightness());
-        });
+        
+        m_recentLayout->addWidget(btn);
     }
 
-    // 自定义颜色收藏
-    static QVector<QColor> s_customColors;
-    auto* customRow = new QHBoxLayout();
-    QPushButton* btnAddCustom = new QPushButton(QObject::tr("加入自定义"), body);
-    customRow->addWidget(btnAddCustom);
-    for (const QColor& cc : s_customColors) {
-        QPushButton* b = new QPushButton(" ", body);
-        b->setFixedSize(20, 20);
-        QPixmap pix(18, 18);
-        pix.fill(cc);
-        QPainter p(&pix);
-        p.setPen(QColor(0x999999));
-        p.drawRect(0, 0, 17, 17);
-        b->setIcon(QIcon(pix));
-        b->setIconSize(QSize(18, 18));
-        b->setFlat(true);
-        QObject::connect(b, &QPushButton::clicked, [&, cc]() {
-            slR->setValue(cc.red());
-            spR->setValue(cc.red());
-            slG->setValue(cc.green());
-            spG->setValue(cc.green());
-            slB->setValue(cc.blue());
-            spB->setValue(cc.blue());
-            updateHexFromRGB();
+    m_recentLayout->addStretch(); 
+}
+
+void ColorPickerWidget::createPresetColors(QWidget* parent, QVBoxLayout* layout)
+{
+    // Grid of colors
+    QList<QColor> presets = {
+        Qt::black, Qt::darkGray, Qt::gray, Qt::lightGray, Qt::white,
+        Qt::red, Qt::green, Qt::blue, Qt::cyan, Qt::magenta, Qt::yellow,
+        Qt::darkRed, Qt::darkGreen, Qt::darkBlue, Qt::darkCyan, Qt::darkMagenta, Qt::darkYellow,
+        QColor("#F44336"), QColor("#E91E63"), QColor("#9C27B0"), QColor("#673AB7"), QColor("#3F51B5"),
+        QColor("#2196F3"), QColor("#03A9F4"), QColor("#00BCD4"), QColor("#009688"), QColor("#4CAF50"),
+        QColor("#8BC34A"), QColor("#CDDC39"), QColor("#FFEB3B"), QColor("#FFC107"), QColor("#FF9800")
+    };
+    
+    QGridLayout* grid = new QGridLayout();
+    grid->setSpacing(6); // Increased spacing
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // Ensure grid itself is aligned
+    
+    int row = 0, col = 0;
+    int maxCols = 16; // 16 columns * (30+6) = ~576px, fits in 600px nicely
+    int btnSize = 30;
+
+    for (const QColor& c : presets) {
+        ColorButton* btn = new ColorButton(c, btnSize, parent);
+        m_colorGroup->addButton(btn); // Add to group
+        
+        connect(btn, &ColorButton::clicked, [this, c](){
+             m_color = c;
+             m_h = c.hue(); if(m_h < 0) m_h = 0;
+             m_s = c.saturation();
+             m_v = c.value();
+             
+             QSignalBlocker b1(m_hueSlider), b2(m_svArea);
+             m_hueSlider->setValue(m_h);
+             m_svArea->setHue(m_h);
+             m_svArea->setSV(m_s, m_v);
+             
+             updateInputs();
+             emit colorChanged(m_color);
         });
-        customRow->addWidget(b);
+        
+        grid->addWidget(btn, row, col);
+        
+        col++;
+        if (col >= maxCols) {
+            col = 0;
+            row++;
+        }
     }
-    customRow->addStretch();
-    v->addLayout(customRow);
-    QObject::connect(btnAddCustom, &QPushButton::clicked, [&, currentOut, customRow]() {
-        if (!currentOut)
-            return;
-        QColor c = *currentOut;
-        if (!c.isValid())
-            return;
-        s_customColors.prepend(c);
-        if (s_customColors.size() > 16)
-            s_customColors.removeLast();
-        QPushButton* b = new QPushButton(" ", body);
-        b->setFixedSize(20, 20);
-        QPixmap pix(18, 18);
-        pix.fill(c);
-        QPainter p(&pix);
-        p.setPen(QColor(0x999999));
-        p.drawRect(0, 0, 17, 17);
-        b->setIcon(QIcon(pix));
-        b->setIconSize(QSize(18, 18));
-        b->setFlat(true);
-        QObject::connect(b, &QPushButton::clicked, [&, c]() {
-            slR->setValue(c.red());
-            spR->setValue(c.red());
-            slG->setValue(c.green());
-            spG->setValue(c.green());
-            slB->setValue(c.blue());
-            spB->setValue(c.blue());
-            updateHexFromRGB();
-        });
-        int insertPos = customRow->count() > 0 ? customRow->count() - 1 : 0; // before stretch
-        customRow->insertWidget(insertPos, b);
+    
+    layout->addLayout(grid);
+}
+
+QWidget* ColorPicker::makeColorPickerBody(QWidget* parent, const QColor& initial, QColor* currentOut)
+{
+    auto* w = new ColorPickerWidget(parent, initial);
+    if (currentOut) *currentOut = w->currentColor();
+    QObject::connect(w, &ColorPickerWidget::colorChanged, [currentOut](const QColor& c){
+        if (currentOut) *currentOut = c;
     });
-    body->setLayout(v);
-
-    setPreview(initial);
-    if (currentOut)
-        *currentOut = initial;
-    updateHexFromRGB();
-    return body;
+    return w;
 }
 
 } // namespace QtAdvancedUI

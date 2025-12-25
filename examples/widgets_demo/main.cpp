@@ -362,7 +362,10 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
 
     // 连接：颜色与字体
     QObject::connect(pickColorBtn, &PushButton::clicked, [page, colorResult]() {
-        const auto c = DialogUtils::pickColor(page, QColor("#26A69A"), "选择颜色");
+        // 传入 QColor() 表示使用库中记录的上次颜色
+        // 用户也可以通过 DialogUtils::getLastPickedColor() 获取
+        const auto c = DialogUtils::pickColor(page, QColor(), "选择颜色");
+        
         colorResult->setText(QString("颜色结果: %1").arg(c.name()));
         colorResult->setStyleSheet(QString("background:%1; padding:6px;").arg(c.name()));
     });

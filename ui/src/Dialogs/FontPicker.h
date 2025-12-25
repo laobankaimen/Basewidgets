@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef FONTPICKER_H
  #define FONTPICKER_H
  
@@ -14,3 +18,4 @@
  } // namespace QtAdvancedUI
  
  #endif // FONTPICKER_H
+

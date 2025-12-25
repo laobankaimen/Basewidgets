@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Views/TreeWidget.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -40,3 +44,4 @@ void TreeWidget::applyStylesheet()
 }
 
 } // namespace QtAdvancedUI
+

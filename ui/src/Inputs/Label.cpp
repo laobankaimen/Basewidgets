@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Inputs/Label.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -49,3 +53,4 @@ void Label::applyStylesheet()
 }
 
 } // namespace QtAdvancedUI
+

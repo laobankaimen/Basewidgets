@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_COMPASSGAUGE_H
 #define QTADVANCEDUI_COMPASSGAUGE_H
 
@@ -54,3 +58,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_COMPASSGAUGE_H
+

@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Inputs/DatePicker.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QCalendarWidget>
@@ -63,3 +67,4 @@ void DatePicker::setWeekNumbersEnabled(bool enabled)
 }
 
 } // namespace QtAdvancedUI
+

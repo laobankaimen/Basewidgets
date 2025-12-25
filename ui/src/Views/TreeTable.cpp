@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Views/TreeTable.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QStandardItemModel>
@@ -175,3 +179,4 @@ void TreeTable::appendSummaryRow(QStandardItemModel* m, QStandardItem* parentIte
 }
 
 } // namespace QtAdvancedUI
+

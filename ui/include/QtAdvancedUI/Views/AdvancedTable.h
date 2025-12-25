@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_ADVANCEDTABLE_H
 #define QTADVANCEDUI_ADVANCEDTABLE_H
 
@@ -125,3 +129,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_ADVANCEDTABLE_H
+

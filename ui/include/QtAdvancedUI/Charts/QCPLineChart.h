@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #pragma once
 
 #include <QtAdvancedUI/Charts/QCustomplot.h>
@@ -34,3 +38,4 @@ private:
 };
 
 } // namespace QtAdvancedUI
+

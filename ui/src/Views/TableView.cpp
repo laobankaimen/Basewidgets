@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Views/TableView.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QHeaderView>
@@ -49,3 +53,4 @@ void TableView::applyStylesheet()
 }
 
 } // namespace QtAdvancedUI
+

@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Views/PagedProxyModel.h>
 #include <QAbstractItemModel>
 #include <QtMath>
@@ -129,3 +133,4 @@ void PagedProxyModel::resetPage()
 }
 
 } // namespace QtAdvancedUI
+

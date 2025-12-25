@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 // Ported to match test/source/qcgaugewidget.* behavior exactly
 #ifndef QTADVANCEDUI_QCGAUGEWIDGET_H
 #define QTADVANCEDUI_QCGAUGEWIDGET_H
@@ -8,6 +12,7 @@
 #include <QPainter>
 #include <QObject>
 #include <QRectF>
+#include <QPainterPath>
 #include <QtMath>
 
 namespace QtAdvancedUI {
@@ -259,3 +264,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_QCGAUGEWIDGET_H
+

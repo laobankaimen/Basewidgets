@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Inputs/DateRangePicker.h>
 #include <QtAdvancedUI/Inputs/DatePicker.h>
 #include <QtAdvancedUI/Inputs/TimePicker.h>
@@ -203,3 +207,4 @@ void DateRangePicker::updateTimeZoneCombo(const QStringList& ids)
 }
 
 } // namespace QtAdvancedUI
+

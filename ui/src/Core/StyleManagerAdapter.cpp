@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QApplication>
 #include <QDir>
@@ -95,3 +99,4 @@ void StyleManagerAdapter::setInstance(acss::QtAdvancedStylesheet* mgr)
 }
 
 } // namespace QtAdvancedUI
+

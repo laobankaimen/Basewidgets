@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Core/CustomTitleBar.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
@@ -298,3 +302,4 @@ void CustomTitleBar::setDoubleClickToToggleEnabled(bool enabled)
 }
 
 } // namespace QtAdvancedUI
+

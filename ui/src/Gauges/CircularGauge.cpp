@@ -1,3 +1,7 @@
+/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Gauges/CircularGauge.h>
 #include <QPainter>
 #include <QtMath>
@@ -67,11 +71,15 @@ void CircularGauge::paintEvent(QPaintEvent* e)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
 
+    // Calculate dimensions and center point
     const int w = width();
     const int h = height();
     const int size = qMin(w, h);
     const QPointF c(w/2.0, h/2.0);
     const qreal outerR = size/2.0 - 6;
+
+    // 1. Draw Dial Background
+    // Use a radial gradient to give a 3D convex look to the dial face
     // 暗色表盘背景（径向渐变），作为基础底层，提高对比度
     {
         QRadialGradient g(c, outerR, c + QPointF(outerR*0.35, outerR*0.35));
@@ -86,11 +94,14 @@ void CircularGauge::paintEvent(QPaintEvent* e)
         QRectF dialRect(c.x()-outerR+1, c.y()-outerR+1, outerR*2-2, outerR*2-2);
         p.drawEllipse(dialRect);
     }
+    
+    // Calculate radii for ticks and needle
     const qreal tickOuterR = outerR - m_ringWidth + m_tickInset;
     const qreal tickInnerRMajor = outerR - m_tickMajorLength;
     const qreal tickInnerRMinor = outerR - m_tickMinorLength;
     const qreal needleLen = outerR - 22;
 
+    // Total angle span (e.g., 240 degrees for a standard gauge)
     // 基础量程角度
     const qreal spanDeg = m_startDeg - m_endDeg; // e.g. 240
     QRectF arcRect(c.x()-outerR, c.y()-outerR, outerR*2, outerR*2);
@@ -452,3 +463,4 @@ void CircularGauge::useClassicThreeColorPercentPreset(const QString& title, cons
 }
 
 } // namespace QtAdvancedUI
+

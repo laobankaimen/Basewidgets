@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Charts/StyledPlot.h>
 #include <QPalette>
 
@@ -91,3 +95,4 @@ void StyledPlot::replot(QCustomPlot::RefreshPriority priority) {
 }
 
 } // namespace QtAdvancedUI
+

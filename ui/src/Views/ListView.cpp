@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Views/ListView.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -39,3 +43,4 @@ void ListView::applyStylesheet()
 }
 
 } // namespace QtAdvancedUI
+

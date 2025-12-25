@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_LISTVIEW_H
 #define QTADVANCEDUI_LISTVIEW_H
 
@@ -33,3 +37,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_LISTVIEW_H
+

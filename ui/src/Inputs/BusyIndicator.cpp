@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Inputs/BusyIndicator.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 #include <QPainter>
@@ -74,3 +78,4 @@ void BusyIndicator::paintEvent(QPaintEvent* e)
 }
 
 } // namespace QtAdvancedUI
+

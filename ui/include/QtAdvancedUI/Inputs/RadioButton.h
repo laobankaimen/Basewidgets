@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_RADIOBUTTON_H
 #define QTADVANCEDUI_RADIOBUTTON_H
 
@@ -35,3 +39,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_RADIOBUTTON_H
+

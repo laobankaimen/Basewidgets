@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_BUSYINDICATOR_H
 #define QTADVANCEDUI_BUSYINDICATOR_H
 
@@ -41,3 +45,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_BUSYINDICATOR_H
+

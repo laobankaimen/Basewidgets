@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_COLORPICKER_H
 #define QTADVANCEDUI_COLORPICKER_H
 
@@ -13,3 +17,4 @@ ACSS_UI_EXPORT QWidget* makeColorPickerBody(QWidget* parent, const QColor& initi
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_COLORPICKER_H
+

@@ -3,92 +3,96 @@
 本仓库包含一套基于 Qt 的高级样式与 UI 组件库，以及一个可运行的示例程序 `widgets_demo`，用于演示控件与布局的实际效果。
 
 ## 项目简介
-- 组件库位于 `ui/` 与 `qtadvancedcss/`，提供输入控件、视图控件、容器、对话框、图表，以及新增的仪表盘控件分类。
-- 示例程序位于 `examples/widgets_demo/`，用于预览各种控件的外观与交互；当前布局为“双列结构”，左侧为表单控件，右侧为视图与图表等。
+
+- **核心组件库**：位于 `ui/` 目录下，集成了样式引擎 (`QtAdvancedStylesheet`) 与各类高级 UI 控件。
+- **示例程序**：位于 `examples/widgets_demo/`，全方位展示控件的外观、交互与主题切换效果。
+- **主题工具**：位于 `tools/theme_builder/`，用于管理、编辑与生成项目所需的主题资源文件 (`themes.rcc`)。
 
 ## 主要特性
-- Inputs：按钮、选择、文本/数字输入、滑块、开关、进度等。
-- Views：列表、表格、树表等视图类控件。
-- Charts：折线图、饼图、柱状图等基础图表。
-- Dialogs：常用对话框与工具示例。
-- Containers：分组框、工具栏、状态栏等容器组件。
-- Gauges（仪表盘）：`CircularGauge` 已迁移到独立的 Gauges 分类，示例中以分组形式展示。
+
+- **Inputs**：丰富的输入类控件，包括按钮、文本框、滑块、开关、日期/时间选择器、多选下拉框等。
+- **Views**：增强型视图控件，包括树状视图、列表视图、表格视图以及分页代理模型。
+- **Charts**：基于 QCustomPlot 封装的基础图表库，支持折线图、柱状图、瀑布图等。
+- **Dialogs**：
+  - **File Browser**：重构的仿 Ubuntu 风格文件浏览器，支持侧边栏快捷导航、图标/列表多视图切换、面包屑地址栏及暗色模式优化。
+  - **Color Picker**：专业级颜色选择器，支持 HSV/RGB/Hex 调节、屏幕取色，并内置库级静态存储以记忆历史颜色。
+  - 其他常用对话框（字体选择等）。
+- **Containers**：分组框、工具栏、状态栏、侧边栏容器等布局组件。
+- **Gauges**：独立的仪表盘组件库，包含圆形仪表 (`CircularGauge`)、速度表 (`SpeedGauge`)、姿态仪 (`AttitudeMeter`) 等，支持高度可配置的外观与动画。
+- **Styles**：内置高级样式引擎，支持动态主题切换（明亮/暗黑）、SVG 图标着色与 DPI 适配。
 
 ## 目录结构
+
 ```
 Qt-Advanced-Stylesheets-main/
-├── CMakeLists.txt
+├── CMakeLists.txt              # 根构建文件
 ├── examples/
-│   └── widgets_demo/
-│       ├── CMakeLists.txt
-│       └── main.cpp
-├── styles/themes/                  # 主题与资源
-├── qtadvancedcss/                  # 样式引擎
-└── ui/
+│   └── widgets_demo/           # 演示程序源码
+├── tools/
+│   └── theme_builder/          # 主题构建工具与原始资源
+│       └── styles/themes/      # 主题定义文件 (XML/CSS/SVG)
+└── ui/                         # 核心库
     ├── CMakeLists.txt
-    ├── include/QtAdvancedUI/       # 头文件（按分类组织）
-    └── src/                        # 源码（按分类组织）
-        ├── Gauges/                 # 仪表盘控件（新增分类）
-        ├── Inputs/
-        ├── Views/
-        ├── Charts/
-        ├── Containers/
-        ├── Dialogs/
-        └── Core/
+    ├── include/QtAdvancedUI/   # 公共头文件
+    │   ├── Charts/
+    │   ├── Containers/
+    │   ├── Core/
+    │   ├── Dialogs/
+    │   ├── Gauges/
+    │   ├── Inputs/
+    │   ├── Styles/             # 样式引擎接口
+    │   └── Views/
+    └── src/                    # 源代码实现
+        ├── ... (对应头文件目录)
 ```
 
 ## 构建环境
-- 操作系统：Windows 10/11（推荐 MSVC 2019/2022）
-- 依赖：CMake ≥ 3.20、Qt 5.15.x 或 Qt 6.x（安装对应的 MSVC 工具链）
-- 若 CMake 无法自动找到 Qt，请设置 `CMAKE_PREFIX_PATH` 指向 Qt 安装目录，例如：
-  - `C:\Qt\6.5.3\msvc2019_64` 或 `C:\Qt\5.15.2\msvc2019_64`
+
+- **操作系统**：Windows 10/11（推荐 MSVC 2019/2022）
+- **依赖**：CMake ≥ 3.20、Qt 5.15.x 或 Qt 6.x
+- **配置**：若 CMake 无法自动找到 Qt，请设置 `CMAKE_PREFIX_PATH` 环境变量指向 Qt 安装目录。
+  - 例如：`C:\Qt\6.5.3\msvc2019_64`
 
 ## 快速构建与运行
-在工程根目录执行：
+
+在工程根目录执行以下命令：
 
 ```powershell
+# 1. 配置项目
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+# 2. 编译示例程序
 cmake --build build --config Release --target widgets_demo -j 8
 ```
 
-调试模式：
-```powershell
-cmake --build build --config Debug --target widgets_demo -j 8
-```
-
-常见问题：
-- `LNK1104: cannot open file widgets_demo.exe`：通常是可执行文件仍在运行，先关闭已运行的实例，或切换到 `Debug` 构建再运行。
-- 找不到 Qt：确保已正确设置 `CMAKE_PREFIX_PATH`。
-
-## 示例布局说明（当前状态）
-- 仪表盘控件页：通过主 Tab 切换到“仪表盘控件”，集中展示 `CircularGauge` 等仪表盘控件，便于独立预览与比对。
-- 首页：不再重复展示“圆形仪表盘控件组”，避免与独立页面视觉冗余。
-- 经典三色百分比与完成率预设：示例中可切换或设置不同预设，标签缩放、数值排版与尺寸已调整为更清晰的视觉比例。
+若需调试版本，将 `Release` 替换为 `Debug` 即可。
 
 ## 开发指南
-### 新增/迁移仪表盘控件
-1. 头文件放在：`ui/include/QtAdvancedUI/Gauges/`，引用路径例如：`#include <QtAdvancedUI/Gauges/CircularGauge.h>`。
-2. 源文件放在：`ui/src/Gauges/`。
-3. 在 `ui/CMakeLists.txt` 中注册对应源文件与头文件，确保参与构建。
-4. 在示例中按需创建分组并添加到布局，不改变控件类本身，即可保持外观一致。
+
+### 仪表盘 (Gauges)
+仪表盘控件已模块化，位于 `ui/include/QtAdvancedUI/Gauges/`。
+- **CircularGauge**：通用圆形仪表，支持多段颜色环、刻度标签定制及玻璃质感盖层。
+- **使用示例**：
+  ```cpp
+  auto gauge = new CircularGauge(parent);
+  gauge->setRange(0, 100);
+  gauge->setValue(75);
+  gauge->useCompletionRatePreset("完成率", "%");
+  ```
 
 ### 主题与样式
-- 默认主题在 `styles/themes/`，可根据需要定制主题 JSON 与 CSS 模板。
-
-### Gauges / CircularGauge 使用说明
-- 基本属性：`setRange(min,max)`、`setValue(v)`、`setStartAngle(deg)`、`setEndAngle(deg)`、`setRingWidth(px)`、`setNeedleWidth(px)`、`setNeedleWrapRing(bool)`、`setShowTickLabels(bool)` 等。
-- 区间环：通过 `setRanges({...})` 提供若干区间段，颜色与宽度可独立设置；也可启用经典三段百分比模式。
-- 值高亮：`setShowValueArc(bool)` 控制当前值的高亮弧线。
-- 表盘底色：`setDialColor(QColor)` 设置底层径向渐变的基色。
-- 预设示例：
-  - 完成率：`useCompletionRatePreset(title, unit)`，包含角度、刻度、环宽与文本的合理默认。
-  - 经典模式：`useClassicThreeColorPercentPreset(title, unit, percentStart, percentMid, percentEnd, colorStart, colorMid, colorEnd)`。
-
-## 贡献与许可
-- 欢迎提交 PR 以补充控件与示例。
-- 许可证以各子目录中的 `LICENSE`/`README` 为准，请在使用第三方资源时遵循其许可要求。
+项目使用自定义的样式引擎加载 `themes.rcc` 资源包。
+- 若需修改主题（颜色、图标），请在 `tools/theme_builder/styles/themes/` 中修改对应文件。
+- 修改后需通过 `theme_builder` 工具或相关构建流程重新生成资源文件。
 
 ## 变更记录（近期）
-- 新增 `Gauges` 分类；`CircularGauge` 迁移到独立页面集中展示。
-- 统一 `CircularGauge` 与 `SpeedGauge` 的圆边风格：外阴影 + 内高光，线宽随半径缩放。
-- 为 `CircularGauge` 添加顶部半圆的玻璃质感渐变盖层（完整圆形表面的光泽），与 `SpeedGauge` 保持一致。
+
+- **架构调整**：整理项目结构，将样式引擎整合至 `ui` 库中，新增 `tools` 目录。
+- **File Browser**：全新仿 Ubuntu 风格文件浏览器，集成侧边栏与多视图支持。
+- **Color Picker**：优化颜色记忆机制，实现跨会话的库级状态持久化。
+- **Gauges**：新增多种仪表盘控件，统一视觉风格（阴影、高光、动态线宽）。
+
+## 贡献与许可
+
+- 欢迎提交 PR 改进代码或增加新控件。
+- 请遵循各子模块内的许可证协议。

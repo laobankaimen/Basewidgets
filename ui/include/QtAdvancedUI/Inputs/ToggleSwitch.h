@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_TOGGLESWITCH_H
 #define QTADVANCEDUI_TOGGLESWITCH_H
 
@@ -46,3 +50,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_TOGGLESWITCH_H
+

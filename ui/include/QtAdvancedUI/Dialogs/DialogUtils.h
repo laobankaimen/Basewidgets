@@ -1,5 +1,9 @@
-#ifndef QTADVANCEDUI_DIALOGUTILS_H
-#define QTADVANCEDUI_DIALOGUTILS_H
+/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
+
+#pragma once
 
 #include <QString>
 #include <QStringList>
@@ -34,6 +38,8 @@ public:
     static QColor pickColor(QWidget* parent = nullptr,
                             const QColor& initial = QColor(),
                             const QString& title = QString());
+    static QColor getLastPickedColor();
+
     static QFont pickFont(QWidget* parent = nullptr,
                           const QFont& initial = QFont(),
                           bool* okOut = nullptr,
@@ -53,5 +59,3 @@ public:
 };
 
 } // namespace QtAdvancedUI
-
-#endif // QTADVANCEDUI_DIALOGUTILS_H

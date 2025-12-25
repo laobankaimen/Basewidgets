@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Core/FramelessDialog.h>
 #include <QtAdvancedUI/Core/CustomTitleBar.h>
 #include <QtAdvancedUI/Inputs/ToolButton.h>
@@ -145,3 +149,4 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, lo
 }
 #endif
 } // namespace QtAdvancedUI
+

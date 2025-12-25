@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_DATERANGEPICKER_H
 #define QTADVANCEDUI_DATERANGEPICKER_H
 
@@ -77,3 +81,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_DATERANGEPICKER_H
+

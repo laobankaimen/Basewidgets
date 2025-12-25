@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Inputs/MultiSelectComboBox.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -385,3 +389,4 @@ bool MultiSelectComboBox::eventFilter(QObject* obj, QEvent* e)
 }
 
 } // namespace QtAdvancedUI
+

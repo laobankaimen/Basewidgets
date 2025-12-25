@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include "FontPicker.h"
 #include <QLabel>
 #include <QComboBox>
@@ -156,3 +160,4 @@
 }
  
  } // namespace QtAdvancedUI
+

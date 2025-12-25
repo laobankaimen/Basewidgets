@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_MULTISELECTCOMBOBOX_H
 #define QTADVANCEDUI_MULTISELECTCOMBOBOX_H
 
@@ -68,3 +72,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_MULTISELECTCOMBOBOX_H
+

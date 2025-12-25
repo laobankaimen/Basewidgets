@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_CIRCULARGAUGE_H
 #define QTADVANCEDUI_CIRCULARGAUGE_H
 
@@ -131,3 +135,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_CIRCULARGAUGE_H
+

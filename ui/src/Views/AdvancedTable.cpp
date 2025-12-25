@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Views/AdvancedTable.h>
 
 #include <QScrollBar>
@@ -518,3 +522,4 @@ void AdvancedTable::setPaginationBarVisible(bool visible)
 }
 
 } // namespace QtAdvancedUI
+

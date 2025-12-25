@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #ifndef QTADVANCEDUI_FRAMELESSDIALOG_H
 #define QTADVANCEDUI_FRAMELESSDIALOG_H
 
@@ -37,3 +41,4 @@ private:
 } // namespace QtAdvancedUI
 
 #endif // QTADVANCEDUI_FRAMELESSDIALOG_H
+

@@ -1,3 +1,8 @@
+/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
+
 #include <QtAdvancedUI/Dialogs/DialogUtils.h>
 #include <QtAdvancedUI/Core/FramelessDialog.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
@@ -50,6 +55,17 @@ namespace QtAdvancedUI {
 
 // 颜色选择区域已拆分至 ColorPicker.cpp
 
+// Internal storage for the last picked color, shared across the library
+// This static variable ensures color persistence throughout the application lifecycle
+static QColor s_lastPickedColor = QColor("#26A69A");
+
+QColor DialogUtils::getLastPickedColor()
+{
+    // Return the last color picked by the user, stored persistently in the library
+    // This allows different parts of the UI to access the most recently used color
+    return s_lastPickedColor;
+}
+
 static QWidget* makeContent(QWidget* parent, QWidget* body, QDialogButtonBox* box)
 {
     QWidget* content = new QWidget(parent);
@@ -90,74 +106,7 @@ static QPixmap makeBadgeIcon(const QColor& circleColor, const QString& shape, co
     return pixmap;
 }
 
-// 额外本地化 QColorDialog 内部英文标签与功能按钮
-static void localizeColorDialogInternals(QColorDialog* cd)
-{
-    if (!cd) return;
 
-    auto normalize = [](QString s) {
-        s.replace('&', "");
-        s.replace('_', "");
-        return s.trimmed();
-    };
-
-    // 按钮（非底部 OK/Cancel）：PICK SCREEN COLOR / ADD TO CUSTOM COLORS
-    const auto btns = cd->findChildren<QAbstractButton*>();
-    for (auto* b : btns) {
-        const QString t = normalize(b->text());
-        if (t.contains("PICK SCREEN COLOR", Qt::CaseInsensitive) || t.contains("Pick Screen Color", Qt::CaseInsensitive)) {
-            b->setText(QObject::tr("取屏幕颜色"));
-        } else if (t.contains("ADD TO CUSTOM COLORS", Qt::CaseInsensitive) || t.contains("Add to Custom Colors", Qt::CaseInsensitive)) {
-            b->setText(QObject::tr("添加到自定义颜色"));
-        }
-    }
-
-    // 组标题或标签：Basic colors / Custom colors
-    const auto groups = cd->findChildren<QGroupBox*>();
-    for (auto* g : groups) {
-        const QString t = normalize(g->title());
-        if (t.contains("Basic colors", Qt::CaseInsensitive)) g->setTitle(QObject::tr("基本颜色"));
-        else if (t.contains("Custom colors", Qt::CaseInsensitive)) g->setTitle(QObject::tr("自定义颜色"));
-    }
-
-    const auto labels = cd->findChildren<QLabel*>();
-    for (auto* l : labels) {
-        const QString t = normalize(l->text());
-        if (t.startsWith("Hue", Qt::CaseInsensitive)) l->setText(QObject::tr("色相"));
-        else if (t.startsWith("Sat", Qt::CaseInsensitive)) l->setText(QObject::tr("饱和度"));
-        else if (t.startsWith("Val", Qt::CaseInsensitive)) l->setText(QObject::tr("明度"));
-        else if (t.startsWith("Red", Qt::CaseInsensitive)) l->setText(QObject::tr("红"));
-        else if (t.startsWith("Green", Qt::CaseInsensitive)) l->setText(QObject::tr("绿"));
-        else if (t.startsWith("Blue", Qt::CaseInsensitive)) l->setText(QObject::tr("蓝"));
-        else if (t.startsWith("HTML", Qt::CaseInsensitive)) l->setText(QObject::tr("HTML"));
-        else if (t.contains("Basic colors", Qt::CaseInsensitive)) l->setText(QObject::tr("基本颜色"));
-        else if (t.contains("Custom colors", Qt::CaseInsensitive)) l->setText(QObject::tr("自定义颜色"));
-    }
-}
-
-// 事件过滤器：在对话框显示/布局后再次本地化，确保子控件已创建
-class ColorDialogLocalizer : public QObject {
-public:
-    explicit ColorDialogLocalizer(QColorDialog* d) : QObject(d), cd(d) {}
-protected:
-    bool eventFilter(QObject* obj, QEvent* e) override {
-        if (obj == cd) {
-            switch (e->type()) {
-            case QEvent::Show:
-            case QEvent::Polish:
-            case QEvent::LayoutRequest:
-            case QEvent::LanguageChange:
-                localizeColorDialogInternals(cd);
-                break;
-            default:
-                break;
-            }
-        }
-        return QObject::eventFilter(obj, e);
-    }
-private:
-    QColorDialog* cd = nullptr;
-};
 
 // 额外本地化 QFontDialog 内部英文标签与控件
 static void localizeFontDialogInternals(QFontDialog* fd)
@@ -234,86 +183,15 @@ private:
     QFontDialog* fd = nullptr;
 };
 
-// ===== QFileDialog 中文本地化：定义提前放在使用前 =====
-static void localizeFileDialogInternals(QFileDialog* fd)
-{
-    if (!fd) return;
-    auto normalize = [](QString s) {
-        s.replace('&', "");
-        s.replace('_', "");
-        return s.trimmed();
-    };
 
-    // 底部按钮（QFileDialog 内部自带）：本库外部统一提供按钮，为避免重复，这里仅本地化文本后隐藏内部按钮栏
-    if (auto* box = fd->findChild<QDialogButtonBox*>()) {
-        if (auto* b = box->button(QDialogButtonBox::Open)) b->setText(QObject::tr("打开"));
-        if (auto* b = box->button(QDialogButtonBox::Save)) b->setText(QObject::tr("保存"));
-        if (auto* b = box->button(QDialogButtonBox::Ok)) b->setText(QObject::tr("确定"));
-        if (auto* b = box->button(QDialogButtonBox::Apply)) b->setText(QObject::tr("应用"));
-        if (auto* b = box->button(QDialogButtonBox::Cancel)) b->setText(QObject::tr("取消"));
-        if (auto* b = box->button(QDialogButtonBox::Close)) b->setText(QObject::tr("关闭"));
-        // 隐藏内部按钮栏，使用外部统一的 QDialogButtonBox（确定/取消）
-        box->setVisible(false);
-    }
-
-    // 顶部和侧边工具按钮：Back/Forward/Parent/New Folder/Delete/List/Details
-    const auto btns = fd->findChildren<QAbstractButton*>();
-    for (auto* b : btns) {
-        const QString t = normalize(b->text());
-        if (t.contains("BACK", Qt::CaseInsensitive)) b->setText(QObject::tr("后退"));
-        else if (t.contains("FORWARD", Qt::CaseInsensitive)) b->setText(QObject::tr("前进"));
-        else if (t.contains("PARENT", Qt::CaseInsensitive)) b->setText(QObject::tr("上级文件夹"));
-        else if (t.contains("NEW FOLDER", Qt::CaseInsensitive)) b->setText(QObject::tr("新建文件夹"));
-        else if (t.contains("DELETE", Qt::CaseInsensitive)) b->setText(QObject::tr("删除"));
-        else if (t.contains("LIST", Qt::CaseInsensitive)) b->setText(QObject::tr("列表视图"));
-        else if (t.contains("DETAIL", Qt::CaseInsensitive)) b->setText(QObject::tr("详细信息"));
-    }
-
-    // 标签：Look in / File name / Files of type
-    const auto labels = fd->findChildren<QLabel*>();
-    for (auto* l : labels) {
-        const QString t = normalize(l->text());
-        if (t.startsWith("Look in", Qt::CaseInsensitive)) l->setText(QObject::tr("查看位置："));
-        else if (t.startsWith("File name", Qt::CaseInsensitive)) l->setText(QObject::tr("文件名："));
-        else if (t.contains("Files of type", Qt::CaseInsensitive) || t.contains("File type", Qt::CaseInsensitive)) l->setText(QObject::tr("文件类型："));
-    }
-}
-
-class FileDialogLocalizer : public QObject {
-public:
-    explicit FileDialogLocalizer(QFileDialog* d) : QObject(d), fd(d) {}
-protected:
-    bool eventFilter(QObject* obj, QEvent* e) override {
-        if (obj == fd) {
-            switch (e->type()) {
-            case QEvent::Show:
-            case QEvent::Polish:
-            case QEvent::LayoutRequest:
-            case QEvent::LanguageChange:
-                localizeFileDialogInternals(fd);
-                break;
-            default:
-                break;
-            }
-        }
-        return QObject::eventFilter(obj, e);
-    }
-private:
-    QFileDialog* fd = nullptr;
-};
 
 QString DialogUtils::openFile(QWidget* parent, const QString& title, const QString& initialDir, const QString& filter)
 {
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("打开文件") : title);
-    QFileDialog* fd = new QFileDialog(&dlg, QString(), initialDir.isEmpty() ? QDir::homePath() : initialDir);
-    fd->setProperty("msgContent", QVariant(true));
-    fd->setFileMode(QFileDialog::ExistingFile);
-    fd->setViewMode(QFileDialog::Detail);
-    fd->setOption(QFileDialog::DontUseNativeDialog, true);
-    fd->setWindowFlags(Qt::Widget); // 作为主体嵌入
-    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", QString::SkipEmptyParts));
-    fd->installEventFilter(new FileDialogLocalizer(fd));
+    
+    auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFile);
+    widget->setProperty("msgContent", QVariant(true));
 
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
@@ -321,24 +199,25 @@ QString DialogUtils::openFile(QWidget* parent, const QString& title, const QStri
         okBtn->setProperty("primary", QVariant(true));
     }
     if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
+    
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
     QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    dlg.setContentWidget(makeContent(&dlg, fd, box));
-    return dlg.exec() == QDialog::Accepted ? fd->selectedFiles().value(0) : QString();
+    QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
+
+    dlg.setContentWidget(makeContent(&dlg, widget, box));
+    if (dlg.exec() == QDialog::Accepted) {
+        return widget->selectedPath();
+    }
+    return QString();
 }
 
 QStringList DialogUtils::openFiles(QWidget* parent, const QString& title, const QString& initialDir, const QString& filter)
 {
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择文件") : title);
-    QFileDialog* fd = new QFileDialog(&dlg, QString(), initialDir.isEmpty() ? QDir::homePath() : initialDir);
-    fd->setProperty("msgContent", QVariant(true));
-    fd->setFileMode(QFileDialog::ExistingFiles);
-    fd->setViewMode(QFileDialog::Detail);
-    fd->setOption(QFileDialog::DontUseNativeDialog, true);
-    fd->setWindowFlags(Qt::Widget);
-    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", QString::SkipEmptyParts));
-    fd->installEventFilter(new FileDialogLocalizer(fd));
+    
+    auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFiles);
+    widget->setProperty("msgContent", QVariant(true));
 
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
@@ -346,25 +225,31 @@ QStringList DialogUtils::openFiles(QWidget* parent, const QString& title, const 
         okBtn->setProperty("primary", QVariant(true));
     }
     if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
+    
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
     QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    dlg.setContentWidget(makeContent(&dlg, fd, box));
-    return dlg.exec() == QDialog::Accepted ? fd->selectedFiles() : QStringList{};
+    // OpenFiles mode typically doesn't auto-accept on double click of a single file, usually requires selection and OK.
+    // But double clicking a file adds it? Standard QFileDialog double click on file in multi-select mode acts as "add and maybe close if it's the only one"?
+    // Actually FilePickerWidget emits fileActivated on double click. If we want to support double click to select one file and close, we can connect it.
+    // However, for multiple files, usually you select multiple and click OK.
+    // If user double clicks one file, it might be interpreted as "I just want this one".
+    // Let's connect it for convenience.
+    QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
+
+    dlg.setContentWidget(makeContent(&dlg, widget, box));
+    if (dlg.exec() == QDialog::Accepted) {
+        return widget->selectedPaths();
+    }
+    return QStringList{};
 }
 
 QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QString& initialDir, const QString& filter)
 {
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("保存文件") : title);
-    QFileDialog* fd = new QFileDialog(&dlg, QString(), initialDir.isEmpty() ? QDir::homePath() : initialDir);
-    fd->setProperty("msgContent", QVariant(true));
-    fd->setAcceptMode(QFileDialog::AcceptSave);
-    fd->setFileMode(QFileDialog::AnyFile);
-    fd->setViewMode(QFileDialog::Detail);
-    fd->setOption(QFileDialog::DontUseNativeDialog, true);
-    fd->setWindowFlags(Qt::Widget);
-    if (!filter.isEmpty()) fd->setNameFilters(filter.split(";;", QString::SkipEmptyParts));
-    fd->installEventFilter(new FileDialogLocalizer(fd));
+    
+    auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::SaveFile);
+    widget->setProperty("msgContent", QVariant(true));
 
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
@@ -372,23 +257,25 @@ QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QStri
         okBtn->setProperty("primary", QVariant(true));
     }
     if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
+    
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
     QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    dlg.setContentWidget(makeContent(&dlg, fd, box));
-    return dlg.exec() == QDialog::Accepted ? fd->selectedFiles().value(0) : QString();
+    QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
+
+    dlg.setContentWidget(makeContent(&dlg, widget, box));
+    if (dlg.exec() == QDialog::Accepted) {
+        return widget->selectedPath();
+    }
+    return QString();
 }
 
 QString DialogUtils::openDirectory(QWidget* parent, const QString& title, const QString& initialDir)
 {
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择文件夹") : title);
-    QFileDialog* fd = new QFileDialog(&dlg, QString(), initialDir.isEmpty() ? QDir::homePath() : initialDir);
-    fd->setProperty("msgContent", QVariant(true));
-    fd->setFileMode(QFileDialog::Directory);
-    fd->setOption(QFileDialog::ShowDirsOnly, true);
-    fd->setOption(QFileDialog::DontUseNativeDialog, true);
-    fd->setWindowFlags(Qt::Widget);
-    fd->installEventFilter(new FileDialogLocalizer(fd));
+    
+    auto* widget = new FilePickerWidget(&dlg, initialDir, QString(), FilePickerWidget::OpenDirectory);
+    widget->setProperty("msgContent", QVariant(true));
 
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
@@ -396,23 +283,31 @@ QString DialogUtils::openDirectory(QWidget* parent, const QString& title, const 
         okBtn->setProperty("primary", QVariant(true));
     }
     if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
+    
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
     QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    dlg.setContentWidget(makeContent(&dlg, fd, box));
-    return dlg.exec() == QDialog::Accepted ? fd->selectedFiles().value(0) : QString();
+    // Double click on directory in OpenDirectory mode enters it (handled by widget).
+    // It doesn't usually select it and close.
+    // So we don't connect fileActivated here.
+    
+    dlg.setContentWidget(makeContent(&dlg, widget, box));
+    if (dlg.exec() == QDialog::Accepted) {
+        return widget->selectedPath();
+    }
+    return QString();
 }
 
 QColor DialogUtils::pickColor(QWidget* parent, const QColor& initial, const QString& title)
 {
+    // If initial color is not provided (invalid), use the last picked color from library memory.
+    // If initial is valid, use it (but don't update global memory until confirmed).
+    QColor effectiveInitial = initial.isValid() ? initial : s_lastPickedColor;
+
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择颜色") : title);
-    QColorDialog* cd = new QColorDialog(initial, &dlg);
-    cd->setProperty("msgContent", QVariant(true));
-    cd->setOption(QColorDialog::ShowAlphaChannel, true);
-    cd->setOption(QColorDialog::DontUseNativeDialog, true);
-    cd->setOption(QColorDialog::NoButtons, true); // 仅保留外部统一按钮
-    cd->setWindowFlags(Qt::Widget);
-    cd->installEventFilter(new ColorDialogLocalizer(cd));
+    
+    auto* widget = new ColorPickerWidget(&dlg, effectiveInitial);
+    widget->setProperty("msgContent", QVariant(true));
 
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
@@ -420,10 +315,20 @@ QColor DialogUtils::pickColor(QWidget* parent, const QColor& initial, const QStr
         okBtn->setProperty("primary", QVariant(true));
     }
     if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
+    
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
     QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    dlg.setContentWidget(makeContent(&dlg, cd, box));
-    return dlg.exec() == QDialog::Accepted ? cd->currentColor() : QColor();
+    
+    dlg.setContentWidget(makeContent(&dlg, widget, box));
+    if (dlg.exec() == QDialog::Accepted) {
+        QColor c = widget->currentColor();
+        // Update global memory on confirmation
+        s_lastPickedColor = c;
+        return c;
+    }
+    // If canceled or closed, return the effective initial color.
+    // This ensures we return the last valid state (either what the user passed, or the global memory).
+    return effectiveInitial;
 }
 
 QFont DialogUtils::pickFont(QWidget* parent, const QFont& initial, bool* okOut, const QString& title)

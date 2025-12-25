@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Gauges/QcGaugeWidget.h>
 
 namespace QtAdvancedUI {
@@ -931,3 +935,4 @@ void QcAttitudeMeter::drawHandle(QPainter *painter)
 }
 
 } // namespace QtAdvancedUI
+

@@ -1,3 +1,7 @@
+﻿/*
+ * Author: zhoutao@zkhx.com
+ * Date: 2025-12-25
+ */
 #include <QtAdvancedUI/Inputs/TextEdit.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
@@ -47,3 +51,4 @@ void TextEdit::applyStylesheet()
 }
 
 } // namespace QtAdvancedUI
+
