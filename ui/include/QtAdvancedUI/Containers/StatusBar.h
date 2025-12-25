@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_STATUSBAR_H
 
 #include <QStatusBar>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

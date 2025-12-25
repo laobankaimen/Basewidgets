@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_PLAINTEXTEDIT_H
 
 #include <QPlainTextEdit>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

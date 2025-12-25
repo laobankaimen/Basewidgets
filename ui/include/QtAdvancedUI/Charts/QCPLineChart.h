@@ -5,7 +5,7 @@
 
 namespace QtAdvancedUI {
 
-class QCPLineChart : public QCPGraph {
+class ACSS_UI_EXPORT QCPLineChart : public QCPGraph {
     Q_OBJECT
 public:
     explicit QCPLineChart(QCPAxis* keyAxis, QCPAxis* valueAxis);

@@ -57,7 +57,16 @@ static QWidget* makeContent(QWidget* parent, QWidget* body, QDialogButtonBox* bo
     v->setContentsMargins(12, 12, 12, 12);
     v->setSpacing(10);
     v->addWidget(body);
-    if (box) v->addWidget(box);
+    if (box) {
+        // box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        // Make buttons expand proportionally
+        // const auto buttons = box->buttons();
+        // for (auto* btn : buttons) {
+        //      btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        //      btn->setMinimumHeight(32); // Ensure decent height
+        // }
+        v->addWidget(box);
+    }
     content->setLayout(v);
     return content;
 }
@@ -66,16 +75,17 @@ static QWidget* makeContent(QWidget* parent, QWidget* body, QDialogButtonBox* bo
 static QPixmap makeBadgeIcon(const QColor& circleColor, const QString& shape, const QColor& shapeColor)
 {
     QPixmap pixmap;
+    int size = 32;
     if (shape == "check") {
-        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_check.svg").pixmap(40,40);
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/circle_check.svg").pixmap(size,size);
     } else if (shape == "cross") {
-        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_xmark.svg").pixmap(40,40);
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/circle_xmark.svg").pixmap(size,size);
     } else if (shape == "info") {
-        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_info.svg").pixmap(40,40);
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/circle_info.svg").pixmap(size,size);
     } else if (shape == "question") {
-        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_question.svg").pixmap(40,40);
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/circle_question.svg").pixmap(size,size);
     } else if (shape == "warning") {
-        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/circle_exclamation.svg").pixmap(40,40);
+        pixmap = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/circle_exclamation.svg").pixmap(size,size);
     }
     return pixmap;
 }
@@ -455,7 +465,7 @@ void DialogUtils::messageInfo(QWidget* parent, const QString& title, const QStri
     iconLabel->setPixmap(makeBadgeIcon(QColor(35, 155, 249), "info", Qt::white));
     QLabel* textLabel = new QLabel(text, body);
     textLabel->setWordWrap(true);
-    textLabel->setStyleSheet("font-size: 14px;");
+    textLabel->setObjectName("DialogTextLabel");
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);
@@ -463,7 +473,7 @@ void DialogUtils::messageInfo(QWidget* parent, const QString& title, const QStri
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
         okBtn->setText(QObject::tr("确定"));
-        //okBtn->setProperty("primary", QVariant(true));
+        okBtn->setProperty("primary", QVariant(true));
     }
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
 
@@ -485,7 +495,7 @@ void DialogUtils::messageWarning(QWidget* parent, const QString& title, const QS
     iconLabel->setPixmap(makeBadgeIcon(QColor(255, 166, 0), "warning", Qt::white));
     QLabel* textLabel = new QLabel(text, body);
     textLabel->setWordWrap(true);
-    textLabel->setStyleSheet("font-size: 14px;");
+    textLabel->setObjectName("DialogTextLabel");
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);
@@ -493,7 +503,7 @@ void DialogUtils::messageWarning(QWidget* parent, const QString& title, const QS
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
         okBtn->setText(QObject::tr("确定"));
-        //okBtn->setProperty("primary", QVariant(true));
+        okBtn->setProperty("primary", QVariant(true));
     }
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
  
@@ -515,7 +525,7 @@ void DialogUtils::messageError(QWidget* parent, const QString& title, const QStr
     iconLabel->setPixmap(makeBadgeIcon(QColor(242, 94, 67), "cross", Qt::white));
     QLabel* textLabel = new QLabel(text, body);
     textLabel->setWordWrap(true);
-    textLabel->setStyleSheet("font-size: 14px;");
+    textLabel->setObjectName("DialogTextLabel");
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);
@@ -523,7 +533,7 @@ void DialogUtils::messageError(QWidget* parent, const QString& title, const QStr
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
         okBtn->setText(QObject::tr("确定"));
-        //okBtn->setProperty("primary", QVariant(true));
+        okBtn->setProperty("primary", QVariant(true));
     }
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
 
@@ -545,7 +555,7 @@ void DialogUtils::messageSuccess(QWidget* parent, const QString& title, const QS
     iconLabel->setPixmap(makeBadgeIcon(QColor(76, 175, 80), "check", Qt::white));
     QLabel* textLabel = new QLabel(text, body);
     textLabel->setWordWrap(true);
-    textLabel->setStyleSheet("font-size: 14px;");
+    textLabel->setObjectName("DialogTextLabel");
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);
@@ -553,7 +563,7 @@ void DialogUtils::messageSuccess(QWidget* parent, const QString& title, const QS
     auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
     if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
         okBtn->setText(QObject::tr("确定"));
-        //okBtn->setProperty("primary", QVariant(true));
+        okBtn->setProperty("primary", QVariant(true));
     }
     QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
 
@@ -575,7 +585,7 @@ bool DialogUtils::askQuestion(QWidget* parent, const QString& title, const QStri
     iconLabel->setPixmap(makeBadgeIcon(QColor(35, 155, 249), "question", Qt::white));
     QLabel* textLabel = new QLabel(text, body);
     textLabel->setWordWrap(true);
-    textLabel->setStyleSheet("font-size: 14px;");
+    textLabel->setObjectName("DialogTextLabel");
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);

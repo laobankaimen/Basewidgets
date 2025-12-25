@@ -672,13 +672,13 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
         cmap->installContextMenu(plotMap);
     }
     // 双击还原：分别重置两个图的范围
-    QObject::connect(plotLine, &QCustomPlot::mouseDoubleClick, [plotLine](QMouseEvent* /*ev*/){
+    QObject::connect(plotLine, &StyledPlot::mouseDoubleClick, [plotLine](QMouseEvent* /*ev*/){
         plotLine->xAxis->setRange(0, 10.0);
         plotLine->yAxis->setRange(-1.2, 1.2);
         plotLine->yAxis2->setRange(-1.2, 1.2);
         plotLine->replot();
     });
-    QObject::connect(plotMap, &QCustomPlot::mouseDoubleClick, [plotMap, cmap](QMouseEvent* /*ev*/){
+    QObject::connect(plotMap, &StyledPlot::mouseDoubleClick, [plotMap, cmap](QMouseEvent* /*ev*/){
         cmap->rescaleDataRange(true);
         plotMap->xAxis->setRange(0, 6.0);
         plotMap->yAxis->setRange(0, 4.0);
@@ -766,7 +766,7 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     chartLayout->addWidget(new Label("柱状图", chartGroup), 3, 0);
     chartLayout->addWidget(plotBar, 4, 0);
     // 双击还原柱状图范围
-    QObject::connect(plotBar, &QCustomPlot::mouseDoubleClick, [plotBar](QMouseEvent* /*ev*/){
+    QObject::connect(plotBar, &StyledPlot::mouseDoubleClick, [plotBar](QMouseEvent* /*ev*/){
         plotBar->xAxis->setRange(0.5, 6.5);
         plotBar->yAxis->setRange(0.0, 5.0);
         plotBar->replot();
@@ -1050,8 +1050,8 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
-    //静态库中的资源需要显式初始化资源才能在主程序使用
-    Q_INIT_RESOURCE(images);
+    // 动态库会自动初始化资源，无需显式调用 Q_INIT_RESOURCE
+    // Q_INIT_RESOURCE(images);
 
     // 初始化样式管理器
     StyleManagerAdapter::initialize();
@@ -1059,15 +1059,8 @@ int main(int argc, char *argv[])
     // 创建主窗口（使用基于 QWidget 的无边框主界面）
     auto* window = new FramelessWidgetWindow();
     window->setTitle("QtAdvancedUI 组件全面展示");
-
-    //初始化居中显示
-    /*auto primary_screen = QGuiApplication::primaryScreen();
-    if(primary_screen) {
-        QSize diff_size = primary_screen->geometry().size() - window->size();
-        window->move(primary_screen->geometry().x() + diff_size.width() / 2,
-             primary_screen->geometry().y() + diff_size.height() / 2);
-    }*/
-    //window->showFullScreen();//默认全屏
+    // 设置窗口图标（会自动同步到标题栏）
+    window->setWindowIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/logo/logo.svg"));
 
     // 创建菜单栏
     auto* contentRoot = new StyledWidget();
@@ -1079,7 +1072,7 @@ int main(int argc, char *argv[])
     auto* fileMenu = menuBar->addMenu("文件(&F)");
     fileMenu->addAction("新建(&N)", [](){});
     fileMenu->addAction("打开(&O)", [](){});
-    /*QAction *openAct = new QAction(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/user.svg"), "用户(&U)");
+    /*QAction *openAct = new QAction(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/user.svg"), "用户(&U)");
     fileMenu->addAction(openAct);*/
     fileMenu->addSeparator();
     auto* recentMenu = fileMenu->addMenu("最近文件(&R)");

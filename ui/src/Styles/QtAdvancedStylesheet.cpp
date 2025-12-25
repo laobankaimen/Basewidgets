@@ -27,7 +27,8 @@
 //============================================================================
 //                                   INCLUDES
 //============================================================================
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/acss_globals.h>
 #include <iostream>
 
 #include <QMap>
@@ -872,7 +873,12 @@ void QtAdvancedStylesheet::setOutputDirPath(const QString& Path)
 //============================================================================
 QString QtAdvancedStylesheet::currentStyleOutputPath() const
 {
-	return outputDirPath() + "/" + d->CurrentStyle;
+	QString path = outputDirPath() + "/" + d->CurrentStyle;
+	if (!d->CurrentTheme.isEmpty())
+	{
+		path += "/" + d->CurrentTheme;
+	}
+	return path;
 }
 
 
@@ -923,6 +929,9 @@ bool QtAdvancedStylesheet::setCurrentTheme(const QString& Theme)
 	}
 
 	d->CurrentTheme = Theme;
+	// Update icon search path for the new theme output directory
+	QDir::setSearchPaths("icon", {currentStyleOutputPath()});
+	
 	emit currentThemeChanged(d->CurrentTheme);
 	return true;
 }
@@ -936,8 +945,36 @@ void QtAdvancedStylesheet::setDefaultTheme()
 
 
 //============================================================================
-bool QtAdvancedStylesheet::updateStylesheet()
+bool QtAdvancedStylesheet::updateStylesheet(bool force)
 {
+	// Check if the stylesheet file already exists in the output directory.
+	// If it exists, we load it directly instead of regenerating it.
+	auto CssTemplateFileName = d->JsonStyleParam.value("css_template").toString();
+	if (!force && !CssTemplateFileName.isEmpty())
+	{
+		QString OutputCssName = QFileInfo(CssTemplateFileName).baseName() + ".css";
+		QString OutputCssPath = currentStyleOutputPath() + "/" + OutputCssName;
+		if (QFile::exists(OutputCssPath))
+		{
+			QFile CssFile(OutputCssPath);
+			if (CssFile.open(QIODevice::ReadOnly))
+			{
+				d->Stylesheet = QString::fromUtf8(CssFile.readAll());
+				CssFile.close();
+				
+				// Even if we load the stylesheet, we still need to update the palette
+				// because it's an in-memory application state.
+				updateApplicationPaletteColors();
+				
+				// Resources (SVGs) are assumed to be present in the output directory
+				// since the CSS file exists. We don't regenerate them.
+				
+				emit stylesheetChanged();
+				return true;
+			}
+		}
+	}
+
 	if (!processStyleTemplate())
 	{
 		return false;

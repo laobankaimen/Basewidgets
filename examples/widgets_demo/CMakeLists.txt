@@ -15,14 +15,17 @@ target_link_libraries(widgets_demo
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Gui
         Qt${QT_VERSION_MAJOR}::Widgets
-        qtadvancedui_widgets
-        qtadvancedcss
+        QtAdvancedUI
 )
 
-# 确保 qtadvancedcss.dll 复制到可执行目录
+if(MSVC)
+    target_compile_options(widgets_demo PRIVATE /FS)
+endif()
+
+# 确保 QtAdvancedUI.dll 复制到可执行目录
 add_custom_command(TARGET widgets_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:qtadvancedcss>
+            $<TARGET_FILE:QtAdvancedUI>
             $<TARGET_FILE_DIR:widgets_demo>
 )
 

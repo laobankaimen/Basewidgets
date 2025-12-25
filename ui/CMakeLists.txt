@@ -11,20 +11,22 @@ endif()
 
 # Find Qt
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport X11Extras)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport X11Extras)
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport X11Extras Svg)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport X11Extras Svg)
     find_package(X11 REQUIRED)
 endif()
 
 # Sources
 set(UI_PUBLIC_HEADERS
     include/QtAdvancedUI/QtAdvancedUIExport.h
+    include/QtAdvancedUI/Styles/acss_globals.h
+    include/QtAdvancedUI/Styles/QtAdvancedStylesheet.h
     include/QtAdvancedUI/Core/StyleManagerAdapter.h
     include/QtAdvancedUI/Core/StyledWidget.h
-        include/QtAdvancedUI/Core/FramelessDialog.h
+    include/QtAdvancedUI/Core/FramelessDialog.h
     include/QtAdvancedUI/Core/CustomTitleBar.h
     include/QtAdvancedUI/Core/FramelessWidgetWindow.h
     include/QtAdvancedUI/Inputs/PushButton.h
@@ -81,9 +83,10 @@ set(UI_PUBLIC_HEADERS
 )
 
 set(UI_SOURCES
+    src/Styles/QtAdvancedStylesheet.cpp
     src/Core/StyleManagerAdapter.cpp
     src/Core/StyledWidget.cpp
-        src/Core/FramelessDialog.cpp
+    src/Core/FramelessDialog.cpp
     src/Core/CustomTitleBar.cpp
     src/Core/FramelessWidgetWindow.cpp
     src/Inputs/PushButton.cpp
@@ -137,23 +140,16 @@ set(UI_SOURCES
     src/Charts/StyledPlot.cpp
 )
 
-qt5_add_resources(SOURCE resource/images.qrc)
-
-add_library(qtadvancedui_widgets
+add_library(QtAdvancedUI SHARED
     ${UI_PUBLIC_HEADERS}
     ${UI_SOURCES}
-    ${SOURCE}
 )
 
 # Export macro
-target_compile_definitions(qtadvancedui_widgets PRIVATE QTADVANCEDUI_WIDGETS_BUILD)
-
-# Default styles dir points to project styles
-# Consumers可覆盖 UI_STYLES_DIR 定义以替换样式路径
-set(UI_DEFAULT_STYLES_DIR "${PROJECT_SOURCE_DIR}/styles")
+target_compile_definitions(QtAdvancedUI PRIVATE QTADVANCEDUI_BUILD)
 
 # Include dirs
-target_include_directories(qtadvancedui_widgets
+target_include_directories(QtAdvancedUI
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
@@ -161,42 +157,40 @@ target_include_directories(qtadvancedui_widgets
 
 # Link deps
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(qtadvancedui_widgets
+    target_link_libraries(QtAdvancedUI
         PUBLIC
             Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Gui
             Qt${QT_VERSION_MAJOR}::Widgets
             Qt${QT_VERSION_MAJOR}::PrintSupport
-            qtadvancedcss
+            Qt${QT_VERSION_MAJOR}::Svg
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(qtadvancedui_widgets
+    target_link_libraries(QtAdvancedUI
         PUBLIC
             Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Gui
             Qt${QT_VERSION_MAJOR}::Widgets
             Qt${QT_VERSION_MAJOR}::PrintSupport
             Qt${QT_VERSION_MAJOR}::X11Extras
-            qtadvancedcss
+            Qt${QT_VERSION_MAJOR}::Svg
             ${X11_LIBRARIES}
     )
 endif()
 
 
-# Provide styles dir to library (string literal for compile-time macro)
-target_compile_definitions(qtadvancedui_widgets
-    PUBLIC
-        UI_STYLES_DIR="${UI_DEFAULT_STYLES_DIR}"
-)
-
 # C++ standard
-set_target_properties(qtadvancedui_widgets PROPERTIES
+set_target_properties(QtAdvancedUI PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED YES
 )
 
+if(MSVC)
+    target_compile_options(QtAdvancedUI PRIVATE /FS)
+endif()
+
 # Install rules
-install(TARGETS qtadvancedui_widgets
+install(TARGETS QtAdvancedUI
     EXPORT QtAdvancedUIWidgetsTargets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib

@@ -1522,6 +1522,9 @@ QDialogButtonBox QPushButton {
   background-color: transparent;
   color: {{secondaryTextColor}};
   border: 1px solid {{darkerBorderColor}};
+  min-width: 80px;
+  min-height: 24px;
+  padding: 6px 12px;
 }
 
 QDialogButtonBox QPushButton:hover {
@@ -1539,6 +1542,14 @@ QDialogButtonBox QPushButton[primary='true'] {
 
 QDialogButtonBox QPushButton[primary='true']:hover {
   background-color: {{primaryColor|opacity(0.8)}};
+}
+
+/*  ------------------------------------------------------------------------  */
+/*  DialogUtils TextLabel  */
+
+#DialogTextLabel {
+  font-size: 14px;
+  font-weight: normal;
 }
 
 /*  ------------------------------------------------------------------------  */

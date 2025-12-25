@@ -1,7 +1,7 @@
 #ifndef QTADVANCEDUI_STYLEMANAGERADAPTER_H
 #define QTADVANCEDUI_STYLEMANAGERADAPTER_H
 
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QString>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 

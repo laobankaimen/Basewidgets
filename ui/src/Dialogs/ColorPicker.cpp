@@ -15,6 +15,8 @@
 #include <QComboBox>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPixmap>
+#include <QIcon>
 #include <QPushButton>
 #include <QSlider>
 #include <QSpinBox>
@@ -212,8 +214,19 @@ QWidget* ColorPicker::makeColorPickerBody(QWidget* parent, const QColor& initial
         for (const QColor& pc : paletteColors) {
             QPushButton* b = new QPushButton(" ", body);
             b->setFixedSize(20, 20);
-            QString css = QString("background:%1;border:1px solid #999;").arg(pc.name());
-            b->setStyleSheet(css);
+            
+            QPixmap pix(18, 18);
+            pix.fill(pc);
+            QPainter p(&pix);
+            p.setPen(QColor(0x999999));
+            p.drawRect(0, 0, 17, 17);
+            b->setIcon(QIcon(pix));
+            b->setIconSize(QSize(18, 18));
+            b->setFlat(true); // Make it flat to show icon clearly without button borders interfering too much? 
+            // Actually, standard push button with icon is fine, but we want it to look like a color swatch.
+            // Let's just set the icon. The border logic "border:1px solid #999" was in CSS.
+            // I'll draw the border in the pixmap.
+
             QObject::connect(b, &QPushButton::clicked, [&, pc]() {
                 slR->setValue(pc.red());
                 spR->setValue(pc.red());
@@ -450,7 +463,14 @@ QWidget* ColorPicker::makeColorPickerBody(QWidget* parent, const QColor& initial
     for (const QColor& cc : s_customColors) {
         QPushButton* b = new QPushButton(" ", body);
         b->setFixedSize(20, 20);
-        b->setStyleSheet(QString("background:%1;border:1px solid #999;").arg(cc.name()));
+        QPixmap pix(18, 18);
+        pix.fill(cc);
+        QPainter p(&pix);
+        p.setPen(QColor(0x999999));
+        p.drawRect(0, 0, 17, 17);
+        b->setIcon(QIcon(pix));
+        b->setIconSize(QSize(18, 18));
+        b->setFlat(true);
         QObject::connect(b, &QPushButton::clicked, [&, cc]() {
             slR->setValue(cc.red());
             spR->setValue(cc.red());
@@ -475,7 +495,14 @@ QWidget* ColorPicker::makeColorPickerBody(QWidget* parent, const QColor& initial
             s_customColors.removeLast();
         QPushButton* b = new QPushButton(" ", body);
         b->setFixedSize(20, 20);
-        b->setStyleSheet(QString("background:%1;border:1px solid #999;").arg(c.name()));
+        QPixmap pix(18, 18);
+        pix.fill(c);
+        QPainter p(&pix);
+        p.setPen(QColor(0x999999));
+        p.drawRect(0, 0, 17, 17);
+        b->setIcon(QIcon(pix));
+        b->setIconSize(QSize(18, 18));
+        b->setFlat(true);
         QObject::connect(b, &QPushButton::clicked, [&, c]() {
             slR->setValue(c.red());
             spR->setValue(c.red());

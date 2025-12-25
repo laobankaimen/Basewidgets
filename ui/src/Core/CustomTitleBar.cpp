@@ -1,5 +1,6 @@
 #include <QtAdvancedUI/Core/CustomTitleBar.h>
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/Inputs/ToolButton.h>
 
 #include <QHBoxLayout>
@@ -19,7 +20,7 @@
 using namespace acss;
 
 namespace QtAdvancedUI {
-
+static int fixedHieght = 40;
 CustomTitleBar::CustomTitleBar(QWidget* parent)
     : QWidget(parent)
 {
@@ -27,8 +28,10 @@ CustomTitleBar::CustomTitleBar(QWidget* parent)
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
     // 统一标题栏高度，确保在 MainWindow 与 Dialog 中一致
-    setFixedHeight(40);
+    setFixedHeight(fixedHieght);
     initUI();
+    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, &CustomTitleBar::updateIcons);
+    updateIcons();
 }
 
 CustomTitleBar::~CustomTitleBar() = default;
@@ -39,7 +42,13 @@ void CustomTitleBar::attachToWindow(QWidget* window)
     if (!m_window) return;
     // 跟随窗口标题变化
     QObject::connect(m_window, &QWidget::windowTitleChanged, this, &CustomTitleBar::setTitle);
+    // 跟随窗口图标变化
+    QObject::connect(m_window, &QWidget::windowIconChanged, this, &CustomTitleBar::setIcon);
+
     setTitle(m_window->windowTitle());
+    if (!m_window->windowIcon().isNull()) {
+        setIcon(m_window->windowIcon());
+    }
     updateForWindowState();
 }
 
@@ -48,12 +57,39 @@ void CustomTitleBar::setTitle(const QString& title)
     if (m_titleLabel) m_titleLabel->setText(title);
 }
 
+void CustomTitleBar::updateIcons()
+{
+    if (m_btnMin) m_btnMin->setIcon(QIcon("icon:window_buttons/hx_custom_hide.svg"));
+    if (m_btnClose) m_btnClose->setIcon(QIcon("icon:window_buttons/hx_custom_close.svg"));
+    
+    // 更新左上角图标（确保跟随主题颜色变化）
+    if (m_window && !m_window->windowIcon().isNull()) {
+        setIcon(m_window->windowIcon());
+    } else {
+        // 默认图标
+        int iconSize = 20;
+        if (m_iconLabel) {
+            m_iconLabel->setPixmap(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/material_icon.svg").pixmap(QSize(iconSize, iconSize)));
+        }
+    }
+
+    updateForWindowState();
+}
+
+void CustomTitleBar::setIcon(const QIcon& icon)
+{
+    if (m_iconLabel) {
+        int iconSize = 20;
+        m_iconLabel->setPixmap(icon.pixmap(QSize(iconSize, iconSize)));
+    }
+}
+
 void CustomTitleBar::updateForWindowState()
 {
     if (!m_window || !m_btnMax) return;
     const bool maximized = (m_window->windowState() == Qt::WindowMaximized || isFullScreen());
-    const QIcon icon = maximized ? StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tosmall.svg")
-                                 : StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tobig.svg");
+    const QIcon icon = maximized ? QIcon("icon:window_buttons/hx_custom_tosmall.svg")
+                                 : QIcon("icon:window_buttons/hx_custom_tobig.svg");
     m_btnMax->setIcon(icon);
 
     //全屏不显示最大化最小化按钮（通用做法）
@@ -112,12 +148,21 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
 #endif
 void CustomTitleBar::initUI()
 {
+    m_iconLabel = new QLabel(this);
+    // 调整图标大小为 20x20，避免占满整个标题栏高度 (40px)
+    int iconSize = 20;
+    m_iconLabel->setPixmap(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/material_icon.svg").pixmap(QSize(iconSize, iconSize)));
+    // 移除手动设置的边距，使用布局间距控制
+    m_iconLabel->setContentsMargins(0, 0, 0, 0);
+
     m_titleLabel = new QLabel(this);
     m_titleLabel->setObjectName("TitleLabel");
     m_titleLabel->setProperty("title", QVariant(true));
+    // 确保标题文字左对齐并垂直居中
+    m_titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     QSize buttonSize = QSize(height()+5, height());
-    QSize iconSize = QSize(18, 18);
+    QSize btnIconSize = QSize(18, 18);
 
     m_btnMin = new ToolButton(this);
     m_btnMin->setObjectName("TitleBarMinButton");
@@ -126,8 +171,7 @@ void CustomTitleBar::initUI()
     m_btnMin->setAutoRaise(false);
     m_btnMin->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnMin->setFixedSize(buttonSize);
-    m_btnMin->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_hide.svg"));
-    m_btnMin->setIconSize(iconSize);
+    m_btnMin->setIconSize(btnIconSize);
 
     m_btnMax = new ToolButton(this);
     m_btnMax->setObjectName("TitleBarMaxButton");
@@ -136,8 +180,7 @@ void CustomTitleBar::initUI()
     m_btnMax->setAutoRaise(false);
     m_btnMax->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnMax->setFixedSize(buttonSize);
-    m_btnMax->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_tobig.svg"));
-    m_btnMax->setIconSize(iconSize);
+    m_btnMax->setIconSize(btnIconSize);
 
     m_btnClose = new ToolButton(this);
     m_btnClose->setObjectName("TitleBarCloseButton");
@@ -146,12 +189,12 @@ void CustomTitleBar::initUI()
     m_btnClose->setAutoRaise(false);
     m_btnClose->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnClose->setFixedSize(buttonSize);
-    m_btnClose->setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/images/icons/hx_custom_close.svg"));
-    m_btnClose->setIconSize(iconSize);
+    m_btnClose->setIconSize(btnIconSize);
 
     auto* h = new QHBoxLayout(this);
     h->setContentsMargins(5, 0, 0, 0);
-    h->setSpacing(1);
+    h->setSpacing(2); // 减小图标与标题的间距
+    h->addWidget(m_iconLabel, 0);
     h->addWidget(m_titleLabel, 1);
     h->addWidget(m_btnMin, 0);
     h->addWidget(m_btnMax, 0);

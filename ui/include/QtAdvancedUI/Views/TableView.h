@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_TABLEVIEW_H
 
 #include <QTableView>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

@@ -1,7 +1,7 @@
 {
-    "name" : "material",
-    "icon" : "material_icon.svg",
-    "css_template" : "material.css.template",
+    "name" : "themes",
+    "icon" : "themes_icon.svg",
+    "css_template" : "themes.css.template",
     "default_theme" : "dark",
 
     "variables" : {
@@ -24,6 +24,9 @@
             "#0000ff" : "lightFillColor",
             "#ff0000" : "darkBorderColor",
             "#000000" : "#ffffff00"
+        },
+        "window_buttons" : {
+            "#03b8e5" : "primaryTextColor"
         }
     },
     

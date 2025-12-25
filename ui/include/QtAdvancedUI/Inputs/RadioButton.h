@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_RADIOBUTTON_H
 
 #include <QRadioButton>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

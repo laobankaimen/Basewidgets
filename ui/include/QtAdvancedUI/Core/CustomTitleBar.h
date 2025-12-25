@@ -25,10 +25,12 @@ public:
 
 public slots:
     void setTitle(const QString& title);
+    void setIcon(const QIcon& icon);
     void updateForWindowState();
     // 仅用于对话框等场景：按钮显隐与双击开关
     void setButtonsVisible(bool showMinimize, bool showMaximize, bool showClose);
     void setDoubleClickToToggleEnabled(bool enabled);
+    void updateIcons();
 #ifdef Q_OS_LINUX
 protected:
     //Linux下拖动需要处理
@@ -44,6 +46,7 @@ private:
 
 private:
     QWidget* m_window = nullptr;
+    QLabel* m_iconLabel = nullptr;
     QLabel* m_titleLabel = nullptr;
     ToolButton* m_btnMin = nullptr;
     ToolButton* m_btnMax = nullptr;

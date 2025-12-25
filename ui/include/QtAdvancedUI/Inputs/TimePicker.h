@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_TIMEPICKER_H
 
 #include <QTimeEdit>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

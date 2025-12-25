@@ -5,7 +5,7 @@
 
 namespace QtAdvancedUI {
 
-class QCPBarChart : public QCPBars {
+class ACSS_UI_EXPORT QCPBarChart : public QCPBars {
     Q_OBJECT
 public:
     explicit QCPBarChart(QCPAxis* keyAxis, QCPAxis* valueAxis);

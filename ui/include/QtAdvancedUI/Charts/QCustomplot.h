@@ -138,15 +138,8 @@ class QCPPolarGraph;
 #define QCUSTOMPLOT_VERSION 0x020101
 
 // decl definitions for shared library compilation/usage:
-#if defined(QT_STATIC_BUILD)
-#  define QCP_LIB_GL_DECL
-#elif defined(QCUSTOMPLOT_COMPILE_LIBRARY)
-#  define QCP_LIB_GL_DECL Q_DECL_EXPORT
-#elif defined(QCUSTOMPLOT_USE_LIBRARY)
-#  define QCP_LIB_GL_DECL Q_DECL_IMPORT
-#else
-#  define QCP_LIB_GL_DECL
-#endif
+#include <QtAdvancedUI/QtAdvancedUIExport.h>
+#define QCP_LIB_GL_DECL ACSS_UI_EXPORT
 
 // define empty macro for Q_DECL_OVERRIDE if it doesn't exist (Qt < 5)
 #ifndef Q_DECL_OVERRIDE
@@ -3750,7 +3743,7 @@ private:
 /* including file 'src/core.h'              */
 /* modified 2022-11-06T12:45:56, size 19304 */
 
-class QCustomPlot : public QWidget {
+class QCP_LIB_GL_DECL QCustomPlot : public QWidget {
   Q_OBJECT
   /// \cond INCLUDE_QPROPERTIES
   Q_PROPERTY(QRect viewport READ viewport WRITE setViewport)

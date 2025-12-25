@@ -21,8 +21,11 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Qml Svg)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Qml Svg)
 
 # Subdirectories
-add_subdirectory(qtadvancedcss)
+# add_subdirectory(qtadvancedcss)
 add_subdirectory(ui)
 if(UI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
+
+# Build tools
+add_subdirectory(tools)

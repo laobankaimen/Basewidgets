@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_GROUPBOX_H
 
 #include <QGroupBox>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

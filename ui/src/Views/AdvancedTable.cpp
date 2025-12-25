@@ -139,7 +139,7 @@ void AdvancedTable::initUi()
     m_pageScroll->setWidget(m_pageNumbers);
     m_pageScroll->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     m_pageScroll->setMaximumHeight(48);
-    m_pageScroll->setStyleSheet("#PageScroll, #PageScroll QWidget, #PageScroll QScrollArea, #PageScroll > QWidget { background: transparent; }");
+    // m_pageScroll->setStyleSheet moved to QSS (#PageScroll)
     if (m_pageScroll->viewport()) m_pageScroll->viewport()->setAutoFillBackground(false);
 
     m_pageJumpBottom = new SpinBox(this);

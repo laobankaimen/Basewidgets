@@ -1,4 +1,4 @@
-﻿#include <QtAdvancedUI/Views/PagedProxyModel.h>
+#include <QtAdvancedUI/Views/PagedProxyModel.h>
 #include <QAbstractItemModel>
 #include <QtMath>
 

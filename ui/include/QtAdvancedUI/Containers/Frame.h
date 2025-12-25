@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_FRAME_H
 
 #include <QFrame>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

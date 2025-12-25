@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_DATERANGEPICKER_H
 
 #include <QtAdvancedUI/Core/StyledWidget.h>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 #include <QDateTime>
 #include <QTimeZone>

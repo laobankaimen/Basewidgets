@@ -5,6 +5,19 @@ namespace QtAdvancedUI {
 
 StyledPlot::StyledPlot(QWidget* parent)
     : QCustomPlot(parent) {
+    
+    // 转发基类信号
+    connect(this, static_cast<void(QCustomPlot::*)(QMouseEvent*)>(&QCustomPlot::mouseDoubleClick),
+            this, &StyledPlot::mouseDoubleClick);
+    connect(this, static_cast<void(QCustomPlot::*)(QMouseEvent*)>(&QCustomPlot::mousePress),
+            this, &StyledPlot::mousePress);
+    connect(this, static_cast<void(QCustomPlot::*)(QMouseEvent*)>(&QCustomPlot::mouseRelease),
+            this, &StyledPlot::mouseRelease);
+    connect(this, static_cast<void(QCustomPlot::*)(QMouseEvent*)>(&QCustomPlot::mouseMove),
+            this, &StyledPlot::mouseMove);
+    connect(this, static_cast<void(QCustomPlot::*)(QWheelEvent*)>(&QCustomPlot::mouseWheel),
+            this, &StyledPlot::mouseWheel);
+
     axisRect()->setupFullAxesBox(true);
     configureDefaultInteractions();
     applyTheme();
@@ -71,6 +84,10 @@ void StyledPlot::applyTheme() {
 void StyledPlot::onStylesheetChanged() {
     applyTheme();
     replot();
+}
+
+void StyledPlot::replot(QCustomPlot::RefreshPriority priority) {
+    QCustomPlot::replot(priority);
 }
 
 } // namespace QtAdvancedUI

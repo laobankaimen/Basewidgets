@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_TREEWIDGET_H
 
 #include <QTreeWidget>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

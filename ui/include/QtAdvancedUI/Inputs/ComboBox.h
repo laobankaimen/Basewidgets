@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_COMBOBOX_H
 
 #include <QComboBox>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

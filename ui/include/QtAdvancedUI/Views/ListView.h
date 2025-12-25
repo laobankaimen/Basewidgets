@@ -2,7 +2,7 @@
 #define QTADVANCEDUI_LISTVIEW_H
 
 #include <QListView>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

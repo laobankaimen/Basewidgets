@@ -4,7 +4,7 @@
 #include <QTreeView>
 #include <QStandardItemModel>
 #include <QStandardItem>
-#include <QtAdvancedStylesheet.h>
+#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
 #include <QtAdvancedUI/QtAdvancedUIExport.h>
 
 namespace QtAdvancedUI {

@@ -5,7 +5,7 @@
 
 namespace QtAdvancedUI {
 
-class QCPWaterfallChart : public QCPColorMap {
+class ACSS_UI_EXPORT QCPWaterfallChart : public QCPColorMap {
     Q_OBJECT
 public:
     explicit QCPWaterfallChart(QCPAxis* keyAxis, QCPAxis* valueAxis);

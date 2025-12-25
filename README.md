@@ -22,7 +22,7 @@ Qt-Advanced-Stylesheets-main/
 │   └── widgets_demo/
 │       ├── CMakeLists.txt
 │       └── main.cpp
-├── styles/qt_material/             # 主题与资源
+├── styles/themes/                  # 主题与资源
 ├── qtadvancedcss/                  # 样式引擎
 └── ui/
     ├── CMakeLists.txt
@@ -73,7 +73,7 @@ cmake --build build --config Debug --target widgets_demo -j 8
 4. 在示例中按需创建分组并添加到布局，不改变控件类本身，即可保持外观一致。
 
 ### 主题与样式
-- 默认主题在 `styles/qt_material/`，可根据需要定制主题 JSON 与 CSS 模板。
+- 默认主题在 `styles/themes/`，可根据需要定制主题 JSON 与 CSS 模板。
 
 ### Gauges / CircularGauge 使用说明
 - 基本属性：`setRange(min,max)`、`setValue(v)`、`setStartAngle(deg)`、`setEndAngle(deg)`、`setRingWidth(px)`、`setNeedleWidth(px)`、`setNeedleWrapRing(bool)`、`setShowTickLabels(bool)` 等。

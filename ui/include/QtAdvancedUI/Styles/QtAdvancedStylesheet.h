@@ -34,7 +34,7 @@
 #include <QPair>
 #include <QObject>
 
-#include "acss_globals.h"
+#include <QtAdvancedUI/Styles/acss_globals.h>
 
 
 QT_FORWARD_DECLARE_CLASS(QIcon)
@@ -101,7 +101,7 @@ public:
 	/**
 	 * Returns the absolute path of the current style.
 	 * If your styles stylesDirPath() is C:/styles and your current style is
-	 * qt_material then this function returns C:/styles/qt_material
+	 * themes then this function returns C:/styles/themes
 	 */
 	QString currentStylePath() const;
 
@@ -141,8 +141,8 @@ public:
 	/**
 	 * Returns the output path for the current style.
 	 * The output path is the outputDirPath() + the style name.
-	 * If your output path is C:/temp/styles and your style is qt_material
-	 * then this functions returns C:/temp/styles/qt_material
+	 * If your output path is C:/temp/styles and your style is themes
+	 * then this functions returns C:/temp/styles/themes
 	 */
 	QString currentStyleOutputPath() const;
 
@@ -288,8 +288,9 @@ public slots:
 	 * processStyleTemplate() to generate the SVG resources and update the
 	 * palette an then use processStylesheetTemplate() to generate the style
 	 * sheets.
+	 * @param force If true, the stylesheet is regenerated even if it already exists
 	 */
-	bool updateStylesheet();
+	bool updateStylesheet(bool force = false);
 
 	/**
 	 * Call this function, if you would like to update the SVG files and the
