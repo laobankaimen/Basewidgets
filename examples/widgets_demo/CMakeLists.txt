@@ -27,6 +27,9 @@ add_custom_command(TARGET widgets_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:QtAdvancedUI>
             $<TARGET_FILE_DIR:widgets_demo>
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "$<TARGET_FILE_DIR:QtAdvancedUI>/themes.rcc"
+            $<TARGET_FILE_DIR:widgets_demo>
 )
 
 set_target_properties(widgets_demo PROPERTIES

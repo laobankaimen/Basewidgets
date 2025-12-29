@@ -189,12 +189,15 @@ if(MSVC)
     target_compile_options(QtAdvancedUI PRIVATE /FS)
 endif()
 
-# Install rules
-install(TARGETS QtAdvancedUI
-    EXPORT QtAdvancedUIWidgetsTargets
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+# 确保 themes.rcc 复制到可执行目录
+add_custom_command(TARGET QtAdvancedUI POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_SOURCE_DIR}/assert/themes.rcc
+        $<TARGET_FILE_DIR:QtAdvancedUI>
 )
 
-install(DIRECTORY include/QtAdvancedUI DESTINATION include)
+# Install rules
+set(CMAKE_INSTALL_PATH ${CMAKE_BINARY_DIR}/bin)
+install(DIRECTORY assert/ DESTINATION ${CMAKE_INSTALL_PATH})
+install(TARGETS QtAdvancedUI DESTINATION ${CMAKE_INSTALL_PATH})
+install(DIRECTORY include/QtAdvancedUI DESTINATION ${CMAKE_INSTALL_PATH}/include)

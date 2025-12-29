@@ -1,10 +1,10 @@
-# Qt Advanced Stylesheets & UI 示例工程
+# Qt Advanced UI 示例工程
 
 本仓库包含一套基于 Qt 的高级样式与 UI 组件库，以及一个可运行的示例程序 `widgets_demo`，用于演示控件与布局的实际效果。
 
 ## 项目简介
 
-- **核心组件库**：位于 `ui/` 目录下，集成了样式引擎 (`QtAdvancedStylesheet`) 与各类高级 UI 控件。
+- **核心组件库**：位于 `widgets/` 目录下，集成了样式引擎 (`QtAdvancedStylesheet`) 与各类高级 UI 控件。
 - **示例程序**：位于 `examples/widgets_demo/`，全方位展示控件的外观、交互与主题切换效果。
 - **主题工具**：位于 `tools/theme_builder/`，用于管理、编辑与生成项目所需的主题资源文件 (`themes.rcc`)。
 
@@ -31,7 +31,7 @@ Qt-Advanced-Stylesheets-main/
 ├── tools/
 │   └── theme_builder/          # 主题构建工具与原始资源
 │       └── styles/themes/      # 主题定义文件 (XML/CSS/SVG)
-└── ui/                         # 核心库
+└── widgets/                         # 核心库
     ├── CMakeLists.txt
     ├── include/QtAdvancedUI/   # 公共头文件
     │   ├── Charts/
@@ -70,7 +70,7 @@ cmake --build build --config Release --target widgets_demo -j 8
 ## 开发指南
 
 ### 仪表盘 (Gauges)
-仪表盘控件已模块化，位于 `ui/include/QtAdvancedUI/Gauges/`。
+仪表盘控件已模块化，位于 `widgets/include/QtAdvancedUI/Gauges/`。
 - **CircularGauge**：通用圆形仪表，支持多段颜色环、刻度标签定制及玻璃质感盖层。
 - **使用示例**：
   ```cpp
@@ -87,12 +87,7 @@ cmake --build build --config Release --target widgets_demo -j 8
 
 ## 变更记录（近期）
 
-- **架构调整**：整理项目结构，将样式引擎整合至 `ui` 库中，新增 `tools` 目录。
+- **架构调整**：整理项目结构，将样式引擎整合至 `widgets` 库中，新增 `tools` 目录。
 - **File Browser**：全新仿 Ubuntu 风格文件浏览器，集成侧边栏与多视图支持。
 - **Color Picker**：优化颜色记忆机制，实现跨会话的库级状态持久化。
 - **Gauges**：新增多种仪表盘控件，统一视觉风格（阴影、高光、动态线宽）。
-
-## 贡献与许可
-
-- 欢迎提交 PR 改进代码或增加新控件。
-- 请遵循各子模块内的许可证协议。

@@ -1057,7 +1057,7 @@ int main(int argc, char *argv[])
     // Q_INIT_RESOURCE(images);
 
     // 初始化样式管理器
-    StyleManagerAdapter::initialize();
+    StyleManagerAdapter::initialize("theme/");//不设置则在当前目录读取
 
     // 创建主窗口（使用基于 QWidget 的无边框主界面）
     auto* window = new FramelessWidgetWindow();
