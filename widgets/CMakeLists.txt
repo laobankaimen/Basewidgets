@@ -191,9 +191,9 @@ endif()
 
 # 确保 themes.rcc 复制到可执行目录
 add_custom_command(TARGET QtAdvancedUI POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_SOURCE_DIR}/assert/themes.rcc
-        $<TARGET_FILE_DIR:QtAdvancedUI>
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_SOURCE_DIR}/assert/themes.rcc
+    $<TARGET_FILE_DIR:QtAdvancedUI>
 )
 
 # Install rules

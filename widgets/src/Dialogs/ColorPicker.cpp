@@ -7,10 +7,7 @@
 
 #include <QtAdvancedUI/Core/StyleManagerAdapter.h>
 
-#include <QCheckBox>
 #include <QColor>
-#include <QEvent>
-#include <QFrame>
 #include <QPainterPath>
 #include <QHBoxLayout>
 #include <QImage>
@@ -18,9 +15,7 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include <QButtonGroup>
-#include <QMouseEvent>
 #include <QPainter>
-#include <QPixmap>
 #include <QIcon>
 #include <QPushButton>
 #include <QSlider>
@@ -28,7 +23,6 @@
 #include <QVBoxLayout>
 #include <QToolButton>
 #include <QScreen>
-#include <QGuiApplication>
 #include <QCursor>
 #include <QStyleOptionSlider>
 #include <QWindow>
@@ -470,18 +464,15 @@ void ColorPickerWidget::setupUi(const QColor& initial)
         *sp = new QSpinBox(this);
         (*sp)->setRange(0, 255);
         (*sp)->setAlignment(Qt::AlignCenter);
+        (*sp)->setProperty("hideButton", QVariant(true));
         (*sp)->setButtonSymbols(QAbstractSpinBox::NoButtons);
-        // FIX: Remove Expanding policy, set FixedWidth
-        (*sp)->setFixedWidth(60); 
+        (*sp)->setFixedWidth(80);
         rgbLayout->addWidget(*sp);
     };
     createSpin(&m_rSpin);
     createSpin(&m_gSpin);
     createSpin(&m_bSpin);
-    // Add stretch to push inputs to left (or center them if preferred, but usually left next to label is better)
-    // Actually, user said "input box pulled too long", so we constrain them.
-    // If we want them to fill the space but not be HUGE, we can use stretch factors.
-    // But FixedWidth is safer for "too long".
+
     rgbLayout->addStretch(); 
     
     inputLayout->addWidget(m_rgbWidget);
@@ -503,7 +494,7 @@ void ColorPickerWidget::setupUi(const QColor& initial)
 
     // Screen Pick Button
     QPushButton* screenPickBtn = new QPushButton(this);
-    screenPickBtn->setIcon(QIcon::fromTheme("color-picker"));
+    //screenPickBtn->setIcon(QIcon::fromTheme("color-picker"));
     screenPickBtn->setText(tr("取色"));
     screenPickBtn->setFixedWidth(60);
     inputLayout->addWidget(screenPickBtn);

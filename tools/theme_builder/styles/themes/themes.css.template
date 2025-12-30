@@ -429,6 +429,12 @@ QLineEdit:disabled {
   border-width: 0 0 2px 0;
 }
 
+QSpinBox[hideButton='true'] {
+  text-align: center;
+  padding-right: 0px;
+  padding-left: 0px;
+}
+
 /*  ------------------------------------------------------------------------  */
 /*  QComboBox  */
 
@@ -540,6 +546,15 @@ QSpinBox::down-button:disabled {
   image: url(icon:/disabled/downarrow.svg);
 }
 
+QSpinBox[hideButton='true']::up-button,
+QSpinBox[hideButton='true']::up-button:disabled,
+QSpinBox[hideButton='true']::down-button,
+QSpinBox[hideButton='true']::down-button:disabled {
+  width: 0px;
+  height: 0px;
+  border: none;
+  padding: 0px;
+}
 /*  ------------------------------------------------------------------------  */
 /*  QGroupBox  */
 
