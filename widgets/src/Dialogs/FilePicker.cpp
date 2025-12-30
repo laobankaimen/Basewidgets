@@ -106,45 +106,40 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
 
     // Nav Buttons
     auto createNavBtn = [this](const QString& text, const QString& iconName) {
+        Q_UNUSED(text);
         QToolButton* btn = new QToolButton(this);
-        btn->setText(text);
+        btn->setMouseTracking(true);
+        btn->setIcon(QIcon(QString("icon:buttons/%1.svg").arg(iconName)));
         btn->setAutoRaise(true);
-        btn->setFixedSize(32, 32);
+        btn->setProperty("iconOnly", QVariant(true));
         return btn;
     };
 
-    btnBack = createNavBtn("<", "go-previous");
+    btnBack = createNavBtn("<", "arrow_left");
     btnBack->setToolTip(tr("Back"));
     
-    btnForward = createNavBtn(">", "go-next");
+    btnForward = createNavBtn(">", "arrow_right");
     btnForward->setToolTip(tr("Forward"));
 
-    btnUp = createNavBtn("^", "go-up");
+    btnUp = createNavBtn("^", "angle_up");
     btnUp->setToolTip(tr("Up"));
-    btnUp->setIcon(style()->standardIcon(QStyle::SP_ArrowUp));
 
-    btnHome = createNavBtn("Home", "go-home");
-    btnHome->setIcon(style()->standardIcon(QStyle::SP_DirHomeIcon));
+    btnHome = createNavBtn("Home", "home");
     btnHome->setToolTip(tr("Home"));
 
-    btnRefresh = createNavBtn("R", "view-refresh");
-    btnRefresh->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
+    btnRefresh = createNavBtn("R", "arrow_refresh");
     btnRefresh->setToolTip(tr("Refresh"));
 
     // Address Bar
     addrEdit = new QLineEdit(this);
     addrEdit->setPlaceholderText(tr("Enter location..."));
     addrEdit->setFixedHeight(30);
-    // Removed hardcoded stylesheet
-    // addrEdit->setStyleSheet("QLineEdit { border: 1px solid #CCCCCC; border-radius: 4px; padding: 0 8px; background: white; }");
 
-    btnGo = createNavBtn("Go", "go-jump");
-    btnGo->setIcon(style()->standardIcon(QStyle::SP_CommandLink));
+    btnGo = createNavBtn("Go", "arrow_right");
     
     // View Mode Toggle
-    btnViewMode = createNavBtn("View", "view-list-icons");
+    btnViewMode = createNavBtn("View", "table_list");
     btnViewMode->setCheckable(true);
-    btnViewMode->setIcon(style()->standardIcon(QStyle::SP_FileDialogListView));
     btnViewMode->setToolTip(tr("Toggle View"));
 
     topLayout->addWidget(btnBack);
@@ -346,11 +341,11 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
         if (checked) { // Grid
             m_viewStack->setCurrentWidget(m_iconView);
             m_isGrid = true;
-            btnViewMode->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+            btnViewMode->setIcon(QIcon(QString("icon:buttons/table_cells_large.svg")));
         } else { // List
             m_viewStack->setCurrentWidget(m_treeView);
             m_isGrid = false;
-            btnViewMode->setIcon(style()->standardIcon(QStyle::SP_FileDialogListView));
+            btnViewMode->setIcon(QIcon(QString("icon:buttons/table_list.svg")));
         }
     });
 

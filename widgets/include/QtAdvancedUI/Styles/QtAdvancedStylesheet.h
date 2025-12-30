@@ -237,7 +237,7 @@ public:
 	 * list is given, the internal color replace list parsed from style json
 	 * file is used
 	 */
-	void replaceSvgColors(QByteArray& SvgContent,
+	bool replaceSvgColors(QByteArray& SvgContent,
 		const tColorReplaceList& ColorReplaceList = tColorReplaceList());
 
 	/**

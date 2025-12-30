@@ -1223,6 +1223,10 @@ QToolButton[iconOnly='true']::menu-indicator {
   width: 0px;
 }
 
+QToolButton[iconOnly='true']:disabled {
+  background-color: {{darkFillColor|opacity(0.2)}};
+}
+
 /*下拉菜单按钮*/
 QToolButton::menu-indicator {
   image: none;

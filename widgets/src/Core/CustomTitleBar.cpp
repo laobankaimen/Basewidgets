@@ -63,8 +63,8 @@ void CustomTitleBar::setTitle(const QString& title)
 
 void CustomTitleBar::updateIcons()
 {
-    if (m_btnMin) m_btnMin->setIcon(QIcon("icon:window_buttons/hx_custom_hide.svg"));
-    if (m_btnClose) m_btnClose->setIcon(QIcon("icon:window_buttons/hx_custom_close.svg"));
+    if (m_btnMin) m_btnMin->setIcon(QIcon("icon:buttons/hx_custom_hide.svg"));
+    if (m_btnClose) m_btnClose->setIcon(QIcon("icon:buttons/hx_custom_close.svg"));
     
     // 更新左上角图标（确保跟随主题颜色变化）
     if (m_window && !m_window->windowIcon().isNull()) {
@@ -92,8 +92,8 @@ void CustomTitleBar::updateForWindowState()
 {
     if (!m_window || !m_btnMax) return;
     const bool maximized = (m_window->windowState() == Qt::WindowMaximized || isFullScreen());
-    const QIcon icon = maximized ? QIcon("icon:window_buttons/hx_custom_tosmall.svg")
-                                 : QIcon("icon:window_buttons/hx_custom_tobig.svg");
+    const QIcon icon = maximized ? QIcon("icon:buttons/hx_custom_tosmall.svg")
+                                 : QIcon("icon:buttons/hx_custom_tobig.svg");
     m_btnMax->setIcon(icon);
 
     //全屏不显示最大化最小化按钮（通用做法）

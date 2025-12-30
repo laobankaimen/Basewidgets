@@ -510,12 +510,12 @@ void ColorPickerWidget::setupUi(const QColor& initial)
     recentLblRow->addStretch();
     
     auto* btnAdd = new QToolButton(this);
-    btnAdd->setText("+");
     btnAdd->setToolTip(tr("添加当前颜色"));
     btnAdd->setAutoRaise(true);
     // Make button larger and text larger
     btnAdd->setFixedSize(30, 30);
-    btnAdd->setIcon(QIcon("icon:window_buttons/hx_custom_add.svg"));
+    btnAdd->setIcon(QIcon("icon:buttons/square_plus.svg"));
+    btnAdd->setProperty("iconOnly", QVariant(true));
     recentLblRow->addWidget(btnAdd);
     
     // Align text and button vertically center

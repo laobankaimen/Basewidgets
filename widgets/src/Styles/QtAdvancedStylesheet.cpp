@@ -736,7 +736,9 @@ bool QtAdvancedStylesheetPrivate::generateResourcesFor(const QString& SubDir,
 		SvgFile.open(QIODevice::ReadOnly);
 		auto Content = SvgFile.readAll();
 		SvgFile.close();
-		_this->replaceSvgColors(Content, ColorReplaceList);
+		//找到对应的内容才进行替换
+		if(!_this->replaceSvgColors(Content, ColorReplaceList))
+			continue;
 		QString OutputFilename = OutputDir + "/" + Entry.fileName();
 		QFile OutputFile(OutputFilename);
 		OutputFile.open(QIODevice::WriteOnly);
@@ -768,15 +770,19 @@ const tColorReplaceList& QtAdvancedStylesheetPrivate::iconColorReplaceList() con
 
 
 //============================================================================
-void QtAdvancedStylesheet::replaceSvgColors(QByteArray& SvgContent,
+bool QtAdvancedStylesheet::replaceSvgColors(QByteArray& SvgContent,
 	const tColorReplaceList& ColorReplaceList)
 {
 	const tColorReplaceList& ReplaceList = ColorReplaceList.isEmpty() ?
 		d->iconColorReplaceList() : ColorReplaceList;
+	bool isFindColor = false;
 	for (const auto& Replace : ReplaceList)
 	{
+		if(SvgContent.contains(Replace.first.toLatin1()))
+			isFindColor = true;
 		d->replaceColor(SvgContent, Replace.first, Replace.second);
 	}
+	return isFindColor;
 }
 
 

@@ -25,7 +25,7 @@
             "#ff0000" : "darkBorderColor",
             "#000000" : "#ffffff00"
         },
-        "window_buttons" : {
+        "buttons" : {
             "#03b8e5" : "primaryTextColor"
         }
     },
