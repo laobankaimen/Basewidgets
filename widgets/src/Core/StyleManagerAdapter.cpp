@@ -83,6 +83,12 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
     // 假设样式表已由外部工具生成并作为静态资源或文件提供，此处主要负责加载
     s_instance->updateStylesheet();
     QApplication::setWindowIcon(s_instance->styleIcon());
+
+    #ifdef Q_OS_LINUX
+    //qApp->setStyle(QStyleFactory::create("Fusion"));
+    //在linux强制保持统一风格，防止被GTK样式覆盖
+    QApplication::setStyle("Fusion");
+    #endif
     qApp->setStyleSheet(s_instance->styleSheet());
 
     // 监听样式变化，自动应用到整个应用

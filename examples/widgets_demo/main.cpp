@@ -1053,8 +1053,6 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
-    // 动态库会自动初始化资源，无需显式调用 Q_INIT_RESOURCE
-    // Q_INIT_RESOURCE(images);
 
     // 初始化样式管理器
     StyleManagerAdapter::initialize("theme/");//不设置则在当前目录读取

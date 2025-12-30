@@ -191,7 +191,7 @@ protected:
         grad.setColorAt(1.0, QColor::fromHsv(0, 255, 255)); // Wrap around
 
         p.setRenderHint(QPainter::Antialiasing);
-        
+
         // Draw rounded groove
         QPainterPath path;
         path.addRoundedRect(groove, 4, 4);
@@ -202,19 +202,21 @@ protected:
         p.setPen(QPen(QColor(0xCCCCCC), 1));
         
         int hSize = handle.width();
-        QRect customHandle = handle; 
-        
+        QRect customHandle = handle;
+        //不是绝对的正中心，需要微调
+        QPoint ellipseCenter = customHandle.center()+QPoint(1,1);
+
         // Draw handle shadow/border
         p.setBrush(Qt::white);
         p.setPen(QPen(Qt::lightGray, 1));
-        p.drawEllipse(customHandle.center(), hSize/2, hSize/2);
+        p.drawEllipse(ellipseCenter, hSize/2, hSize/2);
         
         // Inner blue dot
         QColor hueColor;
         hueColor.setHsv(value(), 255, 255);
         p.setBrush(hueColor);
         p.setPen(Qt::NoPen);
-        p.drawEllipse(customHandle.center(), hSize/4, hSize/4);
+        p.drawEllipse(ellipseCenter, hSize/4, hSize/4);
     }
 };
 
@@ -430,7 +432,7 @@ QColor ColorPickerWidget::currentColor() const
 void ColorPickerWidget::setupUi(const QColor& initial)
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setContentsMargins(5, 5, 5, 5);
     mainLayout->setSpacing(10);
 
     setFixedWidth(600); // Try a fixed width to ensure compactness
