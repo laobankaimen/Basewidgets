@@ -12,7 +12,7 @@
 #include <QVBoxLayout>
 #include <QFontDatabase>
  
- namespace QtAdvancedUI {
+ namespace basewidgets {
  
  QWidget* FontPicker::makeFontPickerBody(QWidget* parent, QFont current, QFont* currentOut)
  {
@@ -159,5 +159,5 @@
     return body;
 }
  
- } // namespace QtAdvancedUI
+ } // namespace basewidgets
 

@@ -2,11 +2,11 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Views/PagedProxyModel.h>
+#include <basewidgets/Views/PagedProxyModel.h>
 #include <QAbstractItemModel>
 #include <QtMath>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 PagedProxyModel::PagedProxyModel(QObject* parent)
     : QAbstractProxyModel(parent)
@@ -132,5 +132,5 @@ void PagedProxyModel::resetPage()
     invalidateAndReset();
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

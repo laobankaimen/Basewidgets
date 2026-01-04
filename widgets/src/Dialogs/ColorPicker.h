@@ -20,7 +20,7 @@ class QComboBox;
 class QToolButton;
 class QButtonGroup;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 class ColorArea;
 class HueSlider;
@@ -82,4 +82,4 @@ public:
     static QWidget* makeColorPickerBody(QWidget* parent, const QColor& initial, QColor* currentOut);
 };
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets

@@ -5,7 +5,7 @@
 
 #include "ColorPicker.h"
 
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 #include <QColor>
 #include <QPainterPath>
@@ -37,7 +37,7 @@
 
 using namespace acss;
 
-namespace QtAdvancedUI
+namespace basewidgets
 {
 
 // 2D Color Area: Saturation (X) vs Value (Y) for a fixed Hue
@@ -827,4 +827,4 @@ QWidget* ColorPicker::makeColorPickerBody(QWidget* parent, const QColor& initial
     return w;
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets

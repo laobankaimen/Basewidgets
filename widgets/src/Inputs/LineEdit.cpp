@@ -2,12 +2,12 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Inputs/LineEdit.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/LineEdit.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 LineEdit::LineEdit(QWidget* parent)
     : QLineEdit(parent)
@@ -52,5 +52,5 @@ void LineEdit::applyStylesheet()
     // 清空组件级样式应用，改为应用级统一管理
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

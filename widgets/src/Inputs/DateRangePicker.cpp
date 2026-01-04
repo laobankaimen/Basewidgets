@@ -2,17 +2,17 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Inputs/DateRangePicker.h>
-#include <QtAdvancedUI/Inputs/DatePicker.h>
-#include <QtAdvancedUI/Inputs/TimePicker.h>
-#include <QtAdvancedUI/Inputs/ComboBox.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/DateRangePicker.h>
+#include <basewidgets/Inputs/DatePicker.h>
+#include <basewidgets/Inputs/TimePicker.h>
+#include <basewidgets/Inputs/ComboBox.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QGridLayout>
 #include <QCalendarWidget>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 DateRangePicker::DateRangePicker(QWidget* parent)
     : StyledWidget(parent)
@@ -206,5 +206,5 @@ void DateRangePicker::updateTimeZoneCombo(const QStringList& ids)
     m_zoneCombo->addItems(ids);
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

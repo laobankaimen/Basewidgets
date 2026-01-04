@@ -27,8 +27,8 @@
 //============================================================================
 //                                   INCLUDES
 //============================================================================
-#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
-#include <QtAdvancedUI/Styles/acss_globals.h>
+#include <basewidgets/Styles/QtAdvancedStylesheet.h>
+#include <basewidgets/Styles/acss_globals.h>
 #include <iostream>
 
 #include <QMap>

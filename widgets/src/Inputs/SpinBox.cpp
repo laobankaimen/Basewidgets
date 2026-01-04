@@ -2,12 +2,12 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Inputs/SpinBox.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/SpinBox.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 SpinBox::SpinBox(QWidget* parent)
     : QSpinBox(parent)
@@ -46,5 +46,5 @@ void SpinBox::applyStylesheet()
     // 清空组件级样式应用，改为应用级统一管理
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

@@ -2,12 +2,12 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Inputs/ToolButton.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/ToolButton.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 ToolButton::ToolButton(QWidget* parent)
     : QToolButton(parent)
@@ -46,5 +46,5 @@ void ToolButton::applyStylesheet()
     // 清空组件级样式应用，改为应用级统一管理
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

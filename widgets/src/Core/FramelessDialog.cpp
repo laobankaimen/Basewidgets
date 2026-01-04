@@ -2,10 +2,10 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Core/FramelessDialog.h>
-#include <QtAdvancedUI/Core/CustomTitleBar.h>
-#include <QtAdvancedUI/Inputs/ToolButton.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/FramelessDialog.h>
+#include <basewidgets/Core/CustomTitleBar.h>
+#include <basewidgets/Inputs/ToolButton.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -31,7 +31,7 @@
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 FramelessDialog::FramelessDialog(QWidget* parent)
     : QDialog(parent)
@@ -148,5 +148,5 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, lo
     }
 }
 #endif
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

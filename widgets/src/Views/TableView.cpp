@@ -2,13 +2,13 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Views/TableView.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Views/TableView.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QHeaderView>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 TableView::TableView(QWidget* parent)
     : QTableView(parent)
@@ -52,5 +52,5 @@ void TableView::applyStylesheet()
     // 清空组件级样式应用，改为应用级统一管理
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

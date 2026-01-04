@@ -3,9 +3,9 @@
  * Date: 2025-12-25
  */
 
-#include <QtAdvancedUI/Dialogs/DialogUtils.h>
-#include <QtAdvancedUI/Core/FramelessDialog.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Dialogs/DialogUtils.h>
+#include <basewidgets/Core/FramelessDialog.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 #include "ColorPicker.h"
 #include "FontPicker.h"
@@ -51,7 +51,7 @@
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 // 颜色选择区域已拆分至 ColorPicker.cpp
 
@@ -606,4 +606,4 @@ double DialogUtils::inputDouble(QWidget* parent, const QString& title, const QSt
     return value;
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets

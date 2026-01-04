@@ -2,10 +2,10 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Charts/QCPWaterfallChart.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Charts/QCPWaterfallChart.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 QCPWaterfallChart::QCPWaterfallChart(QCPAxis* keyAxis, QCPAxis* valueAxis)
     : QCPColorMap(keyAxis, valueAxis) {}
@@ -61,5 +61,5 @@ void QCPWaterfallChart::applyThemeBackground()
     m_plot->replot();
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

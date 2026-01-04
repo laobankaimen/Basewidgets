@@ -2,9 +2,9 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Core/FramelessWidgetWindow.h>
-#include <QtAdvancedUI/Core/CustomTitleBar.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/FramelessWidgetWindow.h>
+#include <basewidgets/Core/CustomTitleBar.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 #include <QVBoxLayout>
 #include <QPainter>
@@ -14,7 +14,7 @@
 #include <QShortcut>
 #include <QSettings>
 
-#include "QtAdvancedUI/Dialogs/DialogUtils.h"
+#include "basewidgets/Dialogs/DialogUtils.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -38,7 +38,7 @@
 
 #endif
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 // Windows平台实现 - 复刻framelesswindow的代码
 FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
@@ -602,5 +602,5 @@ void FramelessWidgetWindow::changeEvent(QEvent* e)
     }
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

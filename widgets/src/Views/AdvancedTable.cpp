@@ -2,17 +2,17 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Views/AdvancedTable.h>
+#include <basewidgets/Views/AdvancedTable.h>
 
 #include <QScrollBar>
-#include <QtAdvancedUI/Inputs/Label.h>
-#include <QtAdvancedUI/Inputs/LineEdit.h>
-#include <QtAdvancedUI/Inputs/ComboBox.h>
-#include <QtAdvancedUI/Inputs/PushButton.h>
-#include <QtAdvancedUI/Inputs/SpinBox.h>
-#include <QtAdvancedUI/Inputs/ToolButton.h>
-#include <QtAdvancedUI/Views/TableView.h>
-#include <QtAdvancedUI/Dialogs/DialogUtils.h>
+#include <basewidgets/Inputs/Label.h>
+#include <basewidgets/Inputs/LineEdit.h>
+#include <basewidgets/Inputs/ComboBox.h>
+#include <basewidgets/Inputs/PushButton.h>
+#include <basewidgets/Inputs/SpinBox.h>
+#include <basewidgets/Inputs/ToolButton.h>
+#include <basewidgets/Views/TableView.h>
+#include <basewidgets/Dialogs/DialogUtils.h>
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -27,7 +27,7 @@
 #include <QApplication>
 #include <QTimer>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 AdvancedTable::AdvancedTable(QWidget* parent)
     : StyledWidget(parent)
@@ -521,5 +521,5 @@ void AdvancedTable::setPaginationBarVisible(bool visible)
     if (m_bottomBar) m_bottomBar->setVisible(visible);
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

@@ -5,11 +5,11 @@
 #include <QFile>
 #include <QTextStream>
 #include <QProcess>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
-#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
+#include <basewidgets/Styles/QtAdvancedStylesheet.h>
 #include <iostream>
 
-using namespace QtAdvancedUI;
+using namespace basewidgets;
 using namespace acss;
 
 // Helper to copy directory recursively

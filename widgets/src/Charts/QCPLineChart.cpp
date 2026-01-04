@@ -2,10 +2,10 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Charts/QCPLineChart.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Charts/QCPLineChart.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 QCPLineChart::QCPLineChart(QCPAxis* keyAxis, QCPAxis* valueAxis)
     : QCPGraph(keyAxis, valueAxis) {}
@@ -103,5 +103,5 @@ void QCPLineChart::applyThemeBackground()
     m_plot->replot();
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

@@ -2,9 +2,9 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Gauges/QcGaugeWidget.h>
+#include <basewidgets/Gauges/QcGaugeWidget.h>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 QcGaugeWidget::QcGaugeWidget(QWidget *parent) : StyledWidget(parent)
 {
@@ -934,5 +934,5 @@ void QcAttitudeMeter::drawHandle(QPainter *painter)
     painter->drawChord(tmpRct,-16*70,-16*40);
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

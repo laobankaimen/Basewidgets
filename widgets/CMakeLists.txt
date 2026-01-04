@@ -21,65 +21,65 @@ endif()
 
 # Sources
 set(UI_PUBLIC_HEADERS
-    include/QtAdvancedUI/QtAdvancedUIExport.h
-    include/QtAdvancedUI/Styles/acss_globals.h
-    include/QtAdvancedUI/Styles/QtAdvancedStylesheet.h
-    include/QtAdvancedUI/Core/StyleManagerAdapter.h
-    include/QtAdvancedUI/Core/StyledWidget.h
-    include/QtAdvancedUI/Core/FramelessDialog.h
-    include/QtAdvancedUI/Core/CustomTitleBar.h
-    include/QtAdvancedUI/Core/FramelessWidgetWindow.h
-    include/QtAdvancedUI/Inputs/PushButton.h
-    include/QtAdvancedUI/Inputs/LineEdit.h
-    include/QtAdvancedUI/Inputs/CheckBox.h
-    include/QtAdvancedUI/Inputs/RadioButton.h
-    include/QtAdvancedUI/Inputs/ComboBox.h
-    include/QtAdvancedUI/Inputs/Slider.h
-    include/QtAdvancedUI/Inputs/Label.h
-    include/QtAdvancedUI/Inputs/SpinBox.h
-    include/QtAdvancedUI/Inputs/ToolButton.h
-    include/QtAdvancedUI/Inputs/TextEdit.h
-    include/QtAdvancedUI/Inputs/PlainTextEdit.h
-    include/QtAdvancedUI/Inputs/DatePicker.h
-    include/QtAdvancedUI/Inputs/TimePicker.h
-    include/QtAdvancedUI/Inputs/DateTimePicker.h
-    include/QtAdvancedUI/Inputs/DateRangePicker.h
-    include/QtAdvancedUI/Inputs/ProgressBar.h
-    include/QtAdvancedUI/Inputs/ToggleSwitch.h
-    include/QtAdvancedUI/Inputs/BusyIndicator.h
-    include/QtAdvancedUI/Inputs/MultiSelectComboBox.h
-    include/QtAdvancedUI/Containers/GroupBox.h
-    include/QtAdvancedUI/Containers/Frame.h
-    include/QtAdvancedUI/Containers/TabWidget.h
-    include/QtAdvancedUI/Containers/ScrollArea.h
-    include/QtAdvancedUI/Containers/MenuBar.h
-    include/QtAdvancedUI/Containers/ToolBar.h
-    include/QtAdvancedUI/Containers/StatusBar.h
-    include/QtAdvancedUI/Containers/ToolBox.h
-    include/QtAdvancedUI/Dialogs/DialogUtils.h
+    interface/basewidgets/QtAdvancedUIExport.h
+    interface/basewidgets/Styles/acss_globals.h
+    interface/basewidgets/Styles/QtAdvancedStylesheet.h
+    interface/basewidgets/Core/StyleManagerAdapter.h
+    interface/basewidgets/Core/StyledWidget.h
+    interface/basewidgets/Core/FramelessDialog.h
+    interface/basewidgets/Core/CustomTitleBar.h
+    interface/basewidgets/Core/FramelessWidgetWindow.h
+    interface/basewidgets/Inputs/PushButton.h
+    interface/basewidgets/Inputs/LineEdit.h
+    interface/basewidgets/Inputs/CheckBox.h
+    interface/basewidgets/Inputs/RadioButton.h
+    interface/basewidgets/Inputs/ComboBox.h
+    interface/basewidgets/Inputs/Slider.h
+    interface/basewidgets/Inputs/Label.h
+    interface/basewidgets/Inputs/SpinBox.h
+    interface/basewidgets/Inputs/ToolButton.h
+    interface/basewidgets/Inputs/TextEdit.h
+    interface/basewidgets/Inputs/PlainTextEdit.h
+    interface/basewidgets/Inputs/DatePicker.h
+    interface/basewidgets/Inputs/TimePicker.h
+    interface/basewidgets/Inputs/DateTimePicker.h
+    interface/basewidgets/Inputs/DateRangePicker.h
+    interface/basewidgets/Inputs/ProgressBar.h
+    interface/basewidgets/Inputs/ToggleSwitch.h
+    interface/basewidgets/Inputs/BusyIndicator.h
+    interface/basewidgets/Inputs/MultiSelectComboBox.h
+    interface/basewidgets/Containers/GroupBox.h
+    interface/basewidgets/Containers/Frame.h
+    interface/basewidgets/Containers/TabWidget.h
+    interface/basewidgets/Containers/ScrollArea.h
+    interface/basewidgets/Containers/MenuBar.h
+    interface/basewidgets/Containers/ToolBar.h
+    interface/basewidgets/Containers/StatusBar.h
+    interface/basewidgets/Containers/ToolBox.h
+    interface/basewidgets/Dialogs/DialogUtils.h
     
-    include/QtAdvancedUI/Views/TreeWidget.h
+    interface/basewidgets/Views/TreeWidget.h
     
-    include/QtAdvancedUI/Views/ListView.h
-    include/QtAdvancedUI/Views/TreeView.h
-    include/QtAdvancedUI/Views/TableView.h
-    include/QtAdvancedUI/Views/TreeTable.h
-    include/QtAdvancedUI/Views/PagedProxyModel.h
-    include/QtAdvancedUI/Views/AdvancedTable.h
+    interface/basewidgets/Views/ListView.h
+    interface/basewidgets/Views/TreeView.h
+    interface/basewidgets/Views/TableView.h
+    interface/basewidgets/Views/TreeTable.h
+    interface/basewidgets/Views/PagedProxyModel.h
+    interface/basewidgets/Views/AdvancedTable.h
     
-    include/QtAdvancedUI/Gauges/CircularGauge.h
-    include/QtAdvancedUI/Gauges/QcGaugeWidget.h
-    include/QtAdvancedUI/Gauges/BasicGauge.h
-    include/QtAdvancedUI/Gauges/SpeedGauge.h
-    include/QtAdvancedUI/Gauges/CompassGauge.h
-    include/QtAdvancedUI/Gauges/AttitudeMeter.h
+    interface/basewidgets/Gauges/CircularGauge.h
+    interface/basewidgets/Gauges/QcGaugeWidget.h
+    interface/basewidgets/Gauges/BasicGauge.h
+    interface/basewidgets/Gauges/SpeedGauge.h
+    interface/basewidgets/Gauges/CompassGauge.h
+    interface/basewidgets/Gauges/AttitudeMeter.h
     
     # Charts
-    include/QtAdvancedUI/Charts/QCPBarChart.h
-    include/QtAdvancedUI/Charts/QCPLineChart.h
-    include/QtAdvancedUI/Charts/QCPWaterfallChart.h
-    include/QtAdvancedUI/Charts/QCustomplot.h
-    include/QtAdvancedUI/Charts/StyledPlot.h
+    interface/basewidgets/Charts/QCPBarChart.h
+    interface/basewidgets/Charts/QCPLineChart.h
+    interface/basewidgets/Charts/QCPWaterfallChart.h
+    interface/basewidgets/Charts/QCustomplot.h
+    interface/basewidgets/Charts/StyledPlot.h
 )
 
 set(UI_SOURCES
@@ -140,24 +140,24 @@ set(UI_SOURCES
     src/Charts/StyledPlot.cpp
 )
 
-add_library(QtAdvancedUI SHARED
+add_library(basewidgets SHARED
     ${UI_PUBLIC_HEADERS}
     ${UI_SOURCES}
 )
 
 # Export macro
-target_compile_definitions(QtAdvancedUI PRIVATE QTADVANCEDUI_BUILD)
+target_compile_definitions(basewidgets PRIVATE QTADVANCED_UI_BUILD)
 
 # Include dirs
-target_include_directories(QtAdvancedUI
+target_include_directories(basewidgets
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interface>
+        $<INSTALL_INTERFACE:interface>
 )
 
 # Link deps
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(QtAdvancedUI
+    target_link_libraries(basewidgets
         PUBLIC
             Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Gui
@@ -166,7 +166,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
             Qt${QT_VERSION_MAJOR}::Svg
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(QtAdvancedUI
+    target_link_libraries(basewidgets
         PUBLIC
             Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Gui
@@ -180,24 +180,24 @@ endif()
 
 
 # C++ standard
-set_target_properties(QtAdvancedUI PROPERTIES
+set_target_properties(basewidgets PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED YES
 )
 
 if(MSVC)
-    target_compile_options(QtAdvancedUI PRIVATE /FS)
+    target_compile_options(basewidgets PRIVATE /FS)
 endif()
 
 # 确保 themes.rcc 复制到可执行目录
-add_custom_command(TARGET QtAdvancedUI POST_BUILD
+add_custom_command(TARGET basewidgets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_SOURCE_DIR}/assert/themes.rcc
-    $<TARGET_FILE_DIR:QtAdvancedUI>
+    $<TARGET_FILE_DIR:basewidgets>
 )
 
 # Install rules
 set(CMAKE_INSTALL_PATH ${CMAKE_BINARY_DIR}/bin)
 install(DIRECTORY assert/ DESTINATION ${CMAKE_INSTALL_PATH})
-install(TARGETS QtAdvancedUI DESTINATION ${CMAKE_INSTALL_PATH})
-install(DIRECTORY include/QtAdvancedUI DESTINATION ${CMAKE_INSTALL_PATH}/include)
+install(TARGETS basewidgets DESTINATION ${CMAKE_INSTALL_PATH})
+install(DIRECTORY interface/basewidgets DESTINATION ${CMAKE_INSTALL_PATH}/interface)

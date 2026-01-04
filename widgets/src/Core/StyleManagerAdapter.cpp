@@ -2,14 +2,14 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QApplication>
 #include <QDir>
 #include <QResource>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 acss::QtAdvancedStylesheet* StyleManagerAdapter::s_instance = nullptr;
 
@@ -104,5 +104,5 @@ void StyleManagerAdapter::setInstance(acss::QtAdvancedStylesheet* mgr)
     s_instance = mgr;
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

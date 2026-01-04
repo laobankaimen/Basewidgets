@@ -3,12 +3,12 @@
  * Date: 2025-12-25
  */
 #include <QCalendarWidget>
-#include <QtAdvancedUI/Inputs/DateTimePicker.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/DateTimePicker.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 DateTimePicker::DateTimePicker(QWidget* parent)
     : QDateTimeEdit(parent)
@@ -52,5 +52,5 @@ void DateTimePicker::applyStylesheet()
     // 清空组件级样式应用，改为应用级统一管理
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

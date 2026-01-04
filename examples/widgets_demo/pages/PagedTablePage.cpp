@@ -1,13 +1,13 @@
 #include "PagedTablePage.h"
 
-#include <QtAdvancedUI/Containers/GroupBox.h>
-#include <QtAdvancedUI/Views/AdvancedTable.h>
-#include <QtAdvancedUI/Views/TableView.h>
+#include <basewidgets/Containers/GroupBox.h>
+#include <basewidgets/Views/AdvancedTable.h>
+#include <basewidgets/Views/TableView.h>
 
 #include <QVBoxLayout>
 #include <QStandardItemModel>
 
-using namespace QtAdvancedUI;
+using namespace basewidgets;
 
 PagedTablePage::PagedTablePage(QWidget* parent)
     : StyledWidget(parent)
@@ -36,7 +36,7 @@ PagedTablePage::PagedTablePage(QWidget* parent)
         source->appendRow(row);
     }
     // 复合控件：由库提供 AdvancedTable
-    auto* adv = new QtAdvancedUI::AdvancedTable(gb);
+    auto* adv = new basewidgets::AdvancedTable(gb);
     adv->setSourceModel(source);
     adv->pager()->setPageSize(20);
     adv->view()->sortByColumn(0, Qt::AscendingOrder);

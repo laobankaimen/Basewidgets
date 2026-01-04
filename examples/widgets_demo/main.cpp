@@ -6,52 +6,52 @@
 #include <QGridLayout>
 #include <QScrollArea>
 
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
-#include <QtAdvancedUI/Core/FramelessWidgetWindow.h>
-#include <QtAdvancedUI/Core/StyledWidget.h>
-#include <QtAdvancedUI/Containers/MenuBar.h>
-#include <QtAdvancedUI/Containers/ToolBar.h>
-#include <QtAdvancedUI/Containers/StatusBar.h>
-#include <QtAdvancedUI/Containers/TabWidget.h>
-#include <QtAdvancedUI/Containers/GroupBox.h>
-#include <QtAdvancedUI/Containers/Frame.h>
-#include <QtAdvancedUI/Containers/ScrollArea.h>
-#include <QtAdvancedUI/Inputs/PushButton.h>
-#include <QtAdvancedUI/Inputs/ToolButton.h>
-#include <QtAdvancedUI/Inputs/ComboBox.h>
-#include <QtAdvancedUI/Inputs/MultiSelectComboBox.h>
-#include <QtAdvancedUI/Inputs/Label.h>
-#include <QtAdvancedUI/Inputs/LineEdit.h>
-#include <QtAdvancedUI/Inputs/SpinBox.h>
-#include <QtAdvancedUI/Inputs/CheckBox.h>
-#include <QtAdvancedUI/Inputs/RadioButton.h>
-#include <QtAdvancedUI/Inputs/Slider.h>
-#include <QtAdvancedUI/Inputs/ProgressBar.h>
-#include <QtAdvancedUI/Inputs/BusyIndicator.h>
-#include <QtAdvancedUI/Inputs/ToggleSwitch.h>
-#include <QtAdvancedUI/Inputs/TextEdit.h>
-#include <QtAdvancedUI/Inputs/PlainTextEdit.h>
-#include <QtAdvancedUI/Inputs/DatePicker.h>
-#include <QtAdvancedUI/Inputs/TimePicker.h>
-#include <QtAdvancedUI/Inputs/DateTimePicker.h>
-#include <QtAdvancedUI/Inputs/DateRangePicker.h>
-#include <QtAdvancedUI/Views/ListView.h>
-#include <QtAdvancedUI/Views/TreeView.h>
-#include <QtAdvancedUI/Views/TableView.h>
-#include <QtAdvancedUI/Views/TreeTable.h>
-#include <QtAdvancedUI/Dialogs/DialogUtils.h>
-#include <QtAdvancedUI/Views/TreeWidget.h>
-#include <QtAdvancedUI/Gauges/CircularGauge.h>
-#include <QtAdvancedUI/Gauges/BasicGauge.h>
-#include <QtAdvancedUI/Gauges/SpeedGauge.h>
-#include <QtAdvancedUI/Gauges/CompassGauge.h>
-#include <QtAdvancedUI/Gauges/AttitudeMeter.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/FramelessWidgetWindow.h>
+#include <basewidgets/Core/StyledWidget.h>
+#include <basewidgets/Containers/MenuBar.h>
+#include <basewidgets/Containers/ToolBar.h>
+#include <basewidgets/Containers/StatusBar.h>
+#include <basewidgets/Containers/TabWidget.h>
+#include <basewidgets/Containers/GroupBox.h>
+#include <basewidgets/Containers/Frame.h>
+#include <basewidgets/Containers/ScrollArea.h>
+#include <basewidgets/Inputs/PushButton.h>
+#include <basewidgets/Inputs/ToolButton.h>
+#include <basewidgets/Inputs/ComboBox.h>
+#include <basewidgets/Inputs/MultiSelectComboBox.h>
+#include <basewidgets/Inputs/Label.h>
+#include <basewidgets/Inputs/LineEdit.h>
+#include <basewidgets/Inputs/SpinBox.h>
+#include <basewidgets/Inputs/CheckBox.h>
+#include <basewidgets/Inputs/RadioButton.h>
+#include <basewidgets/Inputs/Slider.h>
+#include <basewidgets/Inputs/ProgressBar.h>
+#include <basewidgets/Inputs/BusyIndicator.h>
+#include <basewidgets/Inputs/ToggleSwitch.h>
+#include <basewidgets/Inputs/TextEdit.h>
+#include <basewidgets/Inputs/PlainTextEdit.h>
+#include <basewidgets/Inputs/DatePicker.h>
+#include <basewidgets/Inputs/TimePicker.h>
+#include <basewidgets/Inputs/DateTimePicker.h>
+#include <basewidgets/Inputs/DateRangePicker.h>
+#include <basewidgets/Views/ListView.h>
+#include <basewidgets/Views/TreeView.h>
+#include <basewidgets/Views/TableView.h>
+#include <basewidgets/Views/TreeTable.h>
+#include <basewidgets/Dialogs/DialogUtils.h>
+#include <basewidgets/Views/TreeWidget.h>
+#include <basewidgets/Gauges/CircularGauge.h>
+#include <basewidgets/Gauges/BasicGauge.h>
+#include <basewidgets/Gauges/SpeedGauge.h>
+#include <basewidgets/Gauges/CompassGauge.h>
+#include <basewidgets/Gauges/AttitudeMeter.h>
 #include <QTimer>
-#include <QtAdvancedUI/Charts/QCustomplot.h>
-#include <QtAdvancedUI/Charts/StyledPlot.h>
-#include <QtAdvancedUI/Charts/QCPLineChart.h>
-#include <QtAdvancedUI/Charts/QCPBarChart.h>
-#include <QtAdvancedUI/Charts/QCPWaterfallChart.h>
+#include <basewidgets/Charts/QCustomplot.h>
+#include <basewidgets/Charts/StyledPlot.h>
+#include <basewidgets/Charts/QCPLineChart.h>
+#include <basewidgets/Charts/QCPBarChart.h>
+#include <basewidgets/Charts/QCPWaterfallChart.h>
 #include <QMenu>
 #include <QtMath>
 #include "pages/PagedTablePage.h"
@@ -60,7 +60,7 @@
 #include <QStandardItemModel>
 #include <QHeaderView>
 
-using namespace QtAdvancedUI;
+using namespace basewidgets;
 
 // 创建输入控件展示页面
 StyledWidget* createInputsShowcase(QWidget* parent) {
@@ -1059,7 +1059,7 @@ int main(int argc, char *argv[])
 
     // 创建主窗口（使用基于 QWidget 的无边框主界面）
     auto* window = new FramelessWidgetWindow();
-    window->setTitle("QtAdvancedUI 组件全面展示");
+    window->setTitle("basewidgets 组件全面展示");
     // 设置窗口图标（会自动同步到标题栏）
     window->setWindowIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/logo/logo.svg"));
 
@@ -1083,7 +1083,7 @@ int main(int argc, char *argv[])
     fileMenu->addAction("退出(&X)", [&app](){ app.quit(); });
 
     auto* helpMenu = menuBar->addMenu("帮助(&H)");
-    helpMenu->addAction("关于 QtAdvancedUI(&A)", [](){});
+    helpMenu->addAction("关于 basewidgets(&A)", [](){});
     window->setMenuBar(menuBar);
 
     // 创建工具栏
@@ -1128,7 +1128,7 @@ int main(int argc, char *argv[])
 
     // 创建状态栏
     auto* statusBar = new StatusBar(contentRoot);
-    statusBar->showMessage("QtAdvancedUI 组件展示 - 就绪");
+    statusBar->showMessage("basewidgets 组件展示 - 就绪");
     
     // 添加永久控件
     auto* networkLabel = new Label("网络: 已连接", statusBar);

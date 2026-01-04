@@ -2,10 +2,10 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Charts/StyledPlot.h>
+#include <basewidgets/Charts/StyledPlot.h>
 #include <QPalette>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 StyledPlot::StyledPlot(QWidget* parent)
     : QCustomPlot(parent) {
@@ -94,5 +94,5 @@ void StyledPlot::replot(QCustomPlot::RefreshPriority priority) {
     QCustomPlot::replot(priority);
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

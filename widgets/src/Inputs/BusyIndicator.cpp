@@ -2,13 +2,13 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Inputs/BusyIndicator.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/BusyIndicator.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QPainter>
 #include <QTimer>
 #include <QtMath>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 BusyIndicator::BusyIndicator(QWidget* parent)
     : StyledWidget(parent)
@@ -77,5 +77,5 @@ void BusyIndicator::paintEvent(QPaintEvent* e)
     }
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

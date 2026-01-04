@@ -2,13 +2,13 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Views/TreeTable.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Views/TreeTable.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QStandardItemModel>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 TreeTable::TreeTable(QWidget* parent)
     : QTreeView(parent)
@@ -178,5 +178,5 @@ void TreeTable::appendSummaryRow(QStandardItemModel* m, QStandardItem* parentIte
     parentItem->appendRow(row);
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

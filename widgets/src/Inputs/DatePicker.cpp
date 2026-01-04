@@ -2,13 +2,13 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Inputs/DatePicker.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/DatePicker.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QCalendarWidget>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 DatePicker::DatePicker(QWidget* parent)
     : QDateEdit(parent)
@@ -66,5 +66,5 @@ void DatePicker::setWeekNumbersEnabled(bool enabled)
                                          : QCalendarWidget::NoVerticalHeader);
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

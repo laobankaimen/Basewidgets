@@ -2,10 +2,10 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Core/CustomTitleBar.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
-#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
-#include <QtAdvancedUI/Inputs/ToolButton.h>
+#include <basewidgets/Core/CustomTitleBar.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
+#include <basewidgets/Styles/QtAdvancedStylesheet.h>
+#include <basewidgets/Inputs/ToolButton.h>
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -19,11 +19,11 @@
 #include <QPropertyAnimation>
 #include <QTimer>
 
-#include "QtAdvancedUI/Core/FramelessWidgetWindow.h"
+#include "basewidgets/Core/FramelessWidgetWindow.h"
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 static int fixedHieght = 40;
 CustomTitleBar::CustomTitleBar(QWidget* parent)
     : QWidget(parent)
@@ -301,5 +301,5 @@ void CustomTitleBar::setDoubleClickToToggleEnabled(bool enabled)
     m_doubleClickToggleEnabled = enabled;
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

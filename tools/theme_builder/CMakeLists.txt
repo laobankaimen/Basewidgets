@@ -11,7 +11,7 @@ target_link_libraries(theme_builder PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Widgets
-    QtAdvancedUI
+    basewidgets
 )
 
 if(MSVC)
@@ -22,7 +22,7 @@ endif()
 if(WIN32)
     add_custom_command(TARGET theme_builder POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:QtAdvancedUI>
+            $<TARGET_FILE:basewidgets>
             $<TARGET_FILE_DIR:theme_builder>
     )
     

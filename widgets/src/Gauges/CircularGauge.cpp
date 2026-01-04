@@ -2,11 +2,11 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Gauges/CircularGauge.h>
+#include <basewidgets/Gauges/CircularGauge.h>
 #include <QPainter>
 #include <QtMath>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 CircularGauge::CircularGauge(QWidget* parent)
     : StyledWidget(parent)
@@ -462,5 +462,5 @@ void CircularGauge::useClassicThreeColorPercentPreset(const QString& title, cons
     update();
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

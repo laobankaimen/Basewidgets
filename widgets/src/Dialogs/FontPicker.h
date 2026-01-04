@@ -8,14 +8,14 @@
  #include <QWidget>
  #include <QFont>
  
- namespace QtAdvancedUI {
+ namespace basewidgets {
  
  class FontPicker {
  public:
      static QWidget* makeFontPickerBody(QWidget* parent, QFont current, QFont* currentOut);
  };
  
- } // namespace QtAdvancedUI
+ } // namespace basewidgets
  
  #endif // FONTPICKER_H
 

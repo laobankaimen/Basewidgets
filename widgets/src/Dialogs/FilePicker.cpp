@@ -4,7 +4,7 @@
  */
 
 #include "FilePicker.h"
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 #include <QFileSystemModel>
 #include <QTreeView>
@@ -35,7 +35,7 @@
 #include <QAction>
 #include <QMenu>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 static QStringList parseNameFilter(const QString& filter)
 {
@@ -543,4 +543,4 @@ QWidget* FilePicker::makeFilePickerBody(QWidget* parent,
     return w;
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets

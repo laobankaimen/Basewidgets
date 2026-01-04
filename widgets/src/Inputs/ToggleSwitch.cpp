@@ -2,14 +2,14 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Inputs/ToggleSwitch.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/ToggleSwitch.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QPainter>
 #include <QMouseEvent>
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 ToggleSwitch::ToggleSwitch(QWidget* parent)
     : QAbstractButton(parent)
@@ -92,5 +92,5 @@ void ToggleSwitch::initSwitch() {
     m_anim = new QPropertyAnimation(this, "offset");
     m_anim->setDuration(120);
 }
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

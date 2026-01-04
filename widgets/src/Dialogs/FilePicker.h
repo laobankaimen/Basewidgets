@@ -23,7 +23,7 @@ class QLabel;
 class QStackedWidget;
 class QSplitter;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 class FilePickerWidget : public QWidget {
     Q_OBJECT
@@ -109,4 +109,4 @@ public:
                                        QLineEdit** outEdit = nullptr);
 };
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets

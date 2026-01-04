@@ -2,8 +2,8 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <QtAdvancedUI/Inputs/MultiSelectComboBox.h>
-#include <QtAdvancedUI/Core/StyleManagerAdapter.h>
+#include <basewidgets/Inputs/MultiSelectComboBox.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 #include <QStandardItemModel>
 #include <QListView>
@@ -14,7 +14,7 @@
 
 using namespace acss;
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 static QStandardItemModel* ensureModel(QComboBox* cb)
 {
@@ -388,5 +388,5 @@ bool MultiSelectComboBox::eventFilter(QObject* obj, QEvent* e)
     return ComboBox::eventFilter(obj, e);
 }
 
-} // namespace QtAdvancedUI
+} // namespace basewidgets
 

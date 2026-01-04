@@ -27,9 +27,9 @@
 **          Version: 2.1.1                                                **
 ****************************************************************************/
 
-#include <QtAdvancedUI/Charts/QCustomplot.h>
+#include <basewidgets/Charts/QCustomplot.h>
 
-namespace QtAdvancedUI {
+namespace basewidgets {
 
 /* including file 'src/vector2d.cpp'       */
 /* modified 2022-11-06T12:45:56, size 7973 */
