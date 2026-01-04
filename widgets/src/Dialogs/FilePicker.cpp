@@ -92,23 +92,18 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
 
     // --- 1. Top Bar (Ubuntu-like Header) ---
     // The top bar contains navigation buttons (Back, Forward, Up, Home) and address bar
-    m_topBar = new QWidget(this);
+    m_topBar = new QFrame(this);
     m_topBar->setObjectName("FilePickerTopBar");
-    // Removed hardcoded stylesheet to follow system theme
-    // Add border to separate from content, use palette(Mid) for border color if possible, or a safe grey
-    // Added background color back to avoid "black areas" and coordinate with theme
-    m_topBar->setStyleSheet("QWidget#FilePickerTopBar { background-color: #383838; border-bottom: 1px solid #3D3D3D; }"); 
-    m_topBar->setFixedHeight(48);
+    m_topBar->setFixedHeight(50);
 
     auto* topLayout = new QHBoxLayout(m_topBar);
-    topLayout->setContentsMargins(10, 5, 10, 5);
+    topLayout->setContentsMargins(5, 5, 5, 5);
     topLayout->setSpacing(8);
 
     // Nav Buttons
     auto createNavBtn = [this](const QString& text, const QString& iconName) {
         Q_UNUSED(text);
         QToolButton* btn = new QToolButton(this);
-        btn->setMouseTracking(true);
         btn->setIcon(QIcon(QString("icon:buttons/%1.svg").arg(iconName)));
         btn->setAutoRaise(true);
         btn->setProperty("iconOnly", QVariant(true));
@@ -116,31 +111,31 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     };
 
     btnBack = createNavBtn("<", "arrow_left");
-    btnBack->setToolTip(tr("Back"));
+    btnBack->setToolTip(tr("返回"));
     
     btnForward = createNavBtn(">", "arrow_right");
-    btnForward->setToolTip(tr("Forward"));
+    btnForward->setToolTip(tr("前进"));
 
     btnUp = createNavBtn("^", "angle_up");
-    btnUp->setToolTip(tr("Up"));
+    btnUp->setToolTip(tr("上一级"));
 
     btnHome = createNavBtn("Home", "home");
-    btnHome->setToolTip(tr("Home"));
+    btnHome->setToolTip(tr("家目录"));
 
     btnRefresh = createNavBtn("R", "arrow_refresh");
-    btnRefresh->setToolTip(tr("Refresh"));
+    btnRefresh->setToolTip(tr("刷新"));
 
     // Address Bar
     addrEdit = new QLineEdit(this);
     addrEdit->setPlaceholderText(tr("Enter location..."));
     addrEdit->setFixedHeight(30);
 
-    btnGo = createNavBtn("Go", "arrow_right");
+    btnGo = createNavBtn("跳转", "arrow_right");
     
     // View Mode Toggle
     btnViewMode = createNavBtn("View", "table_list");
     btnViewMode->setCheckable(true);
-    btnViewMode->setToolTip(tr("Toggle View"));
+    btnViewMode->setToolTip(tr("视图切换"));
 
     topLayout->addWidget(btnBack);
     topLayout->addWidget(btnForward);
@@ -160,10 +155,7 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     // Sidebar
     m_sidebar = new QListWidget(m_splitter);
     m_sidebar->setFrameShape(QFrame::NoFrame);
-    // Use slightly larger items for sidebar, and a darker background
-    m_sidebar->setStyleSheet("QListWidget { background-color: #2B2B2B; border-right: 1px solid #3D3D3D; } QListWidget::item { height: 36px; padding-left: 8px; color: #E0E0E0; } QListWidget::item:selected { background-color: #4A4A4A; } QListWidget::item:hover { background-color: #3A3A3A; }"); 
-    m_sidebar->setMinimumWidth(100);
-    m_sidebar->setMaximumWidth(400);
+    m_sidebar->setFixedWidth(150);
     m_sidebar->setIconSize(QSize(20, 20));
 
     // Views
@@ -189,33 +181,29 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     m_iconView->setModel(m_model);
     m_iconView->setViewMode(QListView::IconMode);
     m_iconView->setFrameShape(QFrame::NoFrame);
-    // Use large icons (128x128) for better visibility
-    // Grid size adjusted to 180x220 to accommodate the large icon + text
-    m_iconView->setGridSize(QSize(180, 220)); 
-    m_iconView->setIconSize(QSize(128, 128));
+
+    m_iconView->setGridSize(QSize(90, 110));
+    m_iconView->setIconSize(QSize(64, 64));
     m_iconView->setResizeMode(QListView::Adjust);
     m_iconView->setUniformItemSizes(false); 
     m_iconView->setWordWrap(true);
     m_iconView->setTextElideMode(Qt::ElideMiddle);
     m_iconView->setSelectionMode(m_treeView->selectionMode());
     // Ensure item text is centered and has padding
-    m_iconView->setStyleSheet("QListView::item { padding: 10px; border: none; } QListView::item:selected { background-color: #4A4A4A; border-radius: 4px; } QListView::item:hover { background-color: #3A3A3A; border-radius: 4px; }");
 
     m_viewStack->addWidget(m_treeView);
     m_viewStack->addWidget(m_iconView);
 
     m_splitter->addWidget(m_sidebar);
     m_splitter->addWidget(m_viewStack);
-    m_splitter->setStretchFactor(1, 1);
+    //m_splitter->setStretchFactor(1, 1);
 
     mainLayout->addWidget(m_splitter, 1);
 
     // --- 3. Bottom Bar (Inputs) ---
     // Only needed for picking files, but useful to see current selection
-    m_bottomBar = new QWidget(this);
+    m_bottomBar = new QFrame(this);
     m_bottomBar->setObjectName("FilePickerBottomBar");
-    // Use a neutral gray background that works well in dark mode
-    m_bottomBar->setStyleSheet("QWidget#FilePickerBottomBar { background-color: #383838; border-top: 1px solid #3D3D3D; }");
     // Allow natural height expansion
     m_bottomBar->setMinimumHeight(80);
     
@@ -225,22 +213,18 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     bottomLayout->setVerticalSpacing(12);
     bottomLayout->setHorizontalSpacing(10);
     
-    QLabel* lblName = new QLabel(tr("Name:"), this);
-    lblName->setStyleSheet("color: #E0E0E0; font-weight: bold;");
+    QLabel* lblName = new QLabel(tr("文件名:"), this);
     
     m_nameEdit = new QLineEdit(this);
     m_nameEdit->setFixedHeight(34);
-    m_nameEdit->setStyleSheet("QLineEdit { background-color: #252525; color: #E0E0E0; border: 1px solid #505050; border-radius: 4px; padding-left: 8px; }");
-    
-    QLabel* lblType = new QLabel(tr("Files of type:"), this);
-    lblType->setStyleSheet("color: #E0E0E0; font-weight: bold;");
+
+    QLabel* lblType = new QLabel(tr("文件类型:"), this);
 
     m_filterCombo = new QComboBox(this);
     m_filterCombo->setFixedHeight(34);
     // Remove fixed width constraints to let it expand in grid
     m_filterCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_filterCombo->setStyleSheet("QComboBox { background-color: #252525; color: #E0E0E0; border: 1px solid #505050; border-radius: 4px; padding-left: 8px; } QComboBox::drop-down { border: none; }");
-    
+
     // Parse filter
     QStringList filters;
     if (!filter.isEmpty()) {
@@ -288,7 +272,6 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     bottomLayout->addWidget(m_filterCombo, 1, 1);
     
     m_statusLabel = new QLabel(this);
-    m_statusLabel->setStyleSheet("color: #AAAAAA; margin-left: 5px;");
     bottomLayout->addWidget(m_statusLabel, 2, 0, 1, 2, Qt::AlignLeft);
 
     if (m_mode == OpenDirectory) {
@@ -390,7 +373,6 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     line->setFrameShape(QFrame::HLine);
     line->setFrameShadow(QFrame::Sunken);
     line->setEnabled(false);
-    line->setStyleSheet("background-color: #D0D0D0; max-height: 1px; margin-top: 4px; margin-bottom: 4px;");
     m_sidebar->setItemWidget(separator, line);
     
     // Drives
@@ -452,7 +434,7 @@ void FilePickerWidget::updateView()
     // Update Status Bar with item count
     QDir d(path);
     int count = d.entryList(QDir::AllEntries | QDir::NoDotAndDotDot).count();
-    if (m_statusLabel) m_statusLabel->setText(tr("%1 items").arg(count));
+    if (m_statusLabel) m_statusLabel->setText(tr("%1 个项目").arg(count));
 }
 
 void FilePickerWidget::setRoot(const QString& path)

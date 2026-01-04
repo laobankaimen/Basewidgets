@@ -224,7 +224,7 @@ QPushButton {
   border: none;
   border-radius: 4px;
   padding: 8px 16px;
-  min-width: 80px;
+  min-width: 60px;
   min-height: 30px;
   font-size: 13px;
   font-weight: bold;
@@ -1224,6 +1224,7 @@ QToolButton[iconOnly='true']::menu-indicator {
 }
 
 QToolButton[iconOnly='true']:disabled {
+  color: {{placeholderTextColor}};
   background-color: {{darkFillColor|opacity(0.2)}};
 }
 
@@ -1322,7 +1323,6 @@ QListView::item {
   padding: 6px 8px;
   margin: 1px 2px;
   border-radius: 2px;
-  height: 25px;
 }
 
 QListView::item:selected {
