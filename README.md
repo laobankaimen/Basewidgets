@@ -3,10 +3,10 @@
 本仓库包含一套基于 Qt 的高级样式与 UI 组件库，以及一个可运行的示例程序 `widgets_demo`，用于演示控件与布局的实际效果。
 
 #### 暗色主题：
-![dark.png](dark.png)
+![dark.png](docs/dark.png)
 
 #### 亮色主题：
-![light.png](light.png)
+![light.png](docs/light.png)
 ## 项目简介
 
 - **核心组件库**：位于 `widgets/` 目录下，集成了样式引擎 (`QtAdvancedStylesheet`) 与各类高级 UI 控件。
