@@ -5,10 +5,6 @@ cmake_minimum_required(VERSION 3.16)
 # Options
 option(UI_BUILD_WIDGETS "Build Qt Advanced UI widgets library" ON)
 
-if(NOT UI_BUILD_WIDGETS)
-    return()
-endif()
-
 # Find Qt
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
@@ -140,64 +136,64 @@ set(UI_SOURCES
     src/Charts/StyledPlot.cpp
 )
 
-add_library(basewidgets SHARED
+add_library(Basewidgets SHARED
     ${UI_PUBLIC_HEADERS}
     ${UI_SOURCES}
 )
 
 # Export macro
-target_compile_definitions(basewidgets PRIVATE QTADVANCED_UI_BUILD)
+target_compile_definitions(Basewidgets PRIVATE QTADVANCED_UI_BUILD)
 
 # Include dirs
-target_include_directories(basewidgets
+target_include_directories(Basewidgets
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interface>
         $<INSTALL_INTERFACE:interface>
 )
 
 # Link deps
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(basewidgets
+target_link_libraries(Basewidgets
         PUBLIC
-            Qt${QT_VERSION_MAJOR}::Core
-            Qt${QT_VERSION_MAJOR}::Gui
-            Qt${QT_VERSION_MAJOR}::Widgets
-            Qt${QT_VERSION_MAJOR}::PrintSupport
-            Qt${QT_VERSION_MAJOR}::Svg
-    )
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(basewidgets
+        Qt${QT_VERSION_MAJOR}::Core
+        Qt${QT_VERSION_MAJOR}::Gui
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::PrintSupport
+        Qt${QT_VERSION_MAJOR}::Svg
+)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(Basewidgets
         PUBLIC
-            Qt${QT_VERSION_MAJOR}::Core
-            Qt${QT_VERSION_MAJOR}::Gui
-            Qt${QT_VERSION_MAJOR}::Widgets
-            Qt${QT_VERSION_MAJOR}::PrintSupport
             Qt${QT_VERSION_MAJOR}::X11Extras
-            Qt${QT_VERSION_MAJOR}::Svg
             ${X11_LIBRARIES}
     )
 endif()
 
-
 # C++ standard
-set_target_properties(basewidgets PROPERTIES
+set_target_properties(Basewidgets PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED YES
 )
 
 if(MSVC)
-    target_compile_options(basewidgets PRIVATE /FS)
+    target_compile_options(Basewidgets PRIVATE /FS)
 endif()
 
 # 确保 themes.rcc 复制到可执行目录
-add_custom_command(TARGET basewidgets POST_BUILD
+add_custom_command(TARGET Basewidgets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_CURRENT_SOURCE_DIR}/assert/themes.rcc
-    $<TARGET_FILE_DIR:basewidgets>
+    ${CMAKE_CURRENT_SOURCE_DIR}/asserts/themes.rcc
+    $<TARGET_FILE_DIR:Basewidgets>
 )
 
 # Install rules
 set(CMAKE_INSTALL_PATH ${CMAKE_BINARY_DIR}/bin)
-install(DIRECTORY assert/ DESTINATION ${CMAKE_INSTALL_PATH})
-install(TARGETS basewidgets DESTINATION ${CMAKE_INSTALL_PATH})
+install(DIRECTORY asserts/ DESTINATION ${CMAKE_INSTALL_PATH})
+install(TARGETS Basewidgets DESTINATION ${CMAKE_INSTALL_PATH})
 install(DIRECTORY interface/basewidgets DESTINATION ${CMAKE_INSTALL_PATH}/interface)
+#适配com.plugin.releases
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(plugin_framework_release)
+if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+    PF_PUBLISH_Target("Basewidgets")
+endif()
+

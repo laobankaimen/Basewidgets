@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(QtAdvancedStylesheets LANGUAGES CXX)
+project(QtAdvancedUI LANGUAGES CXX)
 
 # Global C++ standard and Qt auto tools
 set(CMAKE_CXX_STANDARD 14)
