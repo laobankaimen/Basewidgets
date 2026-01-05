@@ -15,7 +15,7 @@ target_link_libraries(widgets_demo
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Gui
         Qt${QT_VERSION_MAJOR}::Widgets
-        Basewidgets
+        BaseWidgets
 )
 
 if(MSVC)
@@ -25,10 +25,10 @@ endif()
 # 确保 basewidgets.dll 复制到可执行目录
 add_custom_command(TARGET widgets_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:Basewidgets>
+            $<TARGET_FILE:BaseWidgets>
             $<TARGET_FILE_DIR:widgets_demo>
     COMMAND ${CMAKE_COMMAND} -E copy
-            "$<TARGET_FILE_DIR:Basewidgets>/themes.rcc"
+            "$<TARGET_FILE_DIR:BaseWidgets>/themes.rcc"
             $<TARGET_FILE_DIR:widgets_demo>
 )
 

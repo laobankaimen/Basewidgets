@@ -136,23 +136,23 @@ set(UI_SOURCES
     src/Charts/StyledPlot.cpp
 )
 
-add_library(Basewidgets SHARED
+add_library(BaseWidgets SHARED
     ${UI_PUBLIC_HEADERS}
     ${UI_SOURCES}
 )
 
 # Export macro
-target_compile_definitions(Basewidgets PRIVATE QTADVANCED_UI_BUILD)
+target_compile_definitions(BaseWidgets PRIVATE QTADVANCED_UI_BUILD)
 
 # Include dirs
-target_include_directories(Basewidgets
+target_include_directories(BaseWidgets
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interface>
         $<INSTALL_INTERFACE:interface>
 )
 
 # Link deps
-target_link_libraries(Basewidgets
+target_link_libraries(BaseWidgets
         PUBLIC
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Gui
@@ -161,7 +161,7 @@ target_link_libraries(Basewidgets
         Qt${QT_VERSION_MAJOR}::Svg
 )
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(Basewidgets
+    target_link_libraries(BaseWidgets
         PUBLIC
             Qt${QT_VERSION_MAJOR}::X11Extras
             ${X11_LIBRARIES}
@@ -169,31 +169,32 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # C++ standard
-set_target_properties(Basewidgets PROPERTIES
+set_target_properties(BaseWidgets PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED YES
 )
 
 if(MSVC)
-    target_compile_options(Basewidgets PRIVATE /FS)
+    target_compile_options(BaseWidgets PRIVATE /FS)
 endif()
 
 # 确保 themes.rcc 复制到可执行目录
-add_custom_command(TARGET Basewidgets POST_BUILD
+add_custom_command(TARGET BaseWidgets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_SOURCE_DIR}/asserts/themes.rcc
-    $<TARGET_FILE_DIR:Basewidgets>
+    $<TARGET_FILE_DIR:BaseWidgets>
 )
 
 # Install rules
 set(CMAKE_INSTALL_PATH ${CMAKE_BINARY_DIR}/bin)
 install(DIRECTORY asserts/ DESTINATION ${CMAKE_INSTALL_PATH})
-install(TARGETS Basewidgets DESTINATION ${CMAKE_INSTALL_PATH})
+install(TARGETS BaseWidgets DESTINATION ${CMAKE_INSTALL_PATH})
 install(DIRECTORY interface/basewidgets DESTINATION ${CMAKE_INSTALL_PATH}/interface)
 #适配com.plugin.releases
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(plugin_framework_release)
+PF_PUBLISH_FLOW_BEGIN(ENABLE_AUTO_BUILD)
 if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
-    PF_PUBLISH_Target("Basewidgets")
+    PF_PUBLISH_Target("BaseWidgets")
 endif()
 
