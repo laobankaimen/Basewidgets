@@ -1032,28 +1032,9 @@ StyledWidget* createTextDialogShowcase(QWidget* parent) {
 
 int main(int argc, char *argv[])
 {
-    /***
-     * 启用高分屏支持。
-     * 低版本 Qt 使用
-     * - QT_SCALE_FACTOR=1.5
-     * - QT_AUTO_SCREEN_SCALE_FACTOR
-     * 高版本自动缩放
-     * ref: https://blog.csdn.net/startl/article/details/105862817
-     */
-#ifdef Q_OS_WIN
-    (void)_putenv(const_cast<char*>("QT_ENABLE_HIGHDPI_SCALING=1"));
-#else
-    (void)putenv(const_cast<char*>("QT_ENABLE_HIGHDPI_SCALING=1"));
-#endif
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-    // 非整数缩放
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-    QApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
-#endif
+    StyleManagerAdapter::EnableHighDpi();
 
     QApplication app(argc, argv);
-
     // 初始化样式管理器
     StyleManagerAdapter::initialize("theme/");//不设置则在当前目录读取
 

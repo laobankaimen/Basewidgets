@@ -14,6 +14,8 @@ namespace basewidgets {
 class ACSS_UI_EXPORT StyleManagerAdapter
 {
 public:
+    // 使能高分辨率
+    static void EnableHighDpi();
     // 返回全局样式管理器实例（懒加载）
     static acss::QtAdvancedStylesheet* instance();
 
