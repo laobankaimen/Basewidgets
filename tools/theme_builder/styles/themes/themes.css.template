@@ -306,6 +306,7 @@ QLabel:disabled {
 
 QTabBar{
   font-weight: bold;
+  background: transparent;
 }
 
 QTabBar::tab {

@@ -448,8 +448,10 @@ void FramelessWidgetWindow::closeEvent(QCloseEvent *ev)
     QSettings setting("ZKHX","MainWindow");
     setting.setValue("geometry",saveGeometry());
     //QMainWindow::closeEvent(ev);
-    if(DialogUtils::askQuestion(this, "请确认", "是否关闭软件？"))
+    if(DialogUtils::askQuestion(this, "请确认", "是否关闭软件？")) {
         ev->accept();
+        Q_EMIT onCloseClicked();
+    }
     else
         ev->ignore();
 }

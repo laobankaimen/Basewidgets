@@ -41,7 +41,8 @@ public:
     void setResizableEdgesEnabled(bool enabled = true);
     bool isResizeable() const {return m_bResizeable;};
     void setResizeableAreaWidth(int width = 5);
-
+signals:
+    void onCloseClicked();
 public slots:
     void showFullScreen();
     void setFramelessWindowState(FramelessWindowState state);
