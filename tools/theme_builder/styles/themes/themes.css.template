@@ -1554,13 +1554,13 @@ QDialogButtonBox QPushButton:hover {
 }
 
 /*主按钮*/
-QDialogButtonBox QPushButton[primary='true'] {
+#dialogBtnBox QPushButton[primary='true'] {
   color: {{primaryTextColor}};
   background-color: {{primaryColor}};
   border: 1px solid {{primaryColor}};
 }
 
-QDialogButtonBox QPushButton[primary='true']:hover {
+#dialogBtnBox QPushButton[primary='true']:hover {
   background-color: {{primaryColor|opacity(0.8)}};
 }
 

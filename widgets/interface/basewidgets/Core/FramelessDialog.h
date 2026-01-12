@@ -6,22 +6,27 @@
 #define BASEWIDGETS_FRAMELESSDIALOG_H
 
 #include <QDialog>
+#include <QDialogButtonBox>
 #include <basewidgets/QtAdvancedUIExport.h>
+#include <basewidgets/Core/BaseWidgetInterface.h>
 #include <QWidget>
 #include <QVBoxLayout>
 
 namespace basewidgets {
 
-class ACSS_UI_EXPORT FramelessDialog : public QDialog
+class ACSS_UI_EXPORT FramelessDialog : public QDialog , public BaseWidgetInterface
 {
     Q_OBJECT
 public:
     explicit FramelessDialog(QWidget* parent = nullptr);
     ~FramelessDialog() override;
 
-    void setTitle(const QString& title);
-    void setContentWidget(QWidget* w);
+    void setTitle(const QString& title) override;
+    void setContentWidget(QWidget* w) override;
+    void setResizeable(bool canResize = true);
+    void setCustomDialogBtn(bool showOK = true,bool showCancel = true,bool okHighLight = true);
     QWidget* contentWidget() const { return m_contentHost; }
+    void setFramelessWindowState(FramelessWindowState state) override;
 
 protected:
 #ifdef Q_OS_WIN
@@ -29,12 +34,15 @@ protected:
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
 #endif
 private:
-    void initUI();
-
+    void initUI() override;
+signals:
+    void okButtonClicked();
+    void cancelButtonClicked();
 private:
     QWidget* m_titleBar = nullptr;
     QWidget* m_contentHost = nullptr;
     QVBoxLayout* mainLayout = nullptr;
+    QDialogButtonBox* btnBox = nullptr;
     int m_titlebarHeight = 40;
 };
 

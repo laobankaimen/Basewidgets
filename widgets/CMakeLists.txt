@@ -25,6 +25,7 @@ set(UI_PUBLIC_HEADERS
     interface/basewidgets/Core/FramelessDialog.h
     interface/basewidgets/Core/CustomTitleBar.h
     interface/basewidgets/Core/FramelessWidgetWindow.h
+    interface/basewidgets/Core/BaseWidgetInterface.h
     interface/basewidgets/Inputs/PushButton.h
     interface/basewidgets/Inputs/LineEdit.h
     interface/basewidgets/Inputs/CheckBox.h

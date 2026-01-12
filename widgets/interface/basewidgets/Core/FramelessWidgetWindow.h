@@ -6,14 +6,12 @@
 #define BASEWIDGETS_FRAMELESSWIDGETWINDOW_H
 
 #include <basewidgets/QtAdvancedUIExport.h>
+#include <basewidgets/Core/BaseWidgetInterface.h>
 
 #include <QMainWindow>
 #include <QShowEvent>
 #include <QCloseEvent>
 #include <QHBoxLayout>
-
-
-enum FramelessWindowState {Maximized,Minimized,FullScreen,Normal};
 
 class QVBoxLayout;
 class QMenuBar;
@@ -23,17 +21,15 @@ class QMainWindow;
 namespace basewidgets {
 
 class CustomTitleBar;
-
-
-class ACSS_UI_EXPORT FramelessWidgetWindow : public QMainWindow
+class ACSS_UI_EXPORT FramelessWidgetWindow : public QMainWindow , public BaseWidgetInterface
 {
     Q_OBJECT
 public:
     explicit FramelessWidgetWindow(QWidget* parent = nullptr);
     ~FramelessWidgetWindow() override;
 
-    void setTitle(const QString& title);
-    void setContentWidget(QWidget* w);
+    void setTitle(const QString& title) override;
+    void setContentWidget(QWidget* w) override;
     QWidget* contentWidget() const { return m_contentHost; }
 
     QMenuBar* menuBar() const;
@@ -41,11 +37,11 @@ public:
     void setResizableEdgesEnabled(bool enabled = true);
     bool isResizeable() const {return m_bResizeable;};
     void setResizeableAreaWidth(int width = 5);
+    void setFramelessWindowState(FramelessWindowState state) override;
 signals:
     void onCloseClicked();
 public slots:
     void showFullScreen();
-    void setFramelessWindowState(FramelessWindowState state);
     void showEvent(QShowEvent *ev);
     void closeEvent(QCloseEvent *ev);
 #ifdef Q_OS_WIN
@@ -70,7 +66,7 @@ protected:
 #endif
 
 private:
-    void initUI();
+    void initUI() override;
 
 private:
     QWidget* m_contentHost = nullptr;

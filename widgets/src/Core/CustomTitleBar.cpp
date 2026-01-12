@@ -19,7 +19,7 @@
 #include <QPropertyAnimation>
 #include <QTimer>
 
-#include "basewidgets/Core/FramelessWidgetWindow.h"
+#include "basewidgets/Core/BaseWidgetInterface.h"
 
 using namespace acss;
 
@@ -207,7 +207,7 @@ void CustomTitleBar::initUI()
 
     // 行为连接
     connect(m_btnMin, &ToolButton::clicked, this, [this] {
-        FramelessWidgetWindow *window = qobject_cast<FramelessWidgetWindow *>(m_window);
+        auto *window = dynamic_cast<BaseWidgetInterface *>(m_window);
         if (!window) return;
         window->setFramelessWindowState(Minimized);
     });
@@ -220,18 +220,20 @@ void CustomTitleBar::initUI()
 // 简化toggleMaximizeRestore，移除状态记录逻辑
 void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 {
-    auto *window = qobject_cast<FramelessWidgetWindow *>(m_window);
-    if (!window) return;
-
+    qDebug()<<m_window->windowState();
     if(isDoubleClick && isFullScreen()){
         return;//全屏双击不生效
     }
-    if (window->windowState() == Qt::WindowMaximized || isFullScreen()) {
-        window->setFramelessWindowState(Normal);
+    FramelessWindowState states;
+    if (m_window->windowState() == Qt::WindowMaximized || isFullScreen()) {
+        states = Normal;
     }
     else {
-        window->setFramelessWindowState(Maximized);//默认全部最大化，全屏没有动画效果
+        states = Maximized;//默认全部最大化，全屏没有动画效果
     }
+    auto *window = dynamic_cast<BaseWidgetInterface *>(m_window);
+    if (!window) return;
+    window->setFramelessWindowState(states);
 /*#ifdef Q_OS_WIN
 //     if (window->windowState() == Qt::WindowMaximized || isFullScreen()) {
 //         window->showNormal();
@@ -284,9 +286,7 @@ void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 
 bool CustomTitleBar::isFullScreen()
 {
-    auto *window = qobject_cast<FramelessWidgetWindow *>(m_window);
-    if (!window) return false;
-    return (window->windowState() == Qt::WindowFullScreen || window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen));
+    return (m_window->windowState() == Qt::WindowFullScreen || m_window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen));
 }
 
 void CustomTitleBar::setButtonsVisible(bool showMinimize, bool showMaximize, bool showClose)

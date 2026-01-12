@@ -12,12 +12,16 @@
 #include <QEvent>
 #include <QMouseEvent>
 #include <QApplication>
+#include <QDialogButtonBox>
 #include <QStyle>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QGraphicsDropShadowEffect>
 #include <QRegion>
 #include <QResizeEvent>
+#include <QPushButton>
+
+#include "basewidgets/Containers/Frame.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -27,6 +31,12 @@
 
 #pragma comment (lib,"Dwmapi.lib")
 #pragma comment (lib,"user32.lib")
+#elif defined(Q_OS_LINUX)
+#include <QX11Info>
+
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #endif
 
 using namespace acss;
@@ -63,12 +73,29 @@ void FramelessDialog::initUI()
     m_contentHost = new QWidget(this);
     m_contentHost->setProperty("msgContainer", QVariant(true));
 
+    //dialog buttons
+    auto btnWidget = new QFrame(this);
+    btnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,this);
+    btnBox->setObjectName("dialogBtnBox");
+    btnBox->setContentsMargins(5,5,5,5);
+    if (auto* okBtn = btnBox->button(QDialogButtonBox::Ok)) {
+        okBtn->setText(QObject::tr("确定"));
+        okBtn->setProperty("primary", QVariant(true));
+    }
+    if (auto* cancelBtn = btnBox->button(QDialogButtonBox::Cancel)) cancelBtn->setText(QObject::tr("取消"));
+    QObject::connect(btnBox, &QDialogButtonBox::accepted, this, &FramelessDialog::okButtonClicked);
+    QObject::connect(btnBox, &QDialogButtonBox::rejected, this, &FramelessDialog::cancelButtonClicked);
+    auto* btnLayout = new QVBoxLayout(btnWidget);
+    btnLayout->setContentsMargins(5, 10, 5, 5);
+    btnLayout->addWidget(btnBox);
+
     // Main layout
     mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
     mainLayout->addWidget(m_titleBar);
     mainLayout->addWidget(m_contentHost, 1);
+    mainLayout->addWidget(btnWidget);
     setLayout(mainLayout);
 
     // Default sizing to avoid too small dialogs
@@ -88,9 +115,90 @@ void FramelessDialog::setContentWidget(QWidget* w)
     if (m_contentHost && w) {
         w->setProperty("msgContent", QVariant(true));
         auto* contentLayout = new QVBoxLayout(m_contentHost);
-        contentLayout->setContentsMargins(0, 0, 0, 0);
-        contentLayout->addWidget(w);
+        contentLayout->setContentsMargins(5, 5, 5, 0);
+        contentLayout->insertWidget(0,w);
     }
+}
+
+void FramelessDialog::setResizeable(bool canResize) {
+    auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar);
+    customTitleBar->setButtonsVisible(canResize, canResize, true);
+    customTitleBar->setDoubleClickToToggleEnabled(canResize);
+    setSizeGripEnabled(canResize);
+}
+
+void FramelessDialog::setCustomDialogBtn(bool showOK, bool showCancel, bool okHighLight) {
+    QPushButton* okBtn = btnBox->button(QDialogButtonBox::Ok);
+    if(okBtn) {
+        okBtn->setVisible(showOK);
+        okBtn->setProperty("primary", okHighLight);
+    }
+    QPushButton* cancelBtn = btnBox->button(QDialogButtonBox::Cancel);
+    if(cancelBtn)  cancelBtn->setVisible(showCancel);
+}
+
+void FramelessDialog::setFramelessWindowState(FramelessWindowState state) {
+#ifdef Q_OS_WIN
+    switch (state) {
+        case Maximized:
+            showMaximized();
+        break;
+        case Minimized:
+            showMinimized();
+        break;
+        case FullScreen:
+            showFullScreen();
+        break;
+        case Normal:
+            showNormal();
+        break;
+    }
+#elif defined(Q_OS_LINUX)
+    Display *display = QX11Info::display();
+    Window window = winId();
+
+    Atom wmState = XInternAtom(display, "_NET_WM_STATE",false);
+    Atom maxHorz = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_HORZ",false);
+    Atom maxVert = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT",false);
+    Atom hidden = XInternAtom(display, "_NET_WM_STATE_HIDDEN",false);
+    Atom fullScreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN",false);
+
+    XEvent xev;
+    memset(&xev,0,sizeof(xev));
+    xev.type = ClientMessage;
+    xev.xclient.window = window;
+    xev.xclient.message_type = wmState;
+    xev.xclient.format = 32;
+
+    switch (state) {
+        case Maximized:
+            xev.xclient.data.l[0] = 1;//_NET_WM_STATE_ADD
+        xev.xclient.data.l[1] = maxHorz;
+        xev.xclient.data.l[2] = maxVert;
+        break;
+        case Minimized:
+            XIconifyWindow(display,window,0);
+        break;
+        case FullScreen:
+            xev.xclient.data.l[0] = 1;
+        xev.xclient.data.l[1] = fullScreen;
+        xev.xclient.data.l[2] = 0;
+        break;
+        case Normal:
+            //移除全屏
+                xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
+        xev.xclient.data.l[1] = fullScreen;
+        xev.xclient.data.l[2] = 0;
+        XSendEvent(display,DefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
+        //移除最大化
+        xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
+        xev.xclient.data.l[1] = maxHorz;
+        xev.xclient.data.l[2] = maxVert;
+        break;
+    }
+    XSendEvent(display,DefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
+    XFlush(display);
+#endif
 }
 
 #ifdef Q_OS_WIN

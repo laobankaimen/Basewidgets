@@ -2,10 +2,6 @@
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
-#include <basewidgets/Core/FramelessWidgetWindow.h>
-#include <basewidgets/Core/CustomTitleBar.h>
-#include <basewidgets/Core/StyleManagerAdapter.h>
-
 #include <QVBoxLayout>
 #include <QPainter>
 #include <QPaintEvent>
@@ -14,7 +10,11 @@
 #include <QShortcut>
 #include <QSettings>
 
+#include "basewidgets/Charts/QCPBarChart.h"
 #include "basewidgets/Dialogs/DialogUtils.h"
+#include <basewidgets/Core/FramelessWidgetWindow.h>
+#include <basewidgets/Core/CustomTitleBar.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -449,7 +449,7 @@ void FramelessWidgetWindow::closeEvent(QCloseEvent *ev)
     setting.setValue("geometry",saveGeometry());
     //QMainWindow::closeEvent(ev);
     if(DialogUtils::askQuestion(this, "请确认", "是否关闭软件？")) {
-        ev->accept();
+        ev->ignore();//内部不处理关闭时间
         Q_EMIT onCloseClicked();
     }
     else
@@ -495,16 +495,16 @@ void FramelessWidgetWindow::initUI()
 
     //通过快捷键全屏，避免误操作，全屏无动画效果
     auto *shortcut = new QShortcut(QKeySequence(tr("F11")),this);
-    connect(shortcut,&QShortcut::activated,[=](){
+    ::QObject::connect(shortcut,&QShortcut::activated,[this](){
         //恢复到全屏前的状态
         if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
-            setFramelessWindowState(Normal);
+            this->setFramelessWindowState(Normal);
 #ifdef Q_OS_LINUX
             setResizableEdgesEnabled(true);
 #endif
         }
         else {
-            setFramelessWindowState(FullScreen);
+            this->setFramelessWindowState(FullScreen);
 #ifdef Q_OS_LINUX
             setResizableEdgesEnabled(false);
 #endif

@@ -66,27 +66,6 @@ QColor DialogUtils::getLastPickedColor()
     return s_lastPickedColor;
 }
 
-static QWidget* makeContent(QWidget* parent, QWidget* body, QDialogButtonBox* box)
-{
-    QWidget* content = new QWidget(parent);
-    auto* v = new QVBoxLayout(content);
-    v->setContentsMargins(12, 12, 12, 12);
-    v->setSpacing(10);
-    v->addWidget(body);
-    if (box) {
-        // box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        // Make buttons expand proportionally
-        // const auto buttons = box->buttons();
-        // for (auto* btn : buttons) {
-        //      btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        //      btn->setMinimumHeight(32); // Ensure decent height
-        // }
-        v->addWidget(box);
-    }
-    content->setLayout(v);
-    return content;
-}
-
 // 统一风格的圆形彩色徽标图标
 static QPixmap makeBadgeIcon(const QColor& circleColor, const QString& shape, const QColor& shapeColor)
 {
@@ -183,28 +162,18 @@ private:
     QFontDialog* fd = nullptr;
 };
 
-
-
 QString DialogUtils::openFile(QWidget* parent, const QString& title, const QString& initialDir, const QString& filter)
 {
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("打开文件") : title);
-    
     auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFile);
     widget->setProperty("msgContent", QVariant(true));
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
-    
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    dlg.setContentWidget(widget);
+    dlg.setCustomDialogBtn(true,true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
     QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
 
-    dlg.setContentWidget(makeContent(&dlg, widget, box));
     if (dlg.exec() == QDialog::Accepted) {
         return widget->selectedPath();
     }
@@ -215,28 +184,14 @@ QStringList DialogUtils::openFiles(QWidget* parent, const QString& title, const 
 {
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择文件") : title);
-    
     auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFiles);
     widget->setProperty("msgContent", QVariant(true));
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
-    
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    // OpenFiles mode typically doesn't auto-accept on double click of a single file, usually requires selection and OK.
-    // But double clicking a file adds it? Standard QFileDialog double click on file in multi-select mode acts as "add and maybe close if it's the only one"?
-    // Actually FilePickerWidget emits fileActivated on double click. If we want to support double click to select one file and close, we can connect it.
-    // However, for multiple files, usually you select multiple and click OK.
-    // If user double clicks one file, it might be interpreted as "I just want this one".
-    // Let's connect it for convenience.
+    dlg.setContentWidget(widget);
+    dlg.setCustomDialogBtn(true,true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
     QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
 
-    dlg.setContentWidget(makeContent(&dlg, widget, box));
     if (dlg.exec() == QDialog::Accepted) {
         return widget->selectedPaths();
     }
@@ -247,22 +202,14 @@ QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QStri
 {
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("保存文件") : title);
-    
-    auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::SaveFile);
+    auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFiles);
     widget->setProperty("msgContent", QVariant(true));
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
-    
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    dlg.setContentWidget(widget);
+    dlg.setCustomDialogBtn(true,true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
     QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
 
-    dlg.setContentWidget(makeContent(&dlg, widget, box));
     if (dlg.exec() == QDialog::Accepted) {
         return widget->selectedPath();
     }
@@ -273,24 +220,14 @@ QString DialogUtils::openDirectory(QWidget* parent, const QString& title, const 
 {
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择文件夹") : title);
-    
     auto* widget = new FilePickerWidget(&dlg, initialDir, QString(), FilePickerWidget::OpenDirectory);
     widget->setProperty("msgContent", QVariant(true));
+    dlg.setContentWidget(widget);
+    dlg.setCustomDialogBtn(true,true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
+    QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
 
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
-    
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    // Double click on directory in OpenDirectory mode enters it (handled by widget).
-    // It doesn't usually select it and close.
-    // So we don't connect fileActivated here.
-    
-    dlg.setContentWidget(makeContent(&dlg, widget, box));
     if (dlg.exec() == QDialog::Accepted) {
         return widget->selectedPath();
     }
@@ -302,32 +239,21 @@ QColor DialogUtils::pickColor(QWidget* parent, const QColor& initial, const QStr
     // If initial color is not provided (invalid), use the last picked color from library memory.
     // If initial is valid, use it (but don't update global memory until confirmed).
     QColor effectiveInitial = initial.isValid() ? initial : s_lastPickedColor;
-
     FramelessDialog dlg(parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择颜色") : title);
-    
     auto* widget = new ColorPickerWidget(&dlg, effectiveInitial);
     widget->setProperty("msgContent", QVariant(true));
+    dlg.setContentWidget(widget);
+    dlg.setCustomDialogBtn(true,true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
 
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
-    
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    
-    dlg.setContentWidget(makeContent(&dlg, widget, box));
     if (dlg.exec() == QDialog::Accepted) {
         QColor c = widget->currentColor();
         // Update global memory on confirmation
         s_lastPickedColor = c;
         return c;
     }
-    // If canceled or closed, return the effective initial color.
-    // This ensures we return the last valid state (either what the user passed, or the global memory).
     return effectiveInitial;
 }
 
@@ -341,16 +267,11 @@ QFont DialogUtils::pickFont(QWidget* parent, const QFont& initial, bool* okOut, 
     fd->setOption(QFontDialog::NoButtons, true); // 仅保留外部统一按钮
     fd->setWindowFlags(Qt::Widget);
     fd->installEventFilter(new FontDialogLocalizer(fd));
+    dlg.setContentWidget(fd);
+    dlg.setCustomDialogBtn(true,true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
 
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* caBtn = box->button(QDialogButtonBox::Cancel)) caBtn->setText(QObject::tr("取消"));
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-    dlg.setContentWidget(makeContent(&dlg, fd, box));
     const bool ok = (dlg.exec() == QDialog::Accepted);
     if (okOut) *okOut = ok;
     return ok ? fd->selectedFont() : QFont();
@@ -374,15 +295,9 @@ void DialogUtils::messageInfo(QWidget* parent, const QString& title, const QStri
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-
-    dlg.setContentWidget(makeContent(&dlg, body, box));
+    dlg.setContentWidget(body);
+    dlg.setCustomDialogBtn(true,false);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
     dlg.exec();
 }
 
@@ -405,14 +320,9 @@ void DialogUtils::messageWarning(QWidget* parent, const QString& title, const QS
     h->addWidget(textLabel, 1);
     body->setLayout(h);
 
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
- 
-    dlg.setContentWidget(makeContent(&dlg, body, box));
+    dlg.setContentWidget(body);
+    dlg.setCustomDialogBtn(true,false);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
     dlg.exec();
 }
 
@@ -434,15 +344,9 @@ void DialogUtils::messageError(QWidget* parent, const QString& title, const QStr
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-
-    dlg.setContentWidget(makeContent(&dlg, body, box));
+    dlg.setContentWidget(body);
+    dlg.setCustomDialogBtn(true,false);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
     dlg.exec();
 }
 
@@ -464,15 +368,9 @@ void DialogUtils::messageSuccess(QWidget* parent, const QString& title, const QS
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-
-    dlg.setContentWidget(makeContent(&dlg, body, box));
+    dlg.setContentWidget(body);
+    dlg.setCustomDialogBtn(true,false);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
     dlg.exec();
 }
 
@@ -494,19 +392,10 @@ bool DialogUtils::askQuestion(QWidget* parent, const QString& title, const QStri
     h->addWidget(iconLabel);
     h->addWidget(textLabel, 1);
     body->setLayout(h);
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-        okBtn->setDefault(true);
-        okBtn->setAutoDefault(true);
-    }
-    if (auto* cancelBtn = box->button(QDialogButtonBox::Cancel)) { cancelBtn->setText(QObject::tr("取消")); }
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
- 
-    dlg.setContentWidget(makeContent(&dlg, body, box));
+    dlg.setContentWidget(body);
+    dlg.setCustomDialogBtn(true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
     return dlg.exec() == QDialog::Accepted;
 }
 
@@ -525,17 +414,10 @@ QString DialogUtils::inputText(QWidget* parent, const QString& title, const QStr
     v->addWidget(lbl);
     v->addWidget(edit);
     body->setLayout(v);
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* cancelBtn = box->button(QDialogButtonBox::Cancel)) cancelBtn->setText(QObject::tr("取消"));
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
- 
-    dlg.setContentWidget(makeContent(&dlg, body, box));
+    dlg.setContentWidget(body);
+    dlg.setCustomDialogBtn(true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
     if (dlg.exec() == QDialog::Accepted) return edit->text();
     return QString();
 }
@@ -558,17 +440,10 @@ int DialogUtils::inputInt(QWidget* parent, const QString& title, const QString& 
     v->addWidget(lbl);
     v->addWidget(spin);
     body->setLayout(v);
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* cancelBtn = box->button(QDialogButtonBox::Cancel)) cancelBtn->setText(QObject::tr("取消"));
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
- 
-    dlg.setContentWidget(makeContent(&dlg, body, box));
+    dlg.setContentWidget(body);
+    dlg.setCustomDialogBtn(true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
     if (dlg.exec() == QDialog::Accepted) return spin->value();
     return value;
 }
@@ -591,17 +466,10 @@ double DialogUtils::inputDouble(QWidget* parent, const QString& title, const QSt
     v->addWidget(lbl);
     v->addWidget(spin);
     body->setLayout(v);
-
-    auto* box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    if (auto* okBtn = box->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* cancelBtn = box->button(QDialogButtonBox::Cancel)) cancelBtn->setText(QObject::tr("取消"));
-    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-
-    dlg.setContentWidget(makeContent(&dlg, body, box));
+    dlg.setContentWidget(body);
+    dlg.setCustomDialogBtn(true,true);
+    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
     if (dlg.exec() == QDialog::Accepted) return spin->value();
     return value;
 }

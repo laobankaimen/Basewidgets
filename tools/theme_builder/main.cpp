@@ -232,8 +232,8 @@ int main(int argc, char *argv[])
     generateQrcFile(tempBuildDir, "../themes.rcc", true);
     
     // Clean up the temporary directory
-    std::cout << "Removing temporary files..." << std::endl;
-    removeDirRecursively(tempBuildDir);
+    //std::cout << "Removing temporary files..." << std::endl;
+    //removeDirRecursively(tempBuildDir);
     std::cout << "Done. The binary resource is at: " << QDir(buildOutputDir).filePath("themes.rcc").toStdString() << std::endl;
 
     return 0;
