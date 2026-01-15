@@ -31,15 +31,17 @@ public:
     void setTitle(const QString& title) override;
     void setContentWidget(QWidget* w) override;
     QWidget* contentWidget() const { return m_contentHost; }
-
-    QMenuBar* menuBar() const;
     void setMenuBar(QMenuBar* menuBar);
+    QMenuBar* menuBar() const {return m_menuBar;};
+    void setToolBar(QToolBar* toolBar);
+    QToolBar* toolBar() const {return m_toolBar;};
+    void setStatusBar(QStatusBar* statusBar);
+    QStatusBar* statusBar() const {return m_statusBar;};
     void setResizableEdgesEnabled(bool enabled = true);
     bool isResizeable() const {return m_bResizeable;};
     void setResizeableAreaWidth(int width = 5);
     void setFramelessWindowState(FramelessWindowState state) override;
-signals:
-    void onCloseClicked();
+
 public slots:
     void showFullScreen();
     void showEvent(QShowEvent *ev);
@@ -70,8 +72,13 @@ private:
 
 private:
     QWidget* m_contentHost = nullptr;
+    QWidget* m_centralWidget = nullptr;
     QMenuBar* m_menuBar = nullptr;
-    QWidget* m_topMenu = nullptr;
+    QWidget* m_menuBarWidget = nullptr;
+    QToolBar* m_toolBar = nullptr;
+    QWidget* m_toolBarWidget = nullptr;
+    QStatusBar* m_statusBar = nullptr;
+    QWidget* m_statusBarWidget = nullptr;
     QWidget* m_titleBar = nullptr;
     QVBoxLayout* mainLayout = nullptr;
 #ifdef Q_OS_WIN

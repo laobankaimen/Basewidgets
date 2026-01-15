@@ -146,6 +146,7 @@ int main(int argc, char *argv[])
         // 尝试在源代码目录中查找（假设从 build 目录运行）
         // Common build depth: build/tools/theme_builder/Release -> 4 levels up to root
         QStringList candidates = {
+            "../../tools/theme_builder/styles",
             "../../../tools/theme_builder/styles",
             "../../../../tools/theme_builder/styles",
             "../../../../../tools/theme_builder/styles"
@@ -167,7 +168,7 @@ int main(int argc, char *argv[])
     
     std::cout << "Using Styles Directory: " << stylesDir.toStdString() << std::endl;
     
-    StyleManagerAdapter::initialize(stylesDir);
+    StyleManagerAdapter::initialBuilder(stylesDir);
     
     auto* mgr = StyleManagerAdapter::instance();
     if (!mgr) {

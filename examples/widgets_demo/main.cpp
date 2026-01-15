@@ -1113,7 +1113,7 @@ int main(int argc, char *argv[])
     
     // 添加永久控件
     auto* networkLabel = new Label("网络: 已连接", statusBar);
-    statusBar->addPermanentWidget(networkLabel);
+    statusBar->addWidget(networkLabel);
     
     auto* progressBar = new ProgressBar(statusBar);
     progressBar->setRange(0, 100);

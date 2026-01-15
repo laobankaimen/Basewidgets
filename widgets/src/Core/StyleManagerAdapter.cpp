@@ -116,9 +116,33 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
     // 监听样式变化，自动应用到整个应用
     QObject::connect(s_instance, &QtAdvancedStylesheet::stylesheetChanged, []() {
         auto* mgr = StyleManagerAdapter::instance();
-        QApplication::setWindowIcon(mgr->styleIcon());
+        //QApplication::setWindowIcon(mgr->styleIcon());
         qApp->setStyleSheet(mgr->styleSheet());
     });
+}
+
+void StyleManagerAdapter::initialBuilder(const QString &stylesDir) {
+    if (!s_instance) {
+        s_instance = new QtAdvancedStylesheet();
+    }
+
+    QString resolvedStylesDir = stylesDir;
+    // 如果未明确传入样式目录，则默认使用应用目录下的 styles 目录
+    if (resolvedStylesDir.isEmpty()) {
+        resolvedStylesDir = QDir(QApplication::applicationDirPath()).filePath("styles");
+    }
+
+    if (!resolvedStylesDir.isEmpty()) {
+        s_instance->setStylesDirPath(resolvedStylesDir);
+        // Default output to application directory as requested
+        // Generated files will be in <AppDir>/<StyleName>/<ThemeName>
+        s_instance->setOutputDirPath(QApplication::applicationDirPath());
+    }
+    s_instance->setCurrentStyle("themes");
+
+    // 仅更新应用调色板和图标，不强制重新生成（由 updateStylesheet 内部判断模板是否需要处理）
+    // 假设样式表已由外部工具生成并作为静态资源或文件提供，此处主要负责加载
+    s_instance->updateStylesheet();
 }
 
 void StyleManagerAdapter::setInstance(acss::QtAdvancedStylesheet* mgr)

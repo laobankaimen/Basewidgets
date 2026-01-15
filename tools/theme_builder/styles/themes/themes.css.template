@@ -53,7 +53,7 @@ QSplitter {
 }
 
 QWidget {
-  background-color: {{pageBackgroundColor}};
+  background: transparent;
   color: {{primaryTextColor}};
   font-size: 13px;
 }
@@ -223,9 +223,7 @@ QPushButton {
   color: {{primaryTextColor}};
   border: none;
   border-radius: 4px;
-  padding: 8px 16px;
-  min-width: 60px;
-  min-height: 30px;
+  padding: 5px 5px;
   font-size: 13px;
   font-weight: bold;
   outline: none;
@@ -243,8 +241,8 @@ QPushButton:checked {
 
 QPushButton:pressed {
   background-color: {{darkerBorderColor}};
-  padding-top: 9px;
-  padding-left: 17px;
+  padding-top: 8px;
+  padding-left: 10px;
 }
 
 QPushButton:flat {
@@ -310,7 +308,7 @@ QTabBar{
 }
 
 QTabBar::tab {
-  background-color: transparent;
+  background: transparent;
   color: {{secondaryTextColor}};
   padding: 10px 20px;
   font-weight: bold;
@@ -368,7 +366,7 @@ QDoubleSpinBox {
   selection-color: {{primaryTextColor}};
   border: 1px solid {{darkerBorderColor}};
   border-radius: 2px;
-  padding: 8px 16px ;
+  padding: 8px 8px ;
   height: 18px;
 }
 
@@ -392,13 +390,20 @@ QPlainTextEdit {
   border-radius: 2px;
   padding: 8px 12px;
   font-size: 13px;
-  background-color: {{overlayBackgroundColor}};
+  background-color: {{darkFillColor}};
   selection-color: {{primaryTextColor}};
   selection-background-color: {{primaryColor}};
   border: 1px solid {{darkerBorderColor}};
 }
 
-QLineEdit:focus,
+QLineEdit{
+  border: none;
+}
+
+QLineEdit:focus {
+  border-bottom: 1px solid {{primaryColor}};
+}
+
 QTextEdit:focus,
 QPlainTextEdit:focus {
   background-color: {{darkFillColor}};
@@ -410,24 +415,9 @@ QSpinBox:disabled,
 QDoubleSpinBox:disabled,
 QTextEdit:disabled,
 QLineEdit:disabled {
-  color: {{disabledTextColor|opacity(0.2)}};
-  background-color: {{baseBackgroundColor|opacity(0.75)}};
+  color: {{disabledTextColor}};
   border-width: 0 0 2px 0;
   padding: 8px 16px ;
-  border-radius: 0px;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
-}
-
-QDateTimeEdit:disabled,
-QSpinBox:disabled,
-QDoubleSpinBox:disabled,
-QTextEdit:disabled,
-QLineEdit:disabled {
-  color: {{disabledTextColor|opacity(0.2)}};
-  background-color: {{darkerFillColor|opacity(0.75)}};
-  border: 1px solid {{darkBorderColor|opacity(0.2)}};
-  border-width: 0 0 2px 0;
 }
 
 QSpinBox[hideButton='true'] {
@@ -585,8 +575,13 @@ QCheckBox {
   color: {{primaryTextColor}};
   line-height: 14px;
   height: 30px;
-  background-color: transparent;
+  background: transparent;
   spacing: 8px;
+}
+
+QRadioButton[iconOnly='true'],
+QCheckBox[iconOnly='true'] {
+  spacing: 0px;
 }
 
 QRadioButton:disabled,
@@ -1198,7 +1193,7 @@ QToolButton:pressed {
 }
 
 QToolButton:checked {
-  background-color: {{primaryColor}};
+  background-color: {{primaryColor|opacity(0.8)}};
   color: {{primaryTextColor}};
 }
 
@@ -1322,15 +1317,8 @@ QListView::item {
   color: {{primaryTextColor}};
   border: none;
   padding: 6px 8px;
-  margin: 1px 2px;
-  border-radius: 2px;
-}
-
-QListView::item:selected {
-  background-color: {{darkFillColor|opacity(0.2)}};
-  selection-background-color: {{darkerFillColor|opacity(0.2)}};
-  color: {{regularTextColor}};
-  selection-color: {{regularTextColor}};
+  margin: 1px 1px;
+  border-radius: 1px;
 }
 
 QListView::item:hover {
@@ -1338,15 +1326,16 @@ QListView::item:hover {
   border: 1px solid {{lightBorderColor}};
 }
 
-QListView::item:selected:!active {
-  background-color: {{darkerFillColor}};
-  color: {{secondaryTextColor}};
-  border: 1px solid {{darkerBorderColor}};
+QListView::item:selected:focus {
+  selection-background-color: {{darkerFillColor|opacity(0.2)}};
+  selection-color: {{regularTextColor}};
+  background-color: {{primaryColor}};
+  color: {{primaryTextColor}};
 }
 
-QListView::item:focus {
-  background-color: {{darkFillColor}};
-  border: 1px solid {{primaryColor}};
+QListView::item:selected:!active {
+  background-color: {{primaryColor|opacity(0.6)}};
+  color: {{secondaryTextColor}};
 }
 
 QListView::item:disabled {
@@ -1565,7 +1554,7 @@ QDialogButtonBox QPushButton:hover {
 }
 
 /*  ------------------------------------------------------------------------  */
-/*  DialogUtils TextLabel  */
+/*  QLabel DialogUtils  */
 
 #DialogTextLabel {
   font-size: 14px;
@@ -1580,5 +1569,29 @@ QSizeGrip {
   background-color: transparent;
   width: 16px;
   height: 16px;
+}
+
+/*  ------------------------------------------------------------------------  */
+/*  QListWidget Navigation  */
+
+#Navigation {
+  background: transparent;
+  border: none;
+  border-radius: 1px;
+  outline: none;
+}
+
+#Navigation:disabled {
+  background-color: {{baseBackgroundColor}};
+  color: {{disabledTextColor}};
+  border: none;
+}
+
+#Navigation QScrollBar:horizontal {
+  height: 0px;
+}
+
+#Navigation QScrollBar:vertical {
+  width: 0px;
 }
 

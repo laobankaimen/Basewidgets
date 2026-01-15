@@ -54,7 +54,7 @@ FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
     setResizableEdgesEnabled(m_bResizeable);
 
     //获取初始化显示大小
-    QSettings setting("ZKHX","MainWindow");
+    QSettings setting("ZKHX",objectName().isEmpty()?"MainWindow":objectName());
     restoreGeometry(setting.value("geometry").toByteArray());
 }
 
@@ -262,7 +262,6 @@ QRect FramelessWidgetWindow::contentsRect() const
     return rect;
 }
 
-
 #elif defined(Q_OS_LINUX)
 //拖动缩放大小
 bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
@@ -445,12 +444,11 @@ void FramelessWidgetWindow::showEvent(QShowEvent *ev)
 
 void FramelessWidgetWindow::closeEvent(QCloseEvent *ev)
 {
-    QSettings setting("ZKHX","MainWindow");
+    QSettings setting("ZKHX",objectName().isEmpty()?"MainWindow":objectName());
     setting.setValue("geometry",saveGeometry());
     //QMainWindow::closeEvent(ev);
     if(DialogUtils::askQuestion(this, "请确认", "是否关闭软件？")) {
-        ev->ignore();//内部不处理关闭时间
-        Q_EMIT onCloseClicked();
+        ev->accept();
     }
     else
         ev->ignore();
@@ -479,8 +477,18 @@ void FramelessWidgetWindow::initUI()
     m_titleBar = customTitleBar;
 
     m_contentHost = new QWidget(this);
+    auto* centralLayout = new QVBoxLayout(m_contentHost);
+    centralLayout->setContentsMargins(0, 0, 0, 0);
 
-    m_topMenu = new QWidget(this);
+    m_menuBarWidget = new QWidget(this);
+    auto* menuLayout = new QVBoxLayout(m_menuBarWidget);
+    menuLayout->setContentsMargins(0, 0, 0, 0);
+    m_toolBarWidget = new QWidget(this);
+    auto* toolLayout = new QVBoxLayout(m_toolBarWidget);
+    toolLayout->setContentsMargins(0, 0, 0, 0);
+    m_statusBarWidget = new QWidget(this);
+    auto* statusLayout = new QVBoxLayout(m_statusBarWidget);
+    statusLayout->setContentsMargins(0, 0, 0, 0);
 
     auto centralWidget = new QWidget(this);
     mainLayout = new QVBoxLayout(centralWidget);
@@ -488,8 +496,10 @@ void FramelessWidgetWindow::initUI()
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
     mainLayout->addWidget(m_titleBar);
-    mainLayout->addWidget(m_topMenu);
+    mainLayout->addWidget(m_menuBarWidget);
+    mainLayout->addWidget(m_toolBarWidget);
     mainLayout->addWidget(m_contentHost, 1);
+    mainLayout->addWidget(m_statusBarWidget);
     
     setCentralWidget(centralWidget);
 
@@ -523,14 +533,13 @@ void FramelessWidgetWindow::setTitle(const QString& title)
 
 void FramelessWidgetWindow::setContentWidget(QWidget* w)
 {
-    if(m_contentHost) {
-        mainLayout->removeWidget(m_contentHost);
-        m_contentHost->deleteLater();
+    if(m_centralWidget && m_contentHost) {
+        m_contentHost->layout()->removeWidget(m_centralWidget);
+        m_centralWidget->deleteLater();
     }
-    m_contentHost = w;
-    if (m_contentHost) {
-        m_contentHost->setParent(this);
-        mainLayout->addWidget(m_contentHost,1);
+    if (m_contentHost && w) {
+        m_centralWidget = w;
+        m_contentHost->layout()->addWidget(m_centralWidget);
     }
 }
 
@@ -569,17 +578,36 @@ void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
 
 void FramelessWidgetWindow::setMenuBar(QMenuBar* menuBar)
 {
-    if (m_topMenu && menuBar) {
+    if(m_menuBar && m_menuBarWidget) {
+        m_menuBarWidget->layout()->removeWidget(m_menuBar);
+        m_menuBar->deleteLater();
+    }
+    if (m_menuBarWidget && menuBar) {
         m_menuBar = menuBar;
-        auto* menuLayout = new QVBoxLayout(m_topMenu);
-        menuLayout->setContentsMargins(0, 0, 0, 0);
-        menuLayout->addWidget(m_menuBar);
+        m_menuBarWidget->layout()->addWidget(m_menuBar);
     }
 }
 
-QMenuBar* FramelessWidgetWindow::menuBar() const
-{
-    return m_menuBar;
+void FramelessWidgetWindow::setToolBar(QToolBar *toolBar) {
+    if(m_toolBar && m_toolBarWidget) {
+        m_toolBarWidget->layout()->removeWidget(m_toolBar);
+        m_toolBar->deleteLater();
+    }
+    if (m_toolBarWidget && toolBar) {
+        m_toolBar = toolBar;
+        m_toolBarWidget->layout()->addWidget(m_toolBar);
+    }
+}
+
+void FramelessWidgetWindow::setStatusBar(QStatusBar *statusBar) {
+    if(m_statusBar && m_statusBarWidget) {
+        m_statusBarWidget->layout()->removeWidget(m_statusBar);
+        m_statusBar->deleteLater();
+    }
+    if (m_statusBarWidget && statusBar) {
+        m_statusBar = statusBar;
+        m_statusBarWidget->layout()->addWidget(m_statusBar);
+    }
 }
 
 bool FramelessWidgetWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)

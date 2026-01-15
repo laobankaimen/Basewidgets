@@ -65,17 +65,16 @@ void CustomTitleBar::updateIcons()
 {
     if (m_btnMin) m_btnMin->setIcon(QIcon("icon:buttons/hx_custom_hide.svg"));
     if (m_btnClose) m_btnClose->setIcon(QIcon("icon:buttons/hx_custom_close.svg"));
-    
+
+    QIcon icon = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/material_icon.svg");
     // 更新左上角图标（确保跟随主题颜色变化）
-    if (m_window && !m_window->windowIcon().isNull()) {
-        setIcon(m_window->windowIcon());
-    } else {
-        // 默认图标
-        int iconSize = 20;
-        if (m_iconLabel) {
-            m_iconLabel->setPixmap(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/material_icon.svg").pixmap(QSize(iconSize, iconSize)));
-        }
+    if(m_window && !m_window->windowIcon().isNull()) {
+        icon = m_window->windowIcon();
     }
+    else if(!QApplication::windowIcon().isNull()) {
+        icon = QApplication::windowIcon();
+    }
+    setIcon(icon);
 
     updateForWindowState();
 }
@@ -83,7 +82,7 @@ void CustomTitleBar::updateIcons()
 void CustomTitleBar::setIcon(const QIcon& icon)
 {
     if (m_iconLabel) {
-        int iconSize = 20;
+        int iconSize = 30;
         m_iconLabel->setPixmap(icon.pixmap(QSize(iconSize, iconSize)));
     }
 }
@@ -220,7 +219,6 @@ void CustomTitleBar::initUI()
 // 简化toggleMaximizeRestore，移除状态记录逻辑
 void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 {
-    qDebug()<<m_window->windowState();
     if(isDoubleClick && isFullScreen()){
         return;//全屏双击不生效
     }

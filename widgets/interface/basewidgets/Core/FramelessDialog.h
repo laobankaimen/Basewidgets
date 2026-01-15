@@ -18,7 +18,7 @@ class ACSS_UI_EXPORT FramelessDialog : public QDialog , public BaseWidgetInterfa
 {
     Q_OBJECT
 public:
-    explicit FramelessDialog(QWidget* parent = nullptr);
+    explicit FramelessDialog(bool popDialog = true,QWidget* parent = nullptr);
     ~FramelessDialog() override;
 
     void setTitle(const QString& title) override;
@@ -27,6 +27,7 @@ public:
     void setCustomDialogBtn(bool showOK = true,bool showCancel = true,bool okHighLight = true);
     QWidget* contentWidget() const { return m_contentHost; }
     void setFramelessWindowState(FramelessWindowState state) override;
+    void reject() override;
 
 protected:
 #ifdef Q_OS_WIN
@@ -38,12 +39,14 @@ private:
 signals:
     void okButtonClicked();
     void cancelButtonClicked();
+    void onDialogClosing();
 private:
     QWidget* m_titleBar = nullptr;
     QWidget* m_contentHost = nullptr;
     QVBoxLayout* mainLayout = nullptr;
     QDialogButtonBox* btnBox = nullptr;
     int m_titlebarHeight = 40;
+    bool isPopDialog = false;
 };
 
 } // namespace basewidgets

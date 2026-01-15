@@ -43,8 +43,8 @@ using namespace acss;
 
 namespace basewidgets {
 
-FramelessDialog::FramelessDialog(QWidget* parent)
-    : QDialog(parent)
+FramelessDialog::FramelessDialog(bool popDialog, QWidget* parent)
+    : QDialog(parent),isPopDialog(popDialog)
 {
     // Frameless and styled
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint | Qt::Dialog);
@@ -73,29 +73,30 @@ void FramelessDialog::initUI()
     m_contentHost = new QWidget(this);
     m_contentHost->setProperty("msgContainer", QVariant(true));
 
-    //dialog buttons
-    auto btnWidget = new QFrame(this);
-    btnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,this);
-    btnBox->setObjectName("dialogBtnBox");
-    btnBox->setContentsMargins(5,5,5,5);
-    if (auto* okBtn = btnBox->button(QDialogButtonBox::Ok)) {
-        okBtn->setText(QObject::tr("确定"));
-        okBtn->setProperty("primary", QVariant(true));
-    }
-    if (auto* cancelBtn = btnBox->button(QDialogButtonBox::Cancel)) cancelBtn->setText(QObject::tr("取消"));
-    QObject::connect(btnBox, &QDialogButtonBox::accepted, this, &FramelessDialog::okButtonClicked);
-    QObject::connect(btnBox, &QDialogButtonBox::rejected, this, &FramelessDialog::cancelButtonClicked);
-    auto* btnLayout = new QVBoxLayout(btnWidget);
-    btnLayout->setContentsMargins(5, 10, 5, 5);
-    btnLayout->addWidget(btnBox);
-
     // Main layout
     mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
     mainLayout->addWidget(m_titleBar);
     mainLayout->addWidget(m_contentHost, 1);
-    mainLayout->addWidget(btnWidget);
+    //dialog buttons
+    if(isPopDialog) {
+        auto btnWidget = new QFrame(this);
+        btnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,this);
+        btnBox->setObjectName("dialogBtnBox");
+        btnBox->setContentsMargins(5,5,5,5);
+        if (auto* okBtn = btnBox->button(QDialogButtonBox::Ok)) {
+            okBtn->setText(QObject::tr("确定"));
+            okBtn->setProperty("primary", QVariant(true));
+        }
+        if (auto* cancelBtn = btnBox->button(QDialogButtonBox::Cancel)) cancelBtn->setText(QObject::tr("取消"));
+        QObject::connect(btnBox, &QDialogButtonBox::accepted, this, &FramelessDialog::okButtonClicked);
+        QObject::connect(btnBox, &QDialogButtonBox::rejected, this, &FramelessDialog::cancelButtonClicked);
+        auto* btnLayout = new QVBoxLayout(btnWidget);
+        btnLayout->setContentsMargins(5, 10, 5, 5);
+        btnLayout->addWidget(btnBox);
+        mainLayout->addWidget(btnWidget);
+    }
     setLayout(mainLayout);
 
     // Default sizing to avoid too small dialogs
@@ -128,6 +129,7 @@ void FramelessDialog::setResizeable(bool canResize) {
 }
 
 void FramelessDialog::setCustomDialogBtn(bool showOK, bool showCancel, bool okHighLight) {
+    if(!isPopDialog) return;
     QPushButton* okBtn = btnBox->button(QDialogButtonBox::Ok);
     if(okBtn) {
         okBtn->setVisible(showOK);
@@ -254,6 +256,13 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, lo
     default:
         return QDialog::nativeEvent(eventType, message, result);
     }
+}
+
+void FramelessDialog::reject() {
+    if(isPopDialog)
+        QDialog::reject();
+    else
+        Q_EMIT onDialogClosing();
 }
 #endif
 } // namespace basewidgets

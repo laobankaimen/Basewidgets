@@ -23,6 +23,8 @@ public:
     static void initialize(const QString& stylesDir = QString(),
                            const QString& styleName = QString(),
                            const QString& themeName = QString());
+    // 初始化样式生成器（传入样式目录）
+    static void initialBuilder(const QString& stylesDir = QString());
 
     // 设置/获取全局实例（用于主程序自定义管理器）
     static void setInstance(acss::QtAdvancedStylesheet* mgr);
