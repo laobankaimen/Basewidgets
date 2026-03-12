@@ -258,12 +258,12 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, lo
     }
 }
 
-void FramelessDialog::reject() {
-    if(isPopDialog)
-        QDialog::reject();
-    else
-        Q_EMIT onDialogClosing();
-}
 #endif
+    void FramelessDialog::reject() {
+        if (isPopDialog)
+            QDialog::reject();
+        else
+            Q_EMIT onDialogClosing();
+    }
 } // namespace basewidgets
 
