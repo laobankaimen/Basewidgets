@@ -69,11 +69,12 @@ QWidget[title='true'] {
   stop:0.5 {{baseBackgroundColor}},
   stop:1 {{darkFillColor}});
   border-bottom: 1px solid {{darkerBorderColor}};
+  padding: 1px;
 }
 
 QDialog {
-  background-color: {{baseBackgroundColor}};
-  border: 0px solid {{darkerBorderColor}};
+  background-color: {{overlayBackgroundColor|opacity(0.8)}};
+  border: 1px solid {{baseBorderColor}};
   border-radius: 2px;
 }
 
