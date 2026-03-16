@@ -56,7 +56,7 @@ set(UI_PUBLIC_HEADERS
     interface/basewidgets/Dialogs/DialogUtils.h
     
     interface/basewidgets/Views/TreeWidget.h
-    
+    interface/basewidgets/Views/NavigationList.h
     interface/basewidgets/Views/ListView.h
     interface/basewidgets/Views/TreeView.h
     interface/basewidgets/Views/TableView.h
@@ -119,7 +119,7 @@ set(UI_SOURCES
     src/Dialogs/FilePicker.cpp
     
     src/Views/TreeWidget.cpp
-    
+    src/Views/NavigationList.cpp
     src/Views/ListView.cpp
     src/Views/TreeView.cpp
     src/Views/TableView.cpp

@@ -7,6 +7,7 @@
 
 #include <basewidgets/Styles/QtAdvancedStylesheet.h>
 #include <QString>
+#include <QDebug>
 #include <basewidgets/QtAdvancedUIExport.h>
 
 namespace basewidgets {
