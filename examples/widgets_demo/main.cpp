@@ -41,6 +41,7 @@
 #include <basewidgets/Views/TreeTable.h>
 #include <basewidgets/Dialogs/DialogUtils.h>
 #include <basewidgets/Views/TreeWidget.h>
+#include <basewidgets/Views/NavigationList.h>
 #include <basewidgets/Gauges/CircularGauge.h>
 #include <basewidgets/Gauges/BasicGauge.h>
 #include <basewidgets/Gauges/SpeedGauge.h>
@@ -241,6 +242,34 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     progressGroup->setMaximumWidth(420);
     progressGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
+    // 导航列表组
+    auto* navGroup = new GroupBox("", content);
+    auto* navLayout = new QHBoxLayout(navGroup);
+    navLayout->setContentsMargins(4, 4, 4, 4);
+    navLayout->setSpacing(8);
+
+    auto* navList = new NavigationList(navGroup);
+    // 添加按钮 - 使用自动ID
+    navList->addButton("首页");
+    navList->addButton("设置");
+    navList->addButton("关于");
+    // 插入按钮 - 混合使用自动ID和指定ID
+    navList->insertButton("个人中心", 1); // 在位置1插入，自动分配ID
+    navList->insertButton("消息", 2, 10); // 在位置2插入，指定ID为10
+    navList->addButton("帮助", 11); // 添加按钮，指定ID为11
+    // 设置默认选中
+    navList->setCurrentButton(0);
+
+    navLayout->addWidget(navList);
+
+    // 当前选中项显示
+    auto* navCurrentLabel = new Label("当前选中: 首页 (ID: 0)", navGroup);
+    navCurrentLabel->setWordWrap(true);
+    navLayout->addWidget(navCurrentLabel);
+
+    navGroup->setMaximumWidth(420);
+    navGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
     // 右侧：Dialogs 组件演示区域
     auto* dialogsGroup = new GroupBox("", content);
     auto* dialogsLayout = new QGridLayout(dialogsGroup);
@@ -423,6 +452,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     inputGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     progressGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     datetimeGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    navGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
 
     leftPanelLayout->addWidget(dialogsGroup);
     leftPanelLayout->addWidget(buttonGroup);
@@ -430,6 +460,7 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     leftPanelLayout->addWidget(inputGroup);
     leftPanelLayout->addWidget(progressGroup);
     leftPanelLayout->addWidget(datetimeGroup);
+    leftPanelLayout->addWidget(navGroup);
     leftPanel->setLayout(leftPanelLayout);
 
     // 左列放置该容器，整体顶部对齐
@@ -539,7 +570,18 @@ StyledWidget* createInputsShowcase(QWidget* parent) {
     layout->setRowStretch(2, 0);
     layout->setRowStretch(3, 0);
     layout->setRowStretch(4, 1);
-    
+
+    // 连接NavigationList信号以更新当前选中项显示
+    // 使用currentItemChanged信号，无论是点击还是程序设置都会触发
+    QObject::connect(navList, &NavigationList::currentItemChanged,
+        [navList, navCurrentLabel](QListWidgetItem* current, QListWidgetItem* previous){
+            if(current) {
+                int id = navList->getCurrentButton();
+                QString title = current->text();
+                navCurrentLabel->setText(QString("当前选中: %1 (ID: %2)").arg(title).arg(id));
+            }
+        });
+
     content->setLayout(layout);
     scrollArea->setWidget(content);
     

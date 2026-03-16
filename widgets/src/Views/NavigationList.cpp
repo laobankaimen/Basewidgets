@@ -36,8 +36,9 @@ namespace basewidgets {
             qDebug()<<"Title is empty";
             return;
         }
-        if (id == -1 && m_items.contains(id)) {
-            qDebug()<<"ID already exists";
+        // 检查用户指定的有效ID是否已存在
+        if (id != -1 && m_items.contains(id)) {
+            qDebug()<<"ID already exists:"<<id;
             return;
         }
 
@@ -46,7 +47,7 @@ namespace basewidgets {
         if (!icon.isNull()) item->setIcon(icon);
         addItem(item); //新增按钮
         int finalId = id;
-        if (id == -1) finalId = count(); //自动分配ID
+        if (id == -1) finalId = findAvailableId(); //自动分配ID
         m_items.insert(finalId, item);
     }
 
@@ -55,8 +56,9 @@ namespace basewidgets {
             qDebug()<<"Title is empty";
             return;
         }
-        if (id == -1 && m_items.contains(id)) {
-            qDebug()<<"Id already exists";
+        // 检查用户指定的有效ID是否已存在
+        if (id != -1 && m_items.contains(id)) {
+            qDebug()<<"Id already exists:"<<id;
             return;
         }
 
@@ -81,8 +83,9 @@ namespace basewidgets {
     void NavigationList::removeButton(const int &id) {
         auto *item = m_items.value(id,nullptr);
         if(!item) return;
+        removeItemWidget(item);
+        delete item;
         m_items.remove(id);
-        removeItemWidget(m_items.value(id));
     }
 
     void NavigationList::attachToManager() {
