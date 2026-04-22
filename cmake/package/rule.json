@@ -1,0 +1,54 @@
+{
+  "targets": [
+    {
+      "name": "BaseWidgets",
+      "kind": "dynamic",
+      "type": "library",
+      "usesQt": true,
+      "requires": []
+    }
+  ],
+  "publishTargets": [
+    {
+      "name": "BaseWidgets",
+      "kind": "dynamic",
+      "type": "library",
+      "usesQt": true
+    }
+  ],
+  "buildTypes": [
+    "debug",
+    "release"
+  ],
+  "outputDir": "package",
+  "package": {
+    "name": "@zkhx/basewidgets",
+    "version": "1.0.1",
+    "description": "UI开发基础控件库",
+    "author": "zhoutao",
+    "repository": "https://gitlab.fleetprojection.cn/framework/basewidgets.git",
+    "license": "",
+    "copyright": "",
+    "vendor": ""
+  },
+  "dependencies": {
+    "@zkhx/fleet": "latest"
+  },
+  "publishResources": [
+    {
+      "source": "widgets/interface",
+      "dest": "."
+    }
+  ],
+  "installResources": [],
+  "cmakeDefines": [],
+  "cmakePrefixPaths": {
+    "debug": [],
+    "release": []
+  },
+  "cleanAfterBuild": false,
+  "isPlugin": false,
+  "pluginId": "",
+  "groupIds": [],
+  "buildResources": []
+}

@@ -1,0 +1,39 @@
+{
+  "name": "@name@",
+  "version": "@version@",
+  "description": "@description@",
+  "main": "index.js",
+  "type": "module",
+  "plugin": {
+    "name": "@pluginName@",
+    "id": "@pluginId@",
+    "groupIds": "@groupIds@"
+  },
+  "scripts": {
+    "preinstall": "node scripts/check-env.js",
+    "install": "node scripts/install-platform.js && node scripts/clean-platforms.js",
+    "verify": "node scripts/verify-platforms.js"
+  },
+  "keywords": [
+    "zkhx",
+    "fleet",
+    "cpp"
+  ],
+  "author": "@author@",
+  "license": "@license@",
+  "copyright": "@copyright@",
+  "vendor": "@vendor@",
+  "repository": {
+    "type": "git",
+    "url": "@repository@"
+  },
+  "exports": {
+    ".": "./index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": "@files@",
+  "targets": "@targets@",
+  "resources": "@resources@"
+}
