@@ -26,10 +26,7 @@
     "version": "1.0.1",
     "description": "UI开发基础控件库",
     "author": "zhoutao",
-    "repository": "https://gitlab.fleetprojection.cn/framework/basewidgets.git",
-    "license": "",
-    "copyright": "",
-    "vendor": ""
+    "repository": "https://gitlab.fleetprojection.cn/framework/basewidgets.git"
   },
   "dependencies": {
     "@zkhx/fleet": "latest"

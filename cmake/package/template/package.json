@@ -20,9 +20,7 @@
     "cpp"
   ],
   "author": "@author@",
-  "license": "@license@",
-  "copyright": "@copyright@",
-  "vendor": "@vendor@",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "@repository@"

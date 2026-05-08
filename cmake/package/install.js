@@ -118,24 +118,6 @@ function processTemplateFile(srcPath, destPath, pkgConfig, resources, ruleTarget
         }
     }
 
-    // license：有值则替换，无值则默认 MIT
-    if (template.license === '@license@') {
-        template.license = pkgConfig.license || 'MIT';
-    }
-
-    // copyright/vendor：有值则替换，无值则删除键
-    const nullableFields = ['copyright', 'vendor'];
-    for (const key of nullableFields) {
-        const placeholder = `@${key}@`;
-        if (template[key] === placeholder) {
-            if (pkgConfig[key]) {
-                template[key] = pkgConfig[key];
-            } else {
-                delete template[key];
-            }
-        }
-    }
-
     // repository.url
     if (template.repository && template.repository.url === '@repository@') {
         if (pkgConfig.repository) {
@@ -539,8 +521,8 @@ if (rule.isPlugin && rule.pluginId) {
         PluginName: pluginName,
         PluginId: pluginId,
         PluginVersion: pkg.version || '1.0.0',
-        PluginCopyRight: pkg.copyright || '',
-        PluginVendor: pkg.vendor || '',
+        PluginCopyRight: pkg.author || '',
+        PluginVendor: pkg.author || '',
         PluginDescription: pkg.description || '',
         PluginAuthor: pkg.author || '',
         IsEssentialPlugin: false,
