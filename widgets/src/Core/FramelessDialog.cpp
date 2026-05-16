@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -122,9 +122,10 @@ void FramelessDialog::setContentWidget(QWidget* w)
 }
 
 void FramelessDialog::setResizeable(bool canResize) {
-    auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar);
-    customTitleBar->setButtonsVisible(canResize, canResize, true);
-    customTitleBar->setDoubleClickToToggleEnabled(canResize);
+    if (auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar)) {
+        customTitleBar->setButtonsVisible(canResize, canResize, true);
+        customTitleBar->setDoubleClickToToggleEnabled(canResize);
+    }
     setSizeGripEnabled(canResize);
 }
 
