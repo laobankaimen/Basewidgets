@@ -630,6 +630,62 @@ QHeaderView::section {
   font-weight: 500;
 }
 
+QHeaderView::section:hover {
+  color: {{primaryTextColor}};
+  background-color: {{darkFillColor}};
+}
+
+QHeaderView::section:pressed {
+  color: {{primaryTextColor}};
+  background-color: {{secondaryDarkColor}};
+}
+
+QHeaderView::section:checked {
+  color: {{primaryTextColor}};
+  background-color: {{overlayBackgroundColor}};
+  border-bottom: 2px solid {{primaryColor}};
+}
+
+QHeaderView::up-arrow,
+QHeaderView::down-arrow {
+  width: 12px;
+  height: 12px;
+}
+
+QHeaderView::up-arrow {
+  image: url(icon:/secondary/uparrow.svg);
+}
+
+QHeaderView::down-arrow {
+  image: url(icon:/secondary/downarrow.svg);
+}
+
+QHeaderView::up-arrow:hover,
+QHeaderView::up-arrow:pressed {
+  image: url(icon:/hover/uparrow.svg);
+}
+
+QHeaderView::up-arrow:on {
+  image: url(icon:/primary/uparrow.svg);
+}
+
+QHeaderView::down-arrow:hover,
+QHeaderView::down-arrow:pressed {
+  image: url(icon:/hover/downarrow.svg);
+}
+
+QHeaderView::down-arrow:on {
+  image: url(icon:/primary/downarrow.svg);
+}
+
+QHeaderView::up-arrow:disabled {
+  image: url(icon:/disabled/uparrow.svg);
+}
+
+QHeaderView::down-arrow:disabled {
+  image: url(icon:/disabled/downarrow.svg);
+}
+
 /*  ------------------------------------------------------------------------  */
 /*  QTreeView  */
 
@@ -914,8 +970,9 @@ QMenu::item:disabled {
 /*  Pagination (Web-like)  */
 
 QWidget[pagination='true'] {
-  background-color: transparent;
-  padding: 8px 0;
+  background-color: {{baseFillColor}};
+  border-top: 1px solid {{darkerBorderColor}};
+  padding: 10px 12px;
 }
 
 QWidget[pagination='true'] QLabel {
@@ -987,7 +1044,7 @@ QWidget[pagination='true'] QPushButton#NextPageBtn {
 }
 
 QWidget[pagination='true'] QPushButton#FirstPageBtn,
-QWidget[pagination='true'] PushButton#LastPageBtn {
+QWidget[pagination='true'] QPushButton#LastPageBtn {
   min-width: 72px;
   min-height: 28px;
   padding: 0 10px;
@@ -997,6 +1054,10 @@ QWidget[pagination='true'] PushButton#LastPageBtn {
 /* 页码滚动区固定高度，避免随内容抖动 */
 QScrollArea#PageScroll {
   min-height: 36px;
+}
+
+QWidget[pagination='true'] QScrollArea#PageScroll {
+  background-color: transparent;
 }
 
 /*  ------------------------------------------------------------------------  */

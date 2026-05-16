@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -18,7 +18,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QSortFilterProxyModel>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QMenu>
 #include <QAction>
 #include <QFile>
@@ -26,8 +26,25 @@
 #include <QClipboard>
 #include <QApplication>
 #include <QTimer>
+#include <algorithm>
+#include <functional>
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#include <QRegExp>
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QStringConverter>
+#endif
 
 namespace basewidgets {
+
+static QString escapeCsvField(const QString& v, const QString& delim)
+{
+    const bool needsQuote = v.contains('"') || v.contains('\n') || v.contains('\r') || (!delim.isEmpty() && v.contains(delim));
+    if (!needsQuote) return v;
+    QString out = v;
+    out.replace('"', "\"\"");
+    return QString("\"%1\"").arg(out);
+}
 
 AdvancedTable::AdvancedTable(QWidget* parent)
     : StyledWidget(parent)
@@ -129,6 +146,14 @@ void AdvancedTable::initUi()
     m_totalLabel = new Label(this);
     m_totalLabel->setText("共0条数据");
 
+    m_firstBtn = new PushButton("首页", this);
+    m_lastBtn = new PushButton("尾页", this);
+    m_firstBtn->setObjectName("FirstPageBtn");
+    m_lastBtn->setObjectName("LastPageBtn");
+    for (auto* nav : {m_firstBtn, m_lastBtn}) {
+        nav->setProperty("page", true);
+    }
+
     m_pageNumbers = new QWidget(this);
     auto* numsLayout = new QHBoxLayout(m_pageNumbers);
     numsLayout->setContentsMargins(0,0,0,0);
@@ -154,7 +179,8 @@ void AdvancedTable::initUi()
 
     bottomRow->setContentsMargins(6, 6, 6, 6);
     bottomRow->setSpacing(8);
-    bottomRow->addWidget(new Label("每页显示记录数", this));
+    m_pageSizeBottomLabel = new Label("每页显示记录数", this);
+    bottomRow->addWidget(m_pageSizeBottomLabel);
     bottomRow->addWidget(m_pageSizeBottom);
     bottomRow->addSpacing(8);
     bottomRow->addWidget(m_totalLabel);
@@ -162,9 +188,12 @@ void AdvancedTable::initUi()
     bottomRow->addWidget(m_prevBtn);
     bottomRow->addWidget(m_nextBtn);
     bottomRow->addSpacing(8);
+    bottomRow->addWidget(m_firstBtn);
     bottomRow->addWidget(m_pageScroll, 1);
+    bottomRow->addWidget(m_lastBtn);
     bottomRow->addSpacing(8);
-    bottomRow->addWidget(new Label("跳转", this));
+    m_pageJumpBottomLabel = new Label("跳转", this);
+    bottomRow->addWidget(m_pageJumpBottomLabel);
     bottomRow->addWidget(m_pageJumpBottom);
     bottomRow->addSpacing(8);
     bottomRow->addWidget(m_exportBtn);
@@ -196,16 +225,22 @@ void AdvancedTable::bindSignals()
         m_filterTimer->start();
     });
     QObject::connect(m_filterTimer, &QTimer::timeout, [this](){
-        m_sortFilter->setFilterCaseSensitivity(m_filterCs);
-        m_sortFilter->setFilterRegExp(QRegExp(m_filterEdit->text(), m_filterCs, QRegExp::FixedString));
-        emit filterChanged(m_filterEdit->text(), m_sortFilter->filterKeyColumn());
+        applyFilter();
     });
 
     QObject::connect(m_pageSizeCombo, static_cast<void(ComboBox::*)(const QString&)>(&ComboBox::currentTextChanged), [this](const QString& s){
         m_paged->setPageSize(s.toInt());
+        if (m_pageSizeBottom) m_pageSizeBottom->setCurrentText(s);
     });
     QObject::connect(m_columnCombo, static_cast<void(ComboBox::*)(int)>(&ComboBox::currentIndexChanged), [this](int idx){
         m_sortFilter->setFilterKeyColumn(idx - 1);
+    });
+    QObject::connect(m_firstBtn, &PushButton::clicked, [this](){
+        if (m_paged) m_paged->setCurrentPage(0);
+    });
+    QObject::connect(m_lastBtn, &PushButton::clicked, [this](){
+        if (!m_paged) return;
+        m_paged->setCurrentPage(qMax(0, m_paged->pageCount() - 1));
     });
     QObject::connect(m_prevBtn, &PushButton::clicked, [this](){
         m_paged->setCurrentPage(m_paged->currentPage() - 1);
@@ -217,6 +252,7 @@ void AdvancedTable::bindSignals()
         m_paged->setCurrentPage(val - 1);
     });
     QObject::connect(m_paged, &PagedProxyModel::pageChanged, [this](){
+        emit pageChanged(m_paged->currentPage(), m_paged->pageCount());
         if (m_totalLabel) {
             m_totalLabel->setText(QString("共%5条数据 | 当前页 %1 / %2 | 当前行 %3~%4")
                                   .arg(m_paged->currentPage() + 1)
@@ -265,6 +301,8 @@ void AdvancedTable::bindSignals()
         if (ok) emit exportCompleted(fileName, m_sortFilter ? m_sortFilter->rowCount() : 0);
         else emit exportFailed(fileName, tr("写入失败或文件不可用"));
     });
+
+    rebuildPaginationUi();
 }
 
 void AdvancedTable::setSourceModel(QAbstractItemModel* source)
@@ -272,7 +310,6 @@ void AdvancedTable::setSourceModel(QAbstractItemModel* source)
     m_source = source;
     m_sortFilter->setSourceModel(source);
     rebuildColumnUi();
-    emit m_paged->pageChanged(m_paged->currentPage(), m_paged->pageCount());
 }
 
 QAbstractItemModel* AdvancedTable::sourceModel() const
@@ -284,6 +321,7 @@ void AdvancedTable::rebuildColumnUi()
 {
     if (!m_source) return;
     // 列可见性菜单
+    qDeleteAll(m_columnsMenu->actions());
     m_columnsMenu->clear();
     const QStringList headers = currentHeaderLabels();
     for (int c = 0; c < m_source->columnCount(); ++c) {
@@ -307,45 +345,93 @@ void AdvancedTable::rebuildPaginationUi()
     if (!m_pageNumbers) return;
     auto* layout = qobject_cast<QHBoxLayout*>(m_pageNumbers->layout());
     if (!layout) return;
-    for (auto* b : m_pageButtons) { b->deleteLater(); }
     m_pageButtons.clear();
+    for (auto* b : m_pageButtonPool) { if (b) b->setVisible(false); }
+    for (auto* l : m_ellipsisPool) { if (l) l->setVisible(false); }
 
-    int pc = m_paged ? m_paged->pageCount() : 1;
+    while (layout->count() > 0) {
+        auto* item = layout->takeAt(0);
+        if (!item) continue;
+        QWidget* w = item->widget();
+        delete item;
+        if (!w) continue;
+
+        if (auto* btn = qobject_cast<PushButton*>(w)) {
+            btn->setVisible(false);
+            m_pageButtonPool.append(btn);
+            continue;
+        }
+        if (auto* lbl = qobject_cast<Label*>(w)) {
+            lbl->setVisible(false);
+            m_ellipsisPool.append(lbl);
+            continue;
+        }
+        w->deleteLater();
+    }
+
+    int pc = m_paged ? m_paged->pageCount() : 0;
+    pc = qMax(1, pc);
     int cur = m_paged ? m_paged->currentPage() + 1 : 1;
+    cur = qBound(1, cur, pc);
 
-    auto addBtn = [this, layout](int n, bool active){
-        auto* btn = new PushButton(QString::number(n), this);
-        btn->setProperty("page", true);
+    if (!m_paginationCfg.windowSize) m_paginationCfg.windowSize = 7;
+    if (!m_paginationCfg.sideCount) m_paginationCfg.sideCount = 2;
+    const int window = qMax(3, m_paginationCfg.windowSize);
+    const int side = qMax(1, m_paginationCfg.sideCount);
+
+    m_firstBtn->setEnabled(cur > 1);
+    m_lastBtn->setEnabled(cur < pc);
+
+    auto takePageBtn = [this]() -> PushButton* {
+        PushButton* btn = nullptr;
+        while (!m_pageButtonPool.isEmpty() && !btn) {
+            btn = m_pageButtonPool.takeLast();
+            if (!btn) continue;
+            if (btn->parentWidget() != m_pageNumbers) btn->setParent(m_pageNumbers);
+        }
+        if (!btn) {
+            btn = new PushButton(QString(), m_pageNumbers);
+            btn->setProperty("page", true);
+            QObject::connect(btn, &PushButton::clicked, [this, btn](){
+                if (!m_paged) return;
+                bool ok = false;
+                int n = btn->property("pageNumber").toInt(&ok);
+                if (ok) m_paged->setCurrentPage(n - 1);
+            });
+        }
+        return btn;
+    };
+
+    auto takeEllipsis = [this]() -> Label* {
+        Label* lbl = nullptr;
+        while (!m_ellipsisPool.isEmpty() && !lbl) {
+            lbl = m_ellipsisPool.takeLast();
+            if (!lbl) continue;
+            if (lbl->parentWidget() != m_pageNumbers) lbl->setParent(m_pageNumbers);
+        }
+        if (!lbl) {
+            lbl = new Label("...", m_pageNumbers);
+        }
+        lbl->setText("...");
+        return lbl;
+    };
+
+    auto addBtn = [this, layout, &takePageBtn](int n, bool active){
+        auto* btn = takePageBtn();
+        btn->setText(QString::number(n));
+        btn->setProperty("pageNumber", n);
         btn->setProperty("active", active);
-        QObject::connect(btn, &PushButton::clicked, [this, n](){ m_paged->setCurrentPage(n - 1); });
+        btn->setVisible(true);
         layout->addWidget(btn);
         m_pageButtons.append(btn);
     };
 
-    auto addEllipsis = [layout, this](){
-        auto* ellipsis = new Label("...", this);
+    auto addEllipsis = [layout, &takeEllipsis](){
+        auto* ellipsis = takeEllipsis();
+        ellipsis->setVisible(true);
         layout->addWidget(ellipsis);
     };
 
-    while (layout->count() > 0) {
-        if (auto* item = layout->takeAt(0)) { if (item->widget()) item->widget()->deleteLater(); }
-    }
-
-    // 导航按钮（仅保留首页/尾页）
-    m_firstBtn = new PushButton("首页", this);
-    m_lastBtn = new PushButton("尾页", this);
-    for (auto* nav : {m_firstBtn, m_lastBtn}) {
-        nav->setProperty("page", true);
-        layout->addWidget(nav);
-    }
-    m_firstBtn->setEnabled(cur > 1);
-    m_lastBtn->setEnabled(cur < pc);
-    QObject::connect(m_firstBtn, &PushButton::clicked, [this](){ m_paged->setCurrentPage(0); });
-    QObject::connect(m_lastBtn, &PushButton::clicked, [this, pc](){ m_paged->setCurrentPage(pc - 1); });
-
-    // 页码窗口（中心跟随当前页）
-    const int window = 7; // 显示窗口大小
-    const int side = 2;   // 当前页左右保留页数
     if (pc <= window) {
         for (int i = 1; i <= pc; ++i) addBtn(i, i == cur);
     } else {
@@ -371,6 +457,26 @@ void AdvancedTable::rebuildPaginationUi()
     }
 }
 
+void AdvancedTable::applyFilter()
+{
+    if (!m_sortFilter) return;
+
+    QRegularExpression::PatternOptions options = QRegularExpression::NoPatternOption;
+    if (m_filterCs == Qt::CaseInsensitive) {
+        options |= QRegularExpression::CaseInsensitiveOption;
+    }
+
+    if (m_filterMode == FilterMode::RegularExpression) {
+        m_filterRe = QRegularExpression(m_filterEdit ? m_filterEdit->text() : QString(), options);
+    } else {
+        const QString text = m_filterEdit ? m_filterEdit->text() : QString();
+        m_filterRe = QRegularExpression(QRegularExpression::escape(text), options);
+    }
+
+    m_sortFilter->setFilterRegularExpression(m_filterRe);
+    emit filterChanged(m_filterEdit ? m_filterEdit->text() : QString(), m_sortFilter->filterKeyColumn());
+}
+
 QStringList AdvancedTable::currentHeaderLabels() const
 {
     QStringList headers;
@@ -385,20 +491,35 @@ QStringList AdvancedTable::currentHeaderLabels() const
 
 void AdvancedTable::setPageSize(int size)
 {
-    m_paged->setPageSize(size);
+    if (m_paged) m_paged->setPageSize(size);
+    const QString text = QString::number(size);
+    if (m_pageSizeCombo) m_pageSizeCombo->setCurrentText(text);
+    if (m_pageSizeBottom) m_pageSizeBottom->setCurrentText(text);
 }
 
 int AdvancedTable::pageSize() const
 {
-    return m_paged->pageSize();
+    return m_paged ? m_paged->pageSize() : 0;
+}
+
+void AdvancedTable::setPageSizeOptions(const QStringList& sizes)
+{
+    if (m_pageSizeCombo) {
+        m_pageSizeCombo->clear();
+        m_pageSizeCombo->addItems(sizes);
+    }
+    if (m_pageSizeBottom) {
+        m_pageSizeBottom->clear();
+        m_pageSizeBottom->addItems(sizes);
+    }
+    if (m_paged) setPageSize(m_paged->pageSize());
 }
 
 void AdvancedTable::setFilterText(const QString& text)
 {
-    m_filterEdit->setText(text);
-    m_sortFilter->setFilterCaseSensitivity(m_filterCs);
-    m_sortFilter->setFilterRegExp(QRegExp(m_filterEdit->text(), m_filterCs, QRegExp::FixedString));
-    emit filterChanged(m_filterEdit->text(), m_sortFilter->filterKeyColumn());
+    if (m_filterTimer) m_filterTimer->stop();
+    if (m_filterEdit) m_filterEdit->setText(text);
+    applyFilter();
 }
 
 void AdvancedTable::setFilterColumn(int column)
@@ -413,29 +534,11 @@ void AdvancedTable::setFilterColumn(int column)
 
 bool AdvancedTable::exportCsvToFile(const QString& filePath, bool includeHeader) const
 {
-    if (filePath.isEmpty()) return false;
-    QFile f(filePath);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) return false;
-    QTextStream ts(&f);
-    const QStringList headers = currentHeaderLabels();
-    if (includeHeader && !headers.isEmpty()) {
-        for (int c = 0; c < headers.size(); ++c) {
-            ts << headers[c];
-            if (c + 1 < headers.size()) ts << m_exportDelimiter;
-        }
-        ts << "\n";
-    }
-    if (m_sortFilter) {
-        for (int r = 0; r < m_sortFilter->rowCount(); ++r) {
-            for (int c = 0; c < m_sortFilter->columnCount(); ++c) {
-                ts << m_sortFilter->data(m_sortFilter->index(r, c)).toString();
-                if (c + 1 < m_sortFilter->columnCount()) ts << m_exportDelimiter;
-            }
-            ts << "\n";
-        }
-    }
-    f.close();
-    return true;
+    CsvExportOptions opt;
+    opt.filePath = filePath;
+    opt.includeHeader = includeHeader;
+    opt.delimiter = m_exportDelimiter;
+    return exportCsv(opt);
 }
 
 void AdvancedTable::applyStylesheet()
@@ -451,9 +554,7 @@ QHeaderView* AdvancedTable::header() const
 void AdvancedTable::setFilterCaseSensitivity(Qt::CaseSensitivity cs)
 {
     m_filterCs = cs;
-    m_sortFilter->setFilterCaseSensitivity(m_filterCs);
-    m_sortFilter->setFilterRegExp(QRegExp(m_filterEdit->text(), m_filterCs, QRegExp::FixedString));
-    emit filterChanged(m_filterEdit->text(), m_sortFilter->filterKeyColumn());
+    applyFilter();
 }
 
 Qt::CaseSensitivity AdvancedTable::filterCaseSensitivity() const
@@ -461,11 +562,172 @@ Qt::CaseSensitivity AdvancedTable::filterCaseSensitivity() const
     return m_filterCs;
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 void AdvancedTable::setFilterRegExp(const QRegExp& exp)
 {
-    m_sortFilter->setFilterRegExp(exp);
+    m_filterMode = FilterMode::RegularExpression;
+    m_filterCs = exp.caseSensitivity();
+    if (m_filterTimer) m_filterTimer->stop();
+    if (m_filterEdit) m_filterEdit->setText(exp.pattern());
+    if (m_sortFilter) m_sortFilter->setFilterRegExp(exp);
+    QRegularExpression::PatternOptions options = QRegularExpression::NoPatternOption;
+    if (m_filterCs == Qt::CaseInsensitive) options |= QRegularExpression::CaseInsensitiveOption;
+    m_filterRe = QRegularExpression(exp.pattern(), options);
     emit filterChanged(m_filterEdit ? m_filterEdit->text() : QString(), m_sortFilter->filterKeyColumn());
 }
+#endif
+
+void AdvancedTable::setFilterMode(FilterMode mode)
+{
+    if (m_filterMode == mode) return;
+    m_filterMode = mode;
+    applyFilter();
+}
+
+AdvancedTable::FilterMode AdvancedTable::filterMode() const
+{
+    return m_filterMode;
+}
+
+void AdvancedTable::setFilterRegularExpression(const QRegularExpression& re)
+{
+    m_filterMode = FilterMode::RegularExpression;
+    m_filterRe = re;
+    if (m_filterTimer) m_filterTimer->stop();
+    if (m_filterEdit) m_filterEdit->setText(re.pattern());
+    if (m_sortFilter) m_sortFilter->setFilterRegularExpression(m_filterRe);
+    emit filterChanged(m_filterEdit ? m_filterEdit->text() : QString(), m_sortFilter->filterKeyColumn());
+}
+
+QRegularExpression AdvancedTable::filterRegularExpression() const
+{
+    return m_filterRe;
+}
+
+void AdvancedTable::setPaginationConfig(const PaginationConfig& cfg)
+{
+    m_paginationCfg = cfg;
+    rebuildPaginationUi();
+}
+
+AdvancedTable::PaginationConfig AdvancedTable::paginationConfig() const
+{
+    return m_paginationCfg;
+}
+
+bool AdvancedTable::exportCsv(const CsvExportOptions& options, QString* error) const
+{
+    if (options.filePath.isEmpty()) {
+        if (error) *error = tr("文件路径为空");
+        return false;
+    }
+
+    if (!m_sortFilter || !m_paged) {
+        if (error) *error = tr("模型未初始化");
+        return false;
+    }
+
+    QFile f(options.filePath);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        if (error) *error = tr("文件不可写");
+        return false;
+    }
+
+    if (options.includeUtf8Bom) {
+        f.write("\xEF\xBB\xBF", 3);
+    }
+
+    QTextStream ts(&f);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    ts.setCodec("UTF-8");
+#else
+    ts.setEncoding(QStringConverter::Utf8);
+#endif
+
+    const QString delimiter = options.delimiter.isEmpty() ? m_exportDelimiter : options.delimiter;
+
+    QList<int> cols = options.columns;
+    const int colCount = m_sortFilter->columnCount();
+    if (cols.isEmpty()) {
+        cols.reserve(colCount);
+        for (int c = 0; c < colCount; ++c) cols.append(c);
+    } else {
+        cols.erase(std::remove_if(cols.begin(), cols.end(), [colCount](int c){ return c < 0 || c >= colCount; }), cols.end());
+    }
+
+    if (options.includeHeader) {
+        const QStringList headers = currentHeaderLabels();
+        for (int i = 0; i < cols.size(); ++i) {
+            const int c = cols[i];
+            const QString h = (c >= 0 && c < headers.size()) ? headers[c] : QString();
+            ts << escapeCsvField(h, delimiter);
+            if (i + 1 < cols.size()) ts << delimiter;
+        }
+        ts << "\n";
+    }
+
+    auto writeRow = [&](int r, const std::function<QVariant(int,int)>& cell){
+        for (int i = 0; i < cols.size(); ++i) {
+            const int c = cols[i];
+            const QString v = cell(r, c).toString();
+            ts << escapeCsvField(v, delimiter);
+            if (i + 1 < cols.size()) ts << delimiter;
+        }
+        ts << "\n";
+    };
+
+    if (options.scope == ExportScope::Selection) {
+        const auto rows = m_tableView && m_tableView->selectionModel()
+                              ? m_tableView->selectionModel()->selectedRows()
+                              : QModelIndexList();
+        QList<int> rowNums;
+        rowNums.reserve(rows.size());
+        for (const auto& idx : rows) rowNums.append(idx.row());
+        std::sort(rowNums.begin(), rowNums.end());
+        rowNums.erase(std::unique(rowNums.begin(), rowNums.end()), rowNums.end());
+
+        for (int r : rowNums) {
+            writeRow(r, [&](int rr, int cc){
+                return m_paged->data(m_paged->index(rr, cc), Qt::DisplayRole);
+            });
+        }
+        return true;
+    }
+
+    if (options.scope == ExportScope::CurrentPage) {
+        const int rows = m_paged->rowCount();
+        for (int r = 0; r < rows; ++r) {
+            writeRow(r, [&](int rr, int cc){
+                return m_paged->data(m_paged->index(rr, cc), Qt::DisplayRole);
+            });
+        }
+        return true;
+    }
+
+    const int rows = m_sortFilter->rowCount();
+    for (int r = 0; r < rows; ++r) {
+        writeRow(r, [&](int rr, int cc){
+            return m_sortFilter->data(m_sortFilter->index(rr, cc), Qt::DisplayRole);
+        });
+    }
+    return true;
+}
+
+void AdvancedTable::setSelectionMode(QAbstractItemView::SelectionMode mode)
+{
+    if (m_tableView) m_tableView->setSelectionMode(mode);
+}
+
+void AdvancedTable::setSelectionBehavior(QAbstractItemView::SelectionBehavior behavior)
+{
+    if (m_tableView) m_tableView->setSelectionBehavior(behavior);
+}
+
+void AdvancedTable::setEditTriggers(QAbstractItemView::EditTriggers triggers)
+{
+    if (m_tableView) m_tableView->setEditTriggers(triggers);
+}
+
 
 void AdvancedTable::setExportDelimiter(const QString& delim)
 {
@@ -508,12 +770,16 @@ void AdvancedTable::setPageSizeSelectorVisible(bool visible)
 {
     if (m_pageSizeLabel) m_pageSizeLabel->setVisible(visible);
     if (m_pageSizeCombo) m_pageSizeCombo->setVisible(visible);
+    if (m_pageSizeBottomLabel) m_pageSizeBottomLabel->setVisible(visible);
+    if (m_pageSizeBottom) m_pageSizeBottom->setVisible(visible);
 }
 
 void AdvancedTable::setJumpControlVisible(bool visible)
 {
     if (m_jumpLabel) m_jumpLabel->setVisible(visible);
     if (m_jumpSpin) m_jumpSpin->setVisible(visible);
+    if (m_pageJumpBottomLabel) m_pageJumpBottomLabel->setVisible(visible);
+    if (m_pageJumpBottom) m_pageJumpBottom->setVisible(visible);
 }
 
 void AdvancedTable::setPaginationBarVisible(bool visible)

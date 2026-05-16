@@ -20,6 +20,16 @@
             "#ff0000" : "darkBorderColor",
             "#000000" : "#ffffff00"
         },
+        "secondary" : {
+            "#0000ff" : "secondaryTextColor",
+            "#ff0000" : "darkBorderColor",
+            "#000000" : "#ffffff00"
+        },
+        "hover" : {
+            "#0000ff" : "primaryTextColor",
+            "#ff0000" : "darkBorderColor",
+            "#000000" : "#ffffff00"
+        },
         "disabled" : {
             "#0000ff" : "lightFillColor",
             "#ff0000" : "darkBorderColor",
