@@ -533,9 +533,14 @@ void FramelessWidgetWindow::setTitle(const QString& title)
 
 void FramelessWidgetWindow::setContentWidget(QWidget* w)
 {
+    if (w == m_centralWidget) {
+        return;
+    }
     if(m_centralWidget && m_contentHost) {
         m_contentHost->layout()->removeWidget(m_centralWidget);
-        m_centralWidget->deleteLater();
+        auto* old = m_centralWidget;
+        m_centralWidget = nullptr;
+        old->deleteLater();
     }
     if (m_contentHost && w) {
         m_centralWidget = w;
@@ -578,9 +583,14 @@ void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
 
 void FramelessWidgetWindow::setMenuBar(QMenuBar* menuBar)
 {
+    if (menuBar == m_menuBar) {
+        return;
+    }
     if(m_menuBar && m_menuBarWidget) {
         m_menuBarWidget->layout()->removeWidget(m_menuBar);
-        m_menuBar->deleteLater();
+        auto* old = m_menuBar;
+        m_menuBar = nullptr;
+        old->deleteLater();
     }
     if (m_menuBarWidget && menuBar) {
         m_menuBar = menuBar;
@@ -589,9 +599,14 @@ void FramelessWidgetWindow::setMenuBar(QMenuBar* menuBar)
 }
 
 void FramelessWidgetWindow::setToolBar(QToolBar *toolBar) {
+    if (toolBar == m_toolBar) {
+        return;
+    }
     if(m_toolBar && m_toolBarWidget) {
         m_toolBarWidget->layout()->removeWidget(m_toolBar);
-        m_toolBar->deleteLater();
+        auto* old = m_toolBar;
+        m_toolBar = nullptr;
+        old->deleteLater();
     }
     if (m_toolBarWidget && toolBar) {
         m_toolBar = toolBar;
@@ -600,9 +615,14 @@ void FramelessWidgetWindow::setToolBar(QToolBar *toolBar) {
 }
 
 void FramelessWidgetWindow::setStatusBar(QStatusBar *statusBar) {
+    if (statusBar == m_statusBar) {
+        return;
+    }
     if(m_statusBar && m_statusBarWidget) {
         m_statusBarWidget->layout()->removeWidget(m_statusBar);
-        m_statusBar->deleteLater();
+        auto* old = m_statusBar;
+        m_statusBar = nullptr;
+        old->deleteLater();
     }
     if (m_statusBarWidget && statusBar) {
         m_statusBar = statusBar;
