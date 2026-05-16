@@ -48,7 +48,9 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
                                      const QString& themeName)
 {
     if (!s_instance) {
-        s_instance = new QtAdvancedStylesheet();
+        s_instance = new QtAdvancedStylesheet(qApp);
+    } else if (!s_instance->parent()) {
+        s_instance->setParent(qApp);
     }
 
     QString resolvedStylesDir = stylesDir;
@@ -123,7 +125,9 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
 
 void StyleManagerAdapter::initialBuilder(const QString &stylesDir) {
     if (!s_instance) {
-        s_instance = new QtAdvancedStylesheet();
+        s_instance = new QtAdvancedStylesheet(qApp);
+    } else if (!s_instance->parent()) {
+        s_instance->setParent(qApp);
     }
 
     QString resolvedStylesDir = stylesDir;
@@ -147,7 +151,23 @@ void StyleManagerAdapter::initialBuilder(const QString &stylesDir) {
 
 void StyleManagerAdapter::setInstance(acss::QtAdvancedStylesheet* mgr)
 {
+    if (s_instance) {
+        if (s_instance == mgr) {
+            return;
+        }
+        qWarning() << "StyleManagerAdapter::setInstance ignored: instance already created.";
+        return;
+    }
+
+    if (!mgr) {
+        s_instance = new QtAdvancedStylesheet(qApp);
+        return;
+    }
+
     s_instance = mgr;
+    if (!s_instance->parent()) {
+        s_instance->setParent(qApp);
+    }
 }
 
 } // namespace basewidgets
