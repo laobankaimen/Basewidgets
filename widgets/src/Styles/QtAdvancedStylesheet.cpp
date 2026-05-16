@@ -49,12 +49,15 @@
 #include <QSvgRenderer>
 #include <QPainter>
 #include <QSet>
+#include <QMutex>
+#include <QMutexLocker>
 
 
 namespace acss
 {
 class CSVGIconEngine;
 Q_GLOBAL_STATIC(QSet<CSVGIconEngine*>, IconEngineInstances)
+Q_GLOBAL_STATIC(QMutex, IconEngineInstancesMutex)
 
 /**
  * SvgIcon engine that supports loading from memory buffer
@@ -76,6 +79,7 @@ public:
 		  m_AdvancedStyleheet(Styleeheet)
 	{
 		update();
+		QMutexLocker Locker(IconEngineInstancesMutex());
 		IconEngineInstances->insert(this);
 	}
 
@@ -86,6 +90,7 @@ public:
 	{
 		if (!IconEngineInstances.isDestroyed())
 		{
+			QMutexLocker Locker(IconEngineInstancesMutex());
 			IconEngineInstances->remove(this);
 		}
 	}
@@ -104,6 +109,12 @@ public:
 	 */
 	static void updateAllIcons()
 	{
+		if (IconEngineInstances.isDestroyed())
+		{
+			return;
+		}
+
+		QMutexLocker Locker(IconEngineInstancesMutex());
 		for (auto Engine : *IconEngineInstances)
 		{
 			Engine->update();
