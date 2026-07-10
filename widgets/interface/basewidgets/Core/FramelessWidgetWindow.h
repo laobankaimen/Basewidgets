@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -84,6 +84,7 @@ private:
 #ifdef Q_OS_WIN
     Qt::WindowStates m_wasMaxmizedBeforeMinimized;
 #elif defined(Q_OS_LINUX)
+    Qt::Edges resizeRegionToEdges() const;
     enum ResizeRegion { NoneR, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight };
     ResizeRegion m_resizeRegion = NoneR;
     bool m_resizing = false;
@@ -105,4 +106,3 @@ private:
 } // namespace basewidgets
 
 #endif // BASEWIDGETS_FRAMELESSWIDGETWINDOW_H
-

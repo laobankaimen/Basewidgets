@@ -157,13 +157,30 @@ void FramelessDialog::setFramelessWindowState(FramelessWindowState state) {
         break;
     }
 #elif defined(Q_OS_LINUX)
+    if (!QX11Info::isPlatformX11() || QX11Info::display() == nullptr) {
+        switch (state) {
+        case Maximized:
+            showMaximized();
+            break;
+        case Minimized:
+            showMinimized();
+            break;
+        case FullScreen:
+            showFullScreen();
+            break;
+        case Normal:
+            showNormal();
+            break;
+        }
+        return;
+    }
+
     Display *display = QX11Info::display();
     Window window = winId();
 
     Atom wmState = XInternAtom(display, "_NET_WM_STATE",false);
     Atom maxHorz = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_HORZ",false);
     Atom maxVert = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT",false);
-    Atom hidden = XInternAtom(display, "_NET_WM_STATE_HIDDEN",false);
     Atom fullScreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN",false);
 
     XEvent xev;
@@ -181,7 +198,7 @@ void FramelessDialog::setFramelessWindowState(FramelessWindowState state) {
         break;
         case Minimized:
             XIconifyWindow(display,window,0);
-        break;
+        return;
         case FullScreen:
             xev.xclient.data.l[0] = 1;
         xev.xclient.data.l[1] = fullScreen;
@@ -267,4 +284,3 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, lo
             Q_EMIT onDialogClosing();
     }
 } // namespace basewidgets
-

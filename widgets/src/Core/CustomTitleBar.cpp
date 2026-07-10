@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -18,6 +18,7 @@
 #include <QPaintEvent>
 #include <QPropertyAnimation>
 #include <QTimer>
+#include <QWindow>
 
 #include "basewidgets/Core/BaseWidgetInterface.h"
 
@@ -105,9 +106,23 @@ void CustomTitleBar::updateForWindowState()
 #ifdef Q_OS_LINUX
 void CustomTitleBar::mousePressEvent(QMouseEvent* e)
 {
-    if (!m_window) return;
-    if (m_window->windowState() == Qt::WindowMaximized || isFullScreen()) return;//最大化/全屏禁止拖动
+    if (!m_window) {
+        QWidget::mousePressEvent(e);
+        return;
+    }
+    if (m_window->windowState() == Qt::WindowMaximized || isFullScreen()) {
+        QWidget::mousePressEvent(e);
+        return;
+    }
     if (e->button() == Qt::LeftButton) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+        if (QWindow* handle = m_window->windowHandle()) {
+            if (handle->startSystemMove()) {
+                e->accept();
+                return;
+            }
+        }
+#endif
         m_dragging = true;
         m_dragStartPos = e->globalPos() - m_window->frameGeometry().topLeft();
         e->accept();
@@ -118,7 +133,10 @@ void CustomTitleBar::mousePressEvent(QMouseEvent* e)
 
 void CustomTitleBar::mouseMoveEvent(QMouseEvent* e)
 {
-    if (!m_window) return;
+    if (!m_window) {
+        QWidget::mouseMoveEvent(e);
+        return;
+    }
     if (m_dragging) {
         m_window->move(e->globalPos() - m_dragStartPos);
         e->accept();
@@ -129,7 +147,10 @@ void CustomTitleBar::mouseMoveEvent(QMouseEvent* e)
 
 void CustomTitleBar::mouseReleaseEvent(QMouseEvent* e)
 {
-    if (!m_window) return;
+    if (!m_window) {
+        QWidget::mouseReleaseEvent(e);
+        return;
+    }
     if (m_dragging && e->button() == Qt::LeftButton) {
         m_dragging = false;
         e->accept();
@@ -140,7 +161,10 @@ void CustomTitleBar::mouseReleaseEvent(QMouseEvent* e)
 
 void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
 {
-    if (!m_window) return;
+    if (!m_window) {
+        QWidget::mouseDoubleClickEvent(e);
+        return;
+    }
     if (m_doubleClickToggleEnabled && e->button() == Qt::LeftButton) {
         toggleMaximizeRestore(true);
         e->accept();
@@ -300,4 +324,3 @@ void CustomTitleBar::setDoubleClickToToggleEnabled(bool enabled)
 }
 
 } // namespace basewidgets
-

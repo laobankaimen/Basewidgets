@@ -28,8 +28,10 @@
 #include <QMouseEvent>
 #include <QResizeEvent>
 #include <QApplication>
+#include <QGuiApplication>
 #include <QPoint>
 #include <QTimer>
+#include <QWindow>
 #include <QX11Info>
 
 #include <X11/Xlib.h>
@@ -39,6 +41,15 @@
 #endif
 
 namespace basewidgets {
+
+#ifdef Q_OS_LINUX
+namespace {
+bool canUseX11WindowOps()
+{
+    return QX11Info::isPlatformX11() && QX11Info::display() != nullptr;
+}
+} // namespace
+#endif
 
 // Windows平台实现 - 复刻framelesswindow的代码
 FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
@@ -339,6 +350,14 @@ bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
     case QEvent::MouseButtonPress: {
         auto* me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton && m_resizeRegion != NoneR) {
+            if (QWindow* handle = windowHandle()) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+                const Qt::Edges edges = resizeRegionToEdges();
+                if (edges && handle->startSystemResize(edges)) {
+                    return true;
+                }
+#endif
+            }
             m_resizing = true;
             m_dragStartPos = me->globalPos();
             m_startGeo = frameGeometry();
@@ -368,6 +387,31 @@ bool FramelessWidgetWindow::nativeLinuxEvent(const QByteArray &eventType, void *
     return QMainWindow::nativeEvent(eventType, message, result);
 }
 
+Qt::Edges FramelessWidgetWindow::resizeRegionToEdges() const
+{
+    switch (m_resizeRegion) {
+    case Left:
+        return Qt::LeftEdge;
+    case Right:
+        return Qt::RightEdge;
+    case Top:
+        return Qt::TopEdge;
+    case Bottom:
+        return Qt::BottomEdge;
+    case TopLeft:
+        return Qt::TopEdge | Qt::LeftEdge;
+    case TopRight:
+        return Qt::TopEdge | Qt::RightEdge;
+    case BottomLeft:
+        return Qt::BottomEdge | Qt::LeftEdge;
+    case BottomRight:
+        return Qt::BottomEdge | Qt::RightEdge;
+    case NoneR:
+    default:
+        return Qt::Edges();
+    }
+}
+
 
 #endif
 
@@ -389,17 +433,34 @@ void FramelessWidgetWindow::setFramelessWindowState(FramelessWindowState state)
             break;
     }
 #elif defined(Q_OS_LINUX)
+    if (!canUseX11WindowOps()) {
+        switch (state) {
+        case Maximized:
+            showMaximized();
+            break;
+        case Minimized:
+            showMinimized();
+            break;
+        case FullScreen:
+            showFullScreen();
+            break;
+        case Normal:
+            showNormal();
+            break;
+        }
+        return;
+    }
+
     Display *display = QX11Info::display();
     Window window = winId();
 
-    Atom wmState = XInternAtom(display, "_NET_WM_STATE",false);
-    Atom maxHorz = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_HORZ",false);
-    Atom maxVert = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT",false);
-    Atom hidden = XInternAtom(display, "_NET_WM_STATE_HIDDEN",false);
-    Atom fullScreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN",false);
+    Atom wmState = XInternAtom(display, "_NET_WM_STATE", false);
+    Atom maxHorz = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_HORZ", false);
+    Atom maxVert = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT", false);
+    Atom fullScreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", false);
 
     XEvent xev;
-    memset(&xev,0,sizeof(xev));
+    memset(&xev, 0, sizeof(xev));
     xev.type = ClientMessage;
     xev.xclient.window = window;
     xev.xclient.message_type = wmState;
@@ -412,26 +473,25 @@ void FramelessWidgetWindow::setFramelessWindowState(FramelessWindowState state)
         xev.xclient.data.l[2] = maxVert;
         break;
     case Minimized:
-        XIconifyWindow(display,window,0);
-        break;
+        XIconifyWindow(display, window, 0);
+        return;
     case FullScreen:
         xev.xclient.data.l[0] = 1;
         xev.xclient.data.l[1] = fullScreen;
         xev.xclient.data.l[2] = 0;
         break;
     case Normal:
-        //移除全屏
+        // 先移除全屏，再移除最大化，保持与原有状态切换顺序一致。
         xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
         xev.xclient.data.l[1] = fullScreen;
         xev.xclient.data.l[2] = 0;
-        XSendEvent(display,DefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
-        //移除最大化
+        XSendEvent(display, DefaultRootWindow(display), false, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
         xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
         xev.xclient.data.l[1] = maxHorz;
         xev.xclient.data.l[2] = maxVert;
         break;
     }
-    XSendEvent(display,DefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
+    XSendEvent(display, DefaultRootWindow(display), false, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
     XFlush(display);
 #endif
 
@@ -650,7 +710,7 @@ void FramelessWidgetWindow::changeEvent(QEvent* e)
             customTitleBar->updateForWindowState();
         }
     }
+    QMainWindow::changeEvent(e);
 }
 
 } // namespace basewidgets
-
