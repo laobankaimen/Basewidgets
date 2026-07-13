@@ -11,6 +11,7 @@
 #include <basewidgets/Core/BaseWidgetInterface.h>
 #include <QWidget>
 #include <QVBoxLayout>
+class QShowEvent;
 
 namespace basewidgets {
 
@@ -19,6 +20,7 @@ class ACSS_UI_EXPORT FramelessDialog : public QDialog , public BaseWidgetInterfa
     Q_OBJECT
 public:
     explicit FramelessDialog(bool popDialog = true,QWidget* parent = nullptr);
+    explicit FramelessDialog(QWidget* parent);
     ~FramelessDialog() override;
 
     void setTitle(const QString& title) override;
@@ -34,6 +36,7 @@ protected:
     //windows下使用窗口管理器处理拖动和缩放
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
 #endif
+    void showEvent(QShowEvent* e) override;
 private:
     void initUI() override;
 signals:
@@ -47,9 +50,9 @@ private:
     QDialogButtonBox* btnBox = nullptr;
     int m_titlebarHeight = 40;
     bool isPopDialog = false;
+    bool m_centeredOnce = false;
 };
 
 } // namespace basewidgets
 
 #endif // BASEWIDGETS_FRAMELESSDIALOG_H
-

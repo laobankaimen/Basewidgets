@@ -9,7 +9,6 @@
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QEvent>
 #include <QMouseEvent>
 #include <QApplication>
 #include <QDialogButtonBox>
@@ -20,6 +19,12 @@
 #include <QRegion>
 #include <QResizeEvent>
 #include <QPushButton>
+#include <QShowEvent>
+#include <QTimer>
+#include <QWindow>
+#include <QScreen>
+#include <QGuiApplication>
+#include <QPointer>
 
 #include "basewidgets/Containers/Frame.h"
 
@@ -40,7 +45,6 @@
 #endif
 
 using namespace acss;
-
 namespace basewidgets {
 
 FramelessDialog::FramelessDialog(bool popDialog, QWidget* parent)
@@ -50,11 +54,69 @@ FramelessDialog::FramelessDialog(bool popDialog, QWidget* parent)
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint | Qt::Dialog);
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
+#if defined(Q_OS_LINUX)
+    if (!QX11Info::isPlatformX11() || QX11Info::display() == nullptr) {
+        setAttribute(Qt::WA_ShowWithoutActivating, true);
+    }
+#endif
 
     initUI();
 }
 
+FramelessDialog::FramelessDialog(QWidget* parent)
+    : FramelessDialog(true, parent)
+{
+}
+
 FramelessDialog::~FramelessDialog() = default;
+
+void FramelessDialog::showEvent(QShowEvent* e)
+{
+    QDialog::showEvent(e);
+#if defined(Q_OS_LINUX)
+    if (QX11Info::isPlatformX11() && QX11Info::display() != nullptr) return;
+    if (m_centeredOnce) return;
+    m_centeredOnce = true;
+
+    QPointer<FramelessDialog> self(this);
+    QTimer::singleShot(0, this, [self]() {
+        if (!self) return;
+
+        QWidget* parent = self->parentWidget();
+        QWidget* parentWindowWidget = parent ? parent->window() : nullptr;
+
+        QWindow* parentWindowHandle = parentWindowWidget ? parentWindowWidget->windowHandle() : nullptr;
+        if (QWindow* handle = self->windowHandle()) {
+            if (parentWindowHandle) {
+                handle->setTransientParent(parentWindowHandle);
+            }
+        }
+
+        QRect refRect;
+        if (parentWindowWidget) {
+            refRect = parentWindowWidget->frameGeometry();
+        } else if (self->screen()) {
+            refRect = self->screen()->availableGeometry();
+        } else if (QGuiApplication::primaryScreen()) {
+            refRect = QGuiApplication::primaryScreen()->availableGeometry();
+        }
+
+        if (!refRect.isValid()) return;
+
+        QSize dialogSize = self->frameGeometry().size();
+        if (dialogSize.isEmpty()) dialogSize = self->size();
+        if (dialogSize.isEmpty()) dialogSize = self->sizeHint();
+        if (dialogSize.isEmpty()) return;
+
+        const QPoint target = refRect.center() - QPoint(dialogSize.width() / 2, dialogSize.height() / 2);
+        if (QWindow* handle = self->windowHandle()) {
+            handle->setPosition(target);
+        } else {
+            self->move(target);
+        }
+    });
+#endif
+}
 
 void FramelessDialog::initUI()
 {

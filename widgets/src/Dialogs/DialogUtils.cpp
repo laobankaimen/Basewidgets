@@ -164,7 +164,7 @@ private:
 
 QString DialogUtils::openFile(QWidget* parent, const QString& title, const QString& initialDir, const QString& filter)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("打开文件") : title);
     auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFile);
     widget->setProperty("msgContent", QVariant(true));
@@ -182,7 +182,7 @@ QString DialogUtils::openFile(QWidget* parent, const QString& title, const QStri
 
 QStringList DialogUtils::openFiles(QWidget* parent, const QString& title, const QString& initialDir, const QString& filter)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择文件") : title);
     auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFiles);
     widget->setProperty("msgContent", QVariant(true));
@@ -200,7 +200,7 @@ QStringList DialogUtils::openFiles(QWidget* parent, const QString& title, const 
 
 QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QString& initialDir, const QString& filter)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("保存文件") : title);
     auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFiles);
     widget->setProperty("msgContent", QVariant(true));
@@ -218,7 +218,7 @@ QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QStri
 
 QString DialogUtils::openDirectory(QWidget* parent, const QString& title, const QString& initialDir)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择文件夹") : title);
     auto* widget = new FilePickerWidget(&dlg, initialDir, QString(), FilePickerWidget::OpenDirectory);
     widget->setProperty("msgContent", QVariant(true));
@@ -239,7 +239,7 @@ QColor DialogUtils::pickColor(QWidget* parent, const QColor& initial, const QStr
     // If initial color is not provided (invalid), use the last picked color from library memory.
     // If initial is valid, use it (but don't update global memory until confirmed).
     QColor effectiveInitial = initial.isValid() ? initial : s_lastPickedColor;
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择颜色") : title);
     auto* widget = new ColorPickerWidget(&dlg, effectiveInitial);
     widget->setProperty("msgContent", QVariant(true));
@@ -259,7 +259,7 @@ QColor DialogUtils::pickColor(QWidget* parent, const QColor& initial, const QStr
 
 QFont DialogUtils::pickFont(QWidget* parent, const QFont& initial, bool* okOut, const QString& title)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择字体") : title);
     QFontDialog* fd = new QFontDialog(initial, &dlg);
     fd->setProperty("msgContent", QVariant(true));
@@ -279,7 +279,7 @@ QFont DialogUtils::pickFont(QWidget* parent, const QFont& initial, bool* okOut, 
 
 void DialogUtils::messageInfo(QWidget* parent, const QString& title, const QString& text)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
@@ -303,7 +303,7 @@ void DialogUtils::messageInfo(QWidget* parent, const QString& title, const QStri
 
 void DialogUtils::messageWarning(QWidget* parent, const QString& title, const QString& text)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
@@ -328,7 +328,7 @@ void DialogUtils::messageWarning(QWidget* parent, const QString& title, const QS
 
 void DialogUtils::messageError(QWidget* parent, const QString& title, const QString& text)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
@@ -352,7 +352,7 @@ void DialogUtils::messageError(QWidget* parent, const QString& title, const QStr
 
 void DialogUtils::messageSuccess(QWidget* parent, const QString& title, const QString& text)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
@@ -376,7 +376,7 @@ void DialogUtils::messageSuccess(QWidget* parent, const QString& title, const QS
 
 bool DialogUtils::askQuestion(QWidget* parent, const QString& title, const QString& text)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
@@ -401,7 +401,7 @@ bool DialogUtils::askQuestion(QWidget* parent, const QString& title, const QStri
 
 QString DialogUtils::inputText(QWidget* parent, const QString& title, const QString& label, const QString& text)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
     QWidget* body = new QWidget(&dlg);
@@ -424,7 +424,7 @@ QString DialogUtils::inputText(QWidget* parent, const QString& title, const QStr
 
 int DialogUtils::inputInt(QWidget* parent, const QString& title, const QString& label, int value, int min, int max, int step)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
     QWidget* body = new QWidget(&dlg);
@@ -450,7 +450,7 @@ int DialogUtils::inputInt(QWidget* parent, const QString& title, const QString& 
 
 double DialogUtils::inputDouble(QWidget* parent, const QString& title, const QString& label, double value, double min, double max, int decimals)
 {
-    FramelessDialog dlg(parent);
+    FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
     QWidget* body = new QWidget(&dlg);
