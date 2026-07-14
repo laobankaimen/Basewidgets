@@ -5,6 +5,8 @@ project(widgets_demo)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
 
+# `widgets_demo` 用于仓库内联编调试，直接链接源码树中的 `BaseWidgets`。
+# 安装包/发布包的外部消费方式请参考 `examples/package_consumer`。
 add_executable(widgets_demo
     main.cpp
     pages/PagedTablePage.cpp

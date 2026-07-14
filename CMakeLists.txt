@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(QtAdvancedUI LANGUAGES CXX)
+project(QtAdvancedUI VERSION 1.0.1 LANGUAGES CXX)
 
 # Global C++ standard and Qt auto tools
 set(CMAKE_CXX_STANDARD 14)
@@ -12,6 +12,8 @@ set(CMAKE_AUTOUIC ON)
 # Options
 option(ACSS_BUILD_STATIC "Build ACSS as static library" OFF)
 option(UI_BUILD_EXAMPLES "Build Qt Advanced UI examples" ON)
+option(UI_ENABLE_PLUGIN_RELEASE "Enable legacy plugin release workflow" OFF)
+option(UI_ENABLE_CPACK "Enable CPack packaging targets" ON)
 
 # MSVC UTF-8 source encoding
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
@@ -21,7 +23,7 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Svg)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Svg)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include(package/npm)
+include(package/package)
 
 # Subdirectories
 add_subdirectory(widgets)

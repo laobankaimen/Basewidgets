@@ -72,6 +72,79 @@ cmake --build build --config Release --target widgets_demo -j 8
 
 若需调试版本，将 `Release` 替换为 `Debug` 即可。
 
+## 打包与安装
+
+- 项目默认打包链使用纯 `CMake/CPack`，不依赖 Node.js。
+- 仓库同时保留 `cmake/package/` 下的 JS/模板文件，供外部 Node 打包工具复用；它们不是默认 CMake 构建的硬依赖。
+- 生成安装树：
+
+```bash
+cmake --build build --target package_dir -j 8
+```
+
+- 按组件生成安装树：
+
+```bash
+cmake --build build --target package_runtime_dir -j 8
+cmake --build build --target package_development_dir -j 8
+cmake --build build --target package_assets_dir -j 8
+```
+
+- 也可以直接使用原生组件安装命令：
+
+```bash
+cmake --install build --prefix build/package/install-runtime --component Runtime
+cmake --install build --prefix build/package/install-development --component Development
+cmake --install build --prefix build/package/install-assets --component Assets
+```
+
+- 生成压缩包（ZIP/TGZ）：
+
+```bash
+cmake --build build --target package -j 8
+```
+
+- 默认输出目录：
+  - 安装树：`build/package/install/`
+  - 压缩包：`build/package/`
+- 安装树中会导出标准 CMake 包配置，供其他项目通过 `find_package(BaseWidgets CONFIG REQUIRED)` 直接引用。
+- 安装组件约定：
+  - `Runtime`：库文件与运行时二进制
+  - `Development`：头文件、CMake 配置、导出 targets、README
+  - `Assets`：`themes.rcc` 等主题资源
+- 可通过以下缓存变量自定义压缩包文件名：
+  - `BASEWIDGETS_PACKAGE_FILE_BASENAME`
+  - `BASEWIDGETS_PACKAGE_FILE_VERSION`
+  - `BASEWIDGETS_PACKAGE_PLATFORM_NAME`
+  - `BASEWIDGETS_CPACK_GENERATORS`
+- 如需启用历史遗留的 plugin release 流程，可在配置时显式传入：
+
+```bash
+cmake -S . -B build -DUI_ENABLE_PLUGIN_RELEASE=ON
+```
+
+### 作为 CMake 包使用
+
+```cmake
+find_package(BaseWidgets CONFIG REQUIRED)
+target_link_libraries(YourApp PRIVATE BaseWidgets::BaseWidgets)
+```
+
+- 如果使用本地安装树，可在配置时追加：
+
+```bash
+cmake -S . -B build-app -DCMAKE_PREFIX_PATH=/path/to/basewidgets/build/package/install
+```
+
+- 仓库提供了一个独立的外部消费示例：
+  - [package_consumer](file:///home/harry/Git/basewidgets/examples/package_consumer)
+
+```bash
+cmake -S examples/package_consumer -B build/package_consumer \
+  -DCMAKE_PREFIX_PATH=/path/to/basewidgets/build/package/install
+cmake --build build/package_consumer -j 8
+```
+
 ## 开发指南
 
 ### 仪表盘 (Gauges)
@@ -89,6 +162,9 @@ cmake --build build --config Release --target widgets_demo -j 8
 项目使用自定义的样式引擎加载 `themes.rcc` 资源包。
 - 若需修改主题（颜色、图标），请在 `tools/theme_builder/styles/themes/` 中修改对应文件。
 - 修改后需通过 `theme_builder` 工具或相关构建流程重新生成资源文件。
+- 运行时默认会从应用目录下查找 `themes.rcc`，CMake 打包链的规范资源目录为 `widgets/assets/`。
+- Node 打包链也以 `widgets/assets/` 为唯一资源输入目录。
+- `StyleManagerAdapter::initialize()` 的第一个参数表示样式目录 `stylesDir`；若留空则默认使用应用目录下的 `styles/`，并回退查找应用目录中的 `themes.rcc`。
 
 ## 硬规则（长期架构约束）
 

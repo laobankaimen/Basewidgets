@@ -514,7 +514,7 @@ void ColorPickerWidget::setupUi(const QColor& initial)
     btnAdd->setAutoRaise(true);
     // Make button larger and text larger
     btnAdd->setFixedSize(30, 30);
-    btnAdd->setIcon(QIcon("icon:buttons/square_plus.svg"));
+    btnAdd->setIcon(QIcon("bwicon:buttons/square_plus.svg"));
     btnAdd->setProperty("iconOnly", QVariant(true));
     recentLblRow->addWidget(btnAdd);
     

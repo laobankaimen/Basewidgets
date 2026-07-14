@@ -104,7 +104,7 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     auto createNavBtn = [this](const QString& text, const QString& iconName) {
         Q_UNUSED(text);
         QToolButton* btn = new QToolButton(this);
-        btn->setIcon(QIcon(QString("icon:buttons/%1.svg").arg(iconName)));
+        btn->setIcon(QIcon(QString("bwicon:buttons/%1.svg").arg(iconName)));
         btn->setAutoRaise(true);
         btn->setProperty("iconOnly", QVariant(true));
         return btn;
@@ -324,11 +324,11 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
         if (checked) { // Grid
             m_viewStack->setCurrentWidget(m_iconView);
             m_isGrid = true;
-            btnViewMode->setIcon(QIcon(QString("icon:buttons/table_cells_large.svg")));
+            btnViewMode->setIcon(QIcon(QString("bwicon:buttons/table_cells_large.svg")));
         } else { // List
             m_viewStack->setCurrentWidget(m_treeView);
             m_isGrid = false;
-            btnViewMode->setIcon(QIcon(QString("icon:buttons/table_list.svg")));
+            btnViewMode->setIcon(QIcon(QString("bwicon:buttons/table_list.svg")));
         }
     });
 

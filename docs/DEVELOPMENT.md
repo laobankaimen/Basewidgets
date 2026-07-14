@@ -50,10 +50,17 @@
 
 #### 步骤 1：引入库
 
-将 `widgets` 目录集成到你的 CMake 项目中。你可以在你的 `CMakeLists.txt` 中添加：
+推荐优先使用安装树或发布包中的标准 CMake 包配置：
 
 ```cmake
-add_subdirectory(path/to/BaseWidgets/widgets)
+find_package(BaseWidgets CONFIG REQUIRED)
+target_link_libraries(YourApp PRIVATE BaseWidgets::BaseWidgets)
+```
+
+如果你在同一工作区联编，也可以继续使用：
+
+```cmake
+add_subdirectory(path/to/basewidgets/widgets)
 target_link_libraries(YourApp PRIVATE BaseWidgets)
 ```
 
@@ -63,25 +70,18 @@ target_link_libraries(YourApp PRIVATE BaseWidgets)
 
 ```cpp
 #include <QApplication>
-#include <QtAdvancedUI/Styles/QtAdvancedStylesheet.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    basewidgets::StyleManagerAdapter::EnableHighDpi();
 
-    // 获取样式管理器实例
-    auto styleManager = acss::QtAdvancedStylesheet::getInstance();
-    
-    // 加载默认主题 (确保 themes.rcc 在可执行文件路径下或指定路径)
-    // 这里的 themes.rcc 通常位于 widgets/asserts/themes.rcc
-    styleManager->loadTheme("themes.rcc");
-    
-    // 设置为暗色主题
-    styleManager->setTheme("dark");
+    QApplication app(argc, argv);
+    basewidgets::StyleManagerAdapter::initialize();
 
     // ... 创建你的主窗口 ...
-    
-    return a.exec();
+
+    return app.exec();
 }
 ```
 
@@ -101,12 +101,11 @@ int main(int argc, char *argv[])
 
 **代码示例**:
 ```cpp
-// 切换到浅色主题
-acss::QtAdvancedStylesheet::getInstance()->setTheme("light");
+auto* styleManager = basewidgets::StyleManagerAdapter::instance();
+styleManager->setCurrentTheme("light");
 
-// 监听样式变化（例如在自定义控件中重绘）
-connect(acss::QtAdvancedStylesheet::getInstance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this](){
-    update(); // 触发重绘
+connect(styleManager, &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this]() {
+    update();
 });
 ```
 
@@ -126,7 +125,7 @@ connect(acss::QtAdvancedStylesheet::getInstance(), &acss::QtAdvancedStylesheet::
 
 **代码示例**:
 ```cpp
-#include <QtAdvancedUI/Gauges/CircularGauge.h>
+#include <basewidgets/Gauges/CircularGauge.h>
 
 auto gauge = new basewidgets::CircularGauge(this);
 gauge->setTitle("CPU 温度");
@@ -160,7 +159,7 @@ layout->addWidget(gauge);
 
 **代码示例**:
 ```cpp
-#include <QtAdvancedUI/Views/AdvancedTable.h>
+#include <basewidgets/Views/AdvancedTable.h>
 #include <QStandardItemModel>
 
 // 准备数据模型
@@ -188,7 +187,7 @@ layout->addWidget(table);
 
 **代码示例**:
 ```cpp
-#include <QtAdvancedUI/Dialogs/FilePicker.h>
+#include <basewidgets/Dialogs/FilePicker.h>
 
 // 模式：OpenFile, OpenFiles, SaveFile, OpenDirectory
 auto picker = new basewidgets::FilePickerWidget(this, "C:/", "", basewidgets::FilePickerWidget::OpenFile);
@@ -206,7 +205,7 @@ QString path = picker->selectedPath();
 
 **代码示例**:
 ```cpp
-#include <QtAdvancedUI/Dialogs/ColorPicker.h>
+#include <basewidgets/Dialogs/ColorPicker.h>
 
 auto colorPicker = new basewidgets::ColorPickerWidget(this, Qt::blue);
 
@@ -225,7 +224,7 @@ connect(colorPicker, &basewidgets::ColorPickerWidget::colorChanged, [](const QCo
 
 **代码示例**:
 ```cpp
-#include <QtAdvancedUI/Charts/QCPLineChart.h>
+#include <basewidgets/Charts/QCPLineChart.h>
 
 // 创建图表
 auto chart = new basewidgets::QCPLineChart(xAxis, yAxis);
@@ -247,7 +246,7 @@ chart->installThemeSync(customPlotWidget);
         *   `Views/`: 数据视图（表格、树）。
         *   `Charts/`: 图表控件。
     *   `src/`: 具体的 `.cpp` 实现文件。
-    *   `asserts/`: 包含编译好的资源文件 `themes.rcc`。
+    *   `assets/`: 统一的资源目录，包含编译好的 `themes.rcc`；CMake/CPack 与 Node 打包链都只以该目录为输入。
 *   **`examples/`**: 示例代码，初学者可以参考 `widgets_demo` 中的用法。
 *   **`tools/theme_builder/`**: 主题生成工具，如果你需要自定义颜色或图标，可以使用此工具重新生成 `themes.rcc`。
 
@@ -260,4 +259,121 @@ A: 请确保 `themes.rcc` 文件位于可执行程序的运行目录下。样式
 A: 你需要使用 `tools/theme_builder` 工具，修改 `styles/themes/` 下的 XML 配置文件，然后重新运行生成脚本得到新的 `themes.rcc`。
 
 **Q: 编译时提示找不到头文件？**
-A: 请确保在 CMake 中正确链接了 `QtAdvancedUI` 目标。例如：`target_link_libraries(MyApp PRIVATE QtAdvancedUI)`。
+A: 请确保在 CMake 中正确链接了 `BaseWidgets` 或 `BaseWidgets::BaseWidgets` 目标，并把安装树加入 `CMAKE_PREFIX_PATH`。
+
+## 7. CMake 打包原理
+
+### 7.1 总体思路
+
+项目当前默认发布链使用纯 `CMake/CPack`，不再把 Node.js 作为 C++ 工程构建和发布的前置依赖。打包链分为三层：
+
+*   **安装规则 (`install()`)**：定义库文件、头文件、资源文件、README 进入安装树的路径。
+*   **包配置导出 (`install(EXPORT)` + `BaseWidgetsConfig.cmake`)**：让外部项目可以通过 `find_package(BaseWidgets CONFIG REQUIRED)` 发现并链接本库。
+*   **归档打包 (`CPack`)**：基于安装树生成 `.zip` / `.tar.gz` 等发布包。
+
+同时，仓库仍保留 `cmake/package/` 下的 JS、模板和 `rule.json`，用于对接外部 Node 打包工具。这条链路是兼容入口，不参与默认 CMake 打包目标。
+
+### 7.2 安装树内容
+
+执行 `cmake --build build --target package_dir` 后，CMake 会调用：
+
+```bash
+cmake --install build --prefix build/package/install
+```
+
+安装树中包含：
+
+*   `lib/`：动态库或静态库。
+*   `interface/`：公开头文件根目录，供 `#include <basewidgets/...>` 使用。
+*   `assets/`：主题资源，如 `themes.rcc`。
+*   `lib/cmake/BaseWidgets/`：`BaseWidgetsConfig.cmake`、版本文件和导出的 targets 文件。
+
+当前安装规则按组件拆分为：
+
+*   `Runtime`：库文件与运行时二进制。
+*   `Development`：头文件、README、`BaseWidgetsConfig.cmake`、`BaseWidgetsTargets.cmake`。
+*   `Assets`：主题资源目录和 `themes.rcc`。
+
+因此除了完整安装树外，还可以单独执行：
+
+```bash
+cmake --build build --target package_runtime_dir
+cmake --build build --target package_development_dir
+cmake --build build --target package_assets_dir
+```
+
+这些自定义目标本质上只是对原生组件安装命令的封装，因此也可以直接使用：
+
+```bash
+cmake --install build --prefix build/package/install-runtime --component Runtime
+cmake --install build --prefix build/package/install-development --component Development
+cmake --install build --prefix build/package/install-assets --component Assets
+```
+
+### 7.3 导出目标机制
+
+核心做法如下：
+
+*   `install(TARGETS BaseWidgets EXPORT BaseWidgetsTargets ...)`
+*   `install(EXPORT BaseWidgetsTargets NAMESPACE BaseWidgets:: ...)`
+*   `configure_package_config_file(...)`
+*   `write_basic_package_version_file(...)`
+
+这样外部项目只需要：
+
+```cmake
+find_package(BaseWidgets CONFIG REQUIRED)
+target_link_libraries(YourApp PRIVATE BaseWidgets::BaseWidgets)
+```
+
+### 7.4 CPack 生成压缩包
+
+执行 `cmake --build build --target package` 时，`CPack` 会基于安装规则生成发布包，而不是直接拷贝构建目录。这样可以保证：
+
+*   发布内容和安装内容保持一致。
+*   不把临时构建文件、对象文件、IDE 配置误打进包里。
+*   Windows/Linux 的包格式可以统一通过 CPack 配置管理。
+
+压缩包文件名支持通过缓存变量自定义：
+
+*   `BASEWIDGETS_PACKAGE_FILE_BASENAME`
+*   `BASEWIDGETS_PACKAGE_FILE_VERSION`
+*   `BASEWIDGETS_PACKAGE_PLATFORM_NAME`
+*   `BASEWIDGETS_CPACK_GENERATORS`
+
+例如：
+
+```bash
+cmake -S . -B build \
+  -DBASEWIDGETS_PACKAGE_FILE_BASENAME=basewidgets-sdk \
+  -DBASEWIDGETS_PACKAGE_PLATFORM_NAME=linux-x64 \
+  -DBASEWIDGETS_CPACK_GENERATORS=ZIP
+```
+
+### 7.5 外部消费示例
+
+仓库中的 [package_consumer](file:///home/harry/Git/basewidgets/examples/package_consumer) 用于演示安装包的真实接入方式。它不会加入默认的仓库内联编，而是模拟外部项目单独配置：
+
+```bash
+cmake -S examples/package_consumer -B build/package_consumer \
+  -DCMAKE_PREFIX_PATH=/path/to/basewidgets/build/package/install
+cmake --build build/package_consumer
+```
+
+该示例的核心写法只有两句：
+
+```cmake
+find_package(BaseWidgets CONFIG REQUIRED)
+target_link_libraries(package_consumer_demo PRIVATE BaseWidgets::BaseWidgets)
+```
+
+与之对应，仓库内的 [widgets_demo](file:///home/harry/Git/basewidgets/examples/widgets_demo) 仍然保留为开发态联编示例，直接链接源码树中的 `BaseWidgets` 目标，用于组件开发和调试阶段快速验证。
+
+### 7.6 历史发布流程
+
+仓库中仍保留了两类兼容发布入口：
+
+*   legacy plugin release 流程，默认关闭，仅在显式设置 `-DUI_ENABLE_PLUGIN_RELEASE=ON` 时启用。
+*   `cmake/package/` 下的 Node 打包辅助脚本，供外部工具链消费。
+
+标准组件库发布应优先使用当前的 `install()/CPack` 路径；兼容入口需要保留，但不应作为默认主流程。

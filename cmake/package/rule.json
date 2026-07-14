@@ -35,9 +35,18 @@
     {
       "source": "widgets/interface",
       "dest": "."
+    },
+    {
+      "source": "widgets/assets",
+      "dest": "."
     }
   ],
-  "installResources": [],
+  "installResources": [
+    {
+      "source": "assets",
+      "dest": "."
+    }
+  ],
   "cmakeDefines": [],
   "cmakePrefixPaths": {
     "debug": [],

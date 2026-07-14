@@ -311,7 +311,7 @@ function copyFileResource(destPath, res) {
 }
 
 /**
- * 拷贝目录类型资源（asserts、include 等）
+ * 拷贝目录类型资源（assets、include 等）
  * @param {string} destPath - 目标根目录
  * @param {object} res - 资源配置项
  * @returns {number} 拷贝的文件数
@@ -458,7 +458,7 @@ function main() {
         console.log(`  完成: 共拷贝 ${totalCount} 个资源到 ${destPath}`);
     }
 
-    // 插件特殊处理：将动态库和 asserts 内容拷贝到 DEST_DIR/plugins/$PLUGIN_ID/
+    // 插件特殊处理：将动态库和资源目录内容拷贝到 DEST_DIR/plugins/$PLUGIN_ID/
     if (isPlugin) {
         const pluginId = pkgJson.plugin.id;
         const pluginDestDir = path.join(destPath, 'plugins', pluginId);
@@ -479,12 +479,12 @@ function main() {
             }
         }
 
-        // 拷贝 asserts 目录内容到插件目录
-        const assertsDir = path.join(packageRoot, 'asserts');
-        if (fs.existsSync(assertsDir) && fs.statSync(assertsDir).isDirectory()) {
-            const count = copyDirectoryContent(assertsDir, pluginDestDir);
+        // 资源统一从 assets 目录拷贝到插件安装目录。
+        const assetsDir = path.join(packageRoot, 'assets');
+        if (fs.existsSync(assetsDir) && fs.statSync(assetsDir).isDirectory()) {
+            const count = copyDirectoryContent(assetsDir, pluginDestDir);
             if (count > 0) {
-                console.log(`  插件资源: 拷贝 ${count} 个 asserts 文件到 ${pluginDestDir}`);
+                console.log(`  插件资源: 拷贝 ${count} 个 assets 文件到 ${pluginDestDir}`);
             }
         }
 

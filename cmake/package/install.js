@@ -200,8 +200,8 @@ function generateFilesList(resources) {
         } else {
             // 非flat：目录整体拷贝或单个文件
             const source = res.source;
-            if (source.includes('asserts')) {
-                files.push('asserts/');
+            if (source.includes('assets')) {
+                files.push('assets/');
             } else if (source.includes('include')) {
                 files.push('include/');
             } else if (source.includes('README.md')) {
@@ -325,13 +325,13 @@ for (const res of resources) {
         copyFileIfNeeded(srcPath, destPath);
     } else if (res.flat) {
         // 模式3：目录内容拷贝（flat）
-        // source: "asserts"  dest: "dir2"  flat: true  →  $ROOT/asserts/* → $DEST/dir2/
+        // source: "assets"  dest: "dir2"  flat: true  →  $ROOT/assets/* → $DEST/dir2/
         const isTemplate = srcPath.includes('template');
         copyDir(srcPath, destPath, isTemplate ? rule.package : null, resources, rawTargets, installResources, pluginConfig);
     } else {
         // 模式2：目录整体拷贝
-        // source: "asserts"  dest: "."  →  $ROOT/asserts → $DEST/asserts/
-        // source: "asserts"  dest: "dir2"  →  $ROOT/asserts → $DEST/dir2/asserts/
+        // source: "assets"  dest: "."  →  $ROOT/assets → $DEST/assets/
+        // source: "assets"  dest: "dir2"  →  $ROOT/assets → $DEST/dir2/assets/
         const dirName = path.basename(srcPath);
         const isTemplate = srcPath.includes('template');
         copyDir(srcPath, path.join(destPath, dirName), isTemplate ? rule.package : null, resources, rawTargets, installResources, pluginConfig);
@@ -530,7 +530,7 @@ if (rule.isPlugin && rule.pluginId) {
         GroupInstance: groupIds.map(id => ({ GroupId: id }))
     };
 
-    const manifestDir = path.join(outputDir, 'asserts');
+    const manifestDir = path.join(outputDir, 'assets');
     ensureDir(manifestDir);
     const manifestPath = path.join(manifestDir, 'manifest.json');
     const manifestContent = JSON.stringify(manifest, null, '\t') + '\n';
@@ -552,7 +552,7 @@ if (rule.isPlugin && rule.pluginId) {
             if (!hasManifestRes) {
                 generatedPkg.resources.push({
                     type: 'file',
-                    source: 'asserts/manifest.json',
+                    source: 'assets/manifest.json',
                     dest: manifestResDest
                 });
             }

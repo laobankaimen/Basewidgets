@@ -114,6 +114,9 @@ set(UI_SOURCES
     src/Containers/StatusBar.cpp
     src/Containers/ToolBox.cpp
     src/Dialogs/DialogUtils.cpp
+    src/Dialogs/DialogUtilsFont.cpp
+    src/Dialogs/DialogUtilsInput.cpp
+    src/Dialogs/DialogUtilsMessage.cpp
     src/Dialogs/ColorPicker.cpp
     src/Dialogs/FontPicker.cpp
     src/Dialogs/FilePicker.cpp
@@ -141,6 +144,7 @@ add_library(BaseWidgets SHARED
     ${UI_PUBLIC_HEADERS}
     ${UI_SOURCES}
 )
+add_library(BaseWidgets::BaseWidgets ALIAS BaseWidgets)
 
 # Export macro
 target_compile_definitions(BaseWidgets PRIVATE QTADVANCED_UI_BUILD)
@@ -179,23 +183,45 @@ if(MSVC)
     target_compile_options(BaseWidgets PRIVATE /FS)
 endif()
 
+set(BASEWIDGETS_RESOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+
 # 确保 themes.rcc 复制到可执行目录
 add_custom_command(TARGET BaseWidgets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-    ${CMAKE_CURRENT_SOURCE_DIR}/asserts/themes.rcc
+    ${BASEWIDGETS_RESOURCE_DIR}/themes.rcc
     $<TARGET_FILE_DIR:BaseWidgets>
 )
 
 # Install rules
-set(CMAKE_INSTALL_PATH ${CMAKE_BINARY_DIR}/bin)
-install(DIRECTORY asserts/ DESTINATION ${CMAKE_INSTALL_PATH})
-install(TARGETS BaseWidgets DESTINATION ${CMAKE_INSTALL_PATH})
-install(DIRECTORY interface/basewidgets DESTINATION ${CMAKE_INSTALL_PATH}/interface)
-#适配com.plugin.releases
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(plugin_framework_release)
-PF_PUBLISH_FLOW_BEGIN(ENABLE_AUTO_BUILD)
-if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
-    PF_PUBLISH_Target("BaseWidgets")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+    install(DIRECTORY assets/
+        DESTINATION assets
+        COMPONENT ${BASEWIDGETS_COMPONENT_ASSETS}
+    )
 endif()
+install(TARGETS BaseWidgets
+    EXPORT BaseWidgetsTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${BASEWIDGETS_COMPONENT_RUNTIME}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${BASEWIDGETS_COMPONENT_RUNTIME}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${BASEWIDGETS_COMPONENT_DEVELOPMENT}
+)
+install(DIRECTORY interface/basewidgets
+    DESTINATION interface
+    COMPONENT ${BASEWIDGETS_COMPONENT_DEVELOPMENT}
+)
+install(EXPORT BaseWidgetsTargets
+    FILE BaseWidgetsTargets.cmake
+    NAMESPACE BaseWidgets::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BaseWidgets
+    COMPONENT ${BASEWIDGETS_COMPONENT_DEVELOPMENT}
+)
 
+# 兼容旧发布流程；默认关闭，避免依赖外部发布仓库/脚本。
+if(UI_ENABLE_PLUGIN_RELEASE)
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+    include(plugin_framework_release)
+    PF_PUBLISH_FLOW_BEGIN(ENABLE_AUTO_BUILD)
+    if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+        PF_PUBLISH_Target("BaseWidgets")
+    endif()
+endif()

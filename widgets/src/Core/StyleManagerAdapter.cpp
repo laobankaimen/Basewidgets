@@ -17,6 +17,36 @@ namespace basewidgets {
 acss::QtAdvancedStylesheet* StyleManagerAdapter::s_instance = nullptr;
 static QMetaObject::Connection s_stylesheetConnection;
 
+namespace {
+
+QString preferredOutputDir()
+{
+    QString outputDir = QApplication::applicationDirPath();
+    if (!QFileInfo(outputDir).isWritable()) {
+        outputDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    }
+    if (!outputDir.isEmpty()) {
+        QDir().mkpath(outputDir);
+    }
+    return outputDir;
+}
+
+bool shouldForceFusionStyle()
+{
+#ifdef Q_OS_LINUX
+    if (!qEnvironmentVariableIsSet("BASEWIDGETS_FORCE_FUSION")) {
+        return true;
+    }
+
+    const QByteArray value = qgetenv("BASEWIDGETS_FORCE_FUSION").trimmed().toLower();
+    return !(value == "0" || value == "false" || value == "off" || value == "no");
+#else
+    return false;
+#endif
+}
+
+} // namespace
+
 void StyleManagerAdapter::EnableHighDpi() {
     /***
      * 启用高分屏支持。
@@ -65,12 +95,8 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
 
     if (!resolvedStylesDir.isEmpty()) {
         s_instance->setStylesDirPath(resolvedStylesDir);
-        QString outputDir = QApplication::applicationDirPath();
-        if (!QFileInfo(outputDir).isWritable()) {
-            outputDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-        }
+        const QString outputDir = preferredOutputDir();
         if (!outputDir.isEmpty()) {
-            QDir().mkpath(outputDir);
             s_instance->setOutputDirPath(outputDir);
         }
 
@@ -115,9 +141,11 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
     QApplication::setWindowIcon(s_instance->styleIcon());
 
     #ifdef Q_OS_LINUX
-    //qApp->setStyle(QStyleFactory::create("Fusion"));
-    //在linux强制保持统一风格，防止被GTK样式覆盖
-    QApplication::setStyle("Fusion");
+    // 默认继续保持统一 Fusion 风格；如宿主不希望被覆盖，可设置
+    // BASEWIDGETS_FORCE_FUSION=0/false/off/no 来关闭。
+    if (shouldForceFusionStyle()) {
+        QApplication::setStyle("Fusion");
+    }
     #endif
     qApp->setStyleSheet(s_instance->styleSheet());
 
@@ -147,9 +175,10 @@ void StyleManagerAdapter::initialBuilder(const QString &stylesDir) {
 
     if (!resolvedStylesDir.isEmpty()) {
         s_instance->setStylesDirPath(resolvedStylesDir);
-        // Default output to application directory as requested
-        // Generated files will be in <AppDir>/<StyleName>/<ThemeName>
-        s_instance->setOutputDirPath(QApplication::applicationDirPath());
+        const QString outputDir = preferredOutputDir();
+        if (!outputDir.isEmpty()) {
+            s_instance->setOutputDirPath(outputDir);
+        }
     }
     s_instance->setCurrentStyle("themes");
 

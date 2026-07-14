@@ -1077,8 +1077,8 @@ int main(int argc, char *argv[])
     StyleManagerAdapter::EnableHighDpi();
 
     QApplication app(argc, argv);
-    // 初始化样式管理器
-    StyleManagerAdapter::initialize("theme/");//不设置则在当前目录读取
+    // 初始化样式管理器；不传 stylesDir 时会默认查找应用目录下的 styles/ 与 themes.rcc
+    StyleManagerAdapter::initialize();
 
     // 创建主窗口（使用基于 QWidget 的无边框主界面）
     auto* window = new FramelessWidgetWindow();

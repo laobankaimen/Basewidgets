@@ -851,6 +851,8 @@ bool QtAdvancedStylesheet::setCurrentStyle(const QString& Style)
 		Theme.replace(".xml", "");
 	}
 	auto Result = d->parseStyleJsonFile();
+	QDir::addSearchPath("bwicon", currentStyleOutputPath());
+	// Backward compatibility for previously generated CSS/code that still uses `icon:`.
 	QDir::addSearchPath("icon", currentStyleOutputPath());
 	d->addFonts();
 	emit currentStyleChanged(d->CurrentStyle);
@@ -946,8 +948,10 @@ bool QtAdvancedStylesheet::setCurrentTheme(const QString& Theme)
 	}
 
 	d->CurrentTheme = Theme;
-	// Update icon search path for the new theme output directory
-	QDir::setSearchPaths("icon", {currentStyleOutputPath()});
+	// Keep both schemes alive so stale generated CSS and older code keep working.
+	const QStringList iconSearchPaths = {currentStyleOutputPath()};
+	QDir::setSearchPaths("bwicon", iconSearchPaths);
+	QDir::setSearchPaths("icon", iconSearchPaths);
 	
 	emit currentThemeChanged(d->CurrentTheme);
 	return true;
@@ -969,25 +973,33 @@ bool QtAdvancedStylesheet::updateStylesheet(bool force)
 	auto CssTemplateFileName = d->JsonStyleParam.value("css_template").toString();
 	if (!force && !CssTemplateFileName.isEmpty())
 	{
+		const QString TemplateCssPath = currentStylePath() + "/" + CssTemplateFileName;
 		QString OutputCssName = QFileInfo(CssTemplateFileName).baseName() + ".css";
 		QString OutputCssPath = currentStyleOutputPath() + "/" + OutputCssName;
 		if (QFile::exists(OutputCssPath))
 		{
-			QFile CssFile(OutputCssPath);
-			if (CssFile.open(QIODevice::ReadOnly))
+			const QFileInfo outputCssInfo(OutputCssPath);
+			const QFileInfo templateCssInfo(TemplateCssPath);
+			const bool canReuseCachedCss = !templateCssInfo.exists()
+				|| outputCssInfo.lastModified() >= templateCssInfo.lastModified();
+			if (canReuseCachedCss)
 			{
-				d->Stylesheet = QString::fromUtf8(CssFile.readAll());
-				CssFile.close();
-				
-				// Even if we load the stylesheet, we still need to update the palette
-				// because it's an in-memory application state.
-				updateApplicationPaletteColors();
-				
-				// Resources (SVGs) are assumed to be present in the output directory
-				// since the CSS file exists. We don't regenerate them.
-				
-				emit stylesheetChanged();
-				return true;
+				QFile CssFile(OutputCssPath);
+				if (CssFile.open(QIODevice::ReadOnly))
+				{
+					d->Stylesheet = QString::fromUtf8(CssFile.readAll());
+					CssFile.close();
+					
+					// Even if we load the stylesheet, we still need to update the palette
+					// because it's an in-memory application state.
+					updateApplicationPaletteColors();
+					
+					// Resources (SVGs) are assumed to be present in the output directory
+					// since the CSS file exists. We don't regenerate them.
+					
+					emit stylesheetChanged();
+					return true;
+				}
 			}
 		}
 	}

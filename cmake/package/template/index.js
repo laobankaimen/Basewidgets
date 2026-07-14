@@ -287,9 +287,9 @@ function getIncludePath() {
  * 获取资源文件目录路径
  * @returns {string|null} 资源文件目录的绝对路径，不存在则返回 null
  */
-function getAssertsPath() {
-    const assertsDir = path.join(getPackageRoot(), 'asserts');
-    return fs.existsSync(assertsDir) ? assertsDir : null;
+function getAssetsPath() {
+    const assetsDir = path.join(getPackageRoot(), 'assets');
+    return fs.existsSync(assetsDir) ? assetsDir : null;
 }
 
 /**
@@ -384,7 +384,7 @@ function getPackageInfo(buildType) {
         supportedOS: getSupportedOS(buildType),
         supportedArch: getSupportedArch(buildType),
         includePath: getIncludePath(),
-        assertsPath: getAssertsPath(),
+        assetsPath: getAssetsPath(),
         libPath: {
             release: getLibPath('release'),
             debug: getLibPath('debug')
@@ -405,7 +405,7 @@ export {
     getLibNames,
     getPlatformDirName,
     getIncludePath,
-    getAssertsPath,
+    getAssetsPath,
     isCurrentPlatformSupported,
     getPackageInfo
 };

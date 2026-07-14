@@ -145,6 +145,7 @@ void FramelessDialog::initUI()
     //dialog buttons
     if(isPopDialog) {
         auto btnWidget = new QFrame(this);
+        btnWidget->setProperty("bwDialogFooter", QVariant(true));
         btnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,this);
         btnBox->setObjectName("dialogBtnBox");
         btnBox->setContentsMargins(5,5,5,5);
