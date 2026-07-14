@@ -167,6 +167,7 @@ QString DialogUtils::openFile(QWidget* parent, const QString& title, const QStri
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("打开文件") : title);
     auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFile);
+    widget->setProperty("bwMsgContent", QVariant(true));
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
@@ -185,6 +186,7 @@ QStringList DialogUtils::openFiles(QWidget* parent, const QString& title, const 
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择文件") : title);
     auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFiles);
+    widget->setProperty("bwMsgContent", QVariant(true));
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
@@ -203,6 +205,7 @@ QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QStri
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("保存文件") : title);
     auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFiles);
+    widget->setProperty("bwMsgContent", QVariant(true));
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
@@ -221,6 +224,7 @@ QString DialogUtils::openDirectory(QWidget* parent, const QString& title, const 
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择文件夹") : title);
     auto* widget = new FilePickerWidget(&dlg, initialDir, QString(), FilePickerWidget::OpenDirectory);
+    widget->setProperty("bwMsgContent", QVariant(true));
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
@@ -242,6 +246,7 @@ QColor DialogUtils::pickColor(QWidget* parent, const QColor& initial, const QStr
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择颜色") : title);
     auto* widget = new ColorPickerWidget(&dlg, effectiveInitial);
+    widget->setProperty("bwMsgContent", QVariant(true));
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
@@ -262,6 +267,7 @@ QFont DialogUtils::pickFont(QWidget* parent, const QFont& initial, bool* okOut, 
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("选择字体") : title);
     QFontDialog* fd = new QFontDialog(initial, &dlg);
+    fd->setProperty("bwMsgContent", QVariant(true));
     fd->setProperty("msgContent", QVariant(true));
     fd->setOption(QFontDialog::DontUseNativeDialog, true);
     fd->setOption(QFontDialog::NoButtons, true); // 仅保留外部统一按钮
@@ -283,6 +289,7 @@ void DialogUtils::messageInfo(QWidget* parent, const QString& title, const QStri
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
+    body->setProperty("bwMsgContent", QVariant(true));
     body->setProperty("msgContent", QVariant(true));
     auto* h = new QHBoxLayout(body);
     h->setContentsMargins(0, 0, 0, 0);
@@ -307,6 +314,7 @@ void DialogUtils::messageWarning(QWidget* parent, const QString& title, const QS
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
+    body->setProperty("bwMsgContent", QVariant(true));
     body->setProperty("msgContent", QVariant(true));
     auto* h = new QHBoxLayout(body);
     h->setContentsMargins(0, 0, 0, 0);
@@ -332,6 +340,7 @@ void DialogUtils::messageError(QWidget* parent, const QString& title, const QStr
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
+    body->setProperty("bwMsgContent", QVariant(true));
     body->setProperty("msgContent", QVariant(true));
     auto* h = new QHBoxLayout(body);
     h->setContentsMargins(0, 0, 0, 0);
@@ -356,6 +365,7 @@ void DialogUtils::messageSuccess(QWidget* parent, const QString& title, const QS
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
+    body->setProperty("bwMsgContent", QVariant(true));
     body->setProperty("msgContent", QVariant(true));
     auto* h = new QHBoxLayout(body);
     h->setContentsMargins(0, 0, 0, 0);
@@ -380,6 +390,7 @@ bool DialogUtils::askQuestion(QWidget* parent, const QString& title, const QStri
     dlg.setTitle(title);
 
     auto* body = new QWidget(&dlg);
+    body->setProperty("bwMsgContent", QVariant(true));
     body->setProperty("msgContent", QVariant(true));
     auto* h = new QHBoxLayout(body);
     h->setContentsMargins(0, 0, 0, 0);
@@ -405,6 +416,7 @@ QString DialogUtils::inputText(QWidget* parent, const QString& title, const QStr
     dlg.setTitle(title);
 
     QWidget* body = new QWidget(&dlg);
+    body->setProperty("bwMsgContent", QVariant(true));
     body->setProperty("msgContent", QVariant(true));
     auto* v = new QVBoxLayout(body);
     v->setContentsMargins(0, 0, 0, 0);
@@ -428,6 +440,7 @@ int DialogUtils::inputInt(QWidget* parent, const QString& title, const QString& 
     dlg.setTitle(title);
 
     QWidget* body = new QWidget(&dlg);
+    body->setProperty("bwMsgContent", QVariant(true));
     body->setProperty("msgContent", QVariant(true));
     auto* v = new QVBoxLayout(body);
     v->setContentsMargins(0, 0, 0, 0);
@@ -454,6 +467,7 @@ double DialogUtils::inputDouble(QWidget* parent, const QString& title, const QSt
     dlg.setTitle(title);
 
     QWidget* body = new QWidget(&dlg);
+    body->setProperty("bwMsgContent", QVariant(true));
     body->setProperty("msgContent", QVariant(true));
     auto* v = new QVBoxLayout(body);
     v->setContentsMargins(0, 0, 0, 0);

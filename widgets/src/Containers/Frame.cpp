@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -37,8 +37,6 @@ void Frame::setStyleManager(acss::QtAdvancedStylesheet* manager)
 void Frame::attachToManager()
 {
     if (!m_manager) return;
-    connect(m_manager, &QtAdvancedStylesheet::stylesheetChanged,
-            this, &Frame::onStylesheetChanged);
 }
 
 void Frame::onStylesheetChanged()
@@ -52,4 +50,3 @@ void Frame::applyStylesheet()
 }
 
 } // namespace basewidgets
-

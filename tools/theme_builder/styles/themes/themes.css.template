@@ -80,7 +80,9 @@ QDialog {
 
 /*弹窗主内容*/
 QWidget[msgContainer='true'],
-QWidget[msgContent='true'] {
+QWidget[bwMsgContainer='true'],
+QWidget[msgContent='true'],
+QWidget[bwMsgContent='true'] {
   background-color: transparent;
 }
 
@@ -1001,13 +1003,15 @@ QWidget[pagination='true'] QPushButton:disabled {
   border-color: {{darkBorderColor|opacity(0.4)}};
 }
 
-QWidget[pagination='true'] QPushButton[primary='true'] {
+QWidget[pagination='true'] QPushButton[primary='true'],
+QWidget[pagination='true'] QPushButton[bwPrimary='true'] {
   color: {{baseBackgroundColor}};
   background-color: {{primaryColor}};
   border-color: {{primaryColor}};
 }
 
-QWidget[pagination='true'] QPushButton[primary='true']:hover {
+QWidget[pagination='true'] QPushButton[primary='true']:hover,
+QWidget[pagination='true'] QPushButton[bwPrimary='true']:hover {
   background-color: {{primaryColor|opacity(0.85)}};
 }
 
@@ -1604,13 +1608,15 @@ QDialogButtonBox QPushButton:hover {
 }
 
 /*主按钮*/
-#dialogBtnBox QPushButton[primary='true'] {
+#dialogBtnBox QPushButton[primary='true'],
+#dialogBtnBox QPushButton[bwPrimary='true'] {
   color: {{primaryTextColor}};
   background-color: {{primaryColor}};
   border: 1px solid {{primaryColor}};
 }
 
-#dialogBtnBox QPushButton[primary='true']:hover {
+#dialogBtnBox QPushButton[primary='true']:hover,
+#dialogBtnBox QPushButton[bwPrimary='true']:hover {
   background-color: {{primaryColor|opacity(0.8)}};
 }
 
@@ -1655,4 +1661,3 @@ QSizeGrip {
 #Navigation QScrollBar:vertical {
   width: 0px;
 }
-

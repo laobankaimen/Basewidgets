@@ -133,6 +133,7 @@ void FramelessDialog::initUI()
 
     // Content host
     m_contentHost = new QWidget(this);
+    m_contentHost->setProperty("bwMsgContainer", QVariant(true));
     m_contentHost->setProperty("msgContainer", QVariant(true));
 
     // Main layout
@@ -149,6 +150,7 @@ void FramelessDialog::initUI()
         btnBox->setContentsMargins(5,5,5,5);
         if (auto* okBtn = btnBox->button(QDialogButtonBox::Ok)) {
             okBtn->setText(QObject::tr("确定"));
+            okBtn->setProperty("bwPrimary", QVariant(true));
             okBtn->setProperty("primary", QVariant(true));
         }
         if (auto* cancelBtn = btnBox->button(QDialogButtonBox::Cancel)) cancelBtn->setText(QObject::tr("取消"));
@@ -176,6 +178,7 @@ void FramelessDialog::setTitle(const QString& title)
 void FramelessDialog::setContentWidget(QWidget* w)
 {
     if (m_contentHost && w) {
+        w->setProperty("bwMsgContent", QVariant(true));
         w->setProperty("msgContent", QVariant(true));
         auto* contentLayout = new QVBoxLayout(m_contentHost);
         contentLayout->setContentsMargins(5, 5, 5, 0);
@@ -196,6 +199,7 @@ void FramelessDialog::setCustomDialogBtn(bool showOK, bool showCancel, bool okHi
     QPushButton* okBtn = btnBox->button(QDialogButtonBox::Ok);
     if(okBtn) {
         okBtn->setVisible(showOK);
+        okBtn->setProperty("bwPrimary", okHighLight);
         okBtn->setProperty("primary", okHighLight);
     }
     QPushButton* cancelBtn = btnBox->button(QDialogButtonBox::Cancel);

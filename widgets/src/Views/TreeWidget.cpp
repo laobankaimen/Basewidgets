@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -29,8 +29,6 @@ void TreeWidget::setStyleManager(acss::QtAdvancedStylesheet* manager)
 void TreeWidget::attachToManager()
 {
     if (!m_manager) return;
-    connect(m_manager, &QtAdvancedStylesheet::stylesheetChanged,
-            this, &TreeWidget::onStylesheetChanged);
 }
 
 void TreeWidget::onStylesheetChanged()
@@ -44,4 +42,3 @@ void TreeWidget::applyStylesheet()
 }
 
 } // namespace basewidgets
-

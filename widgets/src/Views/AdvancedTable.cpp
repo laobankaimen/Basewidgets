@@ -134,6 +134,7 @@ void AdvancedTable::initUi()
     m_prevBtn->setObjectName("PrevPageBtn");
     m_nextBtn->setObjectName("NextPageBtn");
     m_exportBtn->setObjectName("ExportCsvBtn");
+    m_nextBtn->setProperty("bwPrimary", true);
     m_nextBtn->setProperty("primary", true);
     m_pageSizeBottom = new ComboBox(this);
     m_pageSizeBottom->addItems({"10", "20", "50"});
@@ -788,4 +789,3 @@ void AdvancedTable::setPaginationBarVisible(bool visible)
 }
 
 } // namespace basewidgets
-

@@ -90,6 +90,13 @@ cmake --build build --config Release --target widgets_demo -j 8
 - 若需修改主题（颜色、图标），请在 `tools/theme_builder/styles/themes/` 中修改对应文件。
 - 修改后需通过 `theme_builder` 工具或相关构建流程重新生成资源文件。
 
+## 硬规则（长期架构约束）
+
+- 样式单源：除必须自绘的极少数控件外，所有视觉状态必须由“动态属性 + 全局 QSS”驱动；禁止在控件内拼接/注入样式字符串。
+- 控件分层：基础控件（Inputs/Views/Containers）不得依赖业务模块；复合控件（Dialogs/页面容器）只做组合与编排；平台适配仅允许出现在 Core（或独立 Platform 模块）中，禁止散落到各控件实现里。
+- Token 化：主题变量（themes.json / *.xml）作为设计 token 的唯一来源；自绘场景通过样式管理器提供的 token 查询能力拿值，禁止把颜色/圆角/间距等视觉常量散落在代码中。
+- 动态属性契约：所有供 QSS 使用的动态属性统一使用 `bw*` 前缀，并提供向后兼容；新增控件必须遵循该命名规则（例如 `bwPrimary/bwMsgContainer/bwMsgContent`）。
+
 ## 变更记录（近期）
 
 - **架构调整**：整理项目结构，将样式引擎整合至 `widgets` 库中，新增 `tools` 目录。

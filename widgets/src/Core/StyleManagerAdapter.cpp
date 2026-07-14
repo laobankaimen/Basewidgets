@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -6,12 +6,16 @@
 #include <QApplication>
 #include <QDir>
 #include <QResource>
+#include <QMetaObject>
+#include <QFileInfo>
+#include <QStandardPaths>
 
 using namespace acss;
 
 namespace basewidgets {
 
 acss::QtAdvancedStylesheet* StyleManagerAdapter::s_instance = nullptr;
+static QMetaObject::Connection s_stylesheetConnection;
 
 void StyleManagerAdapter::EnableHighDpi() {
     /***
@@ -61,9 +65,14 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
 
     if (!resolvedStylesDir.isEmpty()) {
         s_instance->setStylesDirPath(resolvedStylesDir);
-        // Default output to application directory as requested
-        // Generated files will be in <AppDir>/<StyleName>/<ThemeName>
-        s_instance->setOutputDirPath(QApplication::applicationDirPath());
+        QString outputDir = QApplication::applicationDirPath();
+        if (!QFileInfo(outputDir).isWritable()) {
+            outputDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+        }
+        if (!outputDir.isEmpty()) {
+            QDir().mkpath(outputDir);
+            s_instance->setOutputDirPath(outputDir);
+        }
 
         // Try to load themes.rcc from styles directory or application directory
         QString rccName = "themes.rcc";
@@ -80,10 +89,7 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
         }
         
         if (rccLoaded) {
-            // If binary resource is loaded, use it as the source for styles and output
-            // This allows running entirely from the packed resource without generating files
             s_instance->setStylesDirPath(":/styles");
-            s_instance->setOutputDirPath(":/styles");
         }
     }
 
@@ -116,7 +122,10 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
     qApp->setStyleSheet(s_instance->styleSheet());
 
     // 监听样式变化，自动应用到整个应用
-    QObject::connect(s_instance, &QtAdvancedStylesheet::stylesheetChanged, []() {
+    if (s_stylesheetConnection) {
+        QObject::disconnect(s_stylesheetConnection);
+    }
+    s_stylesheetConnection = QObject::connect(s_instance, &QtAdvancedStylesheet::stylesheetChanged, []() {
         auto* mgr = StyleManagerAdapter::instance();
         //QApplication::setWindowIcon(mgr->styleIcon());
         qApp->setStyleSheet(mgr->styleSheet());
@@ -171,4 +180,3 @@ void StyleManagerAdapter::setInstance(acss::QtAdvancedStylesheet* mgr)
 }
 
 } // namespace basewidgets
-
