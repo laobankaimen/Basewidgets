@@ -9,7 +9,11 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
 # 安装包/发布包的外部消费方式请参考 `examples/package_consumer`。
 add_executable(widgets_demo
     main.cpp
+    pages/DialogsPage.cpp
+    pages/InputsPage.cpp
     pages/PagedTablePage.cpp
+    pages/TextPage.cpp
+    pages/ViewsPage.cpp
 )
 
 target_link_libraries(widgets_demo

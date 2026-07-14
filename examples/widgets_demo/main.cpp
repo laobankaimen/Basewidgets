@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCloseEvent>
 #include <QFont>
 #include <QDir>
 #include <QVBoxLayout>
@@ -55,7 +56,10 @@
 #include <basewidgets/Charts/QCPWaterfallChart.h>
 #include <QMenu>
 #include <QtMath>
+#include "pages/InputsPage.h"
 #include "pages/PagedTablePage.h"
+#include "pages/TextPage.h"
+#include "pages/ViewsPage.h"
 
 // 示例数据模型
 #include <QStandardItemModel>
@@ -63,535 +67,17 @@
 
 using namespace basewidgets;
 
-// 创建输入控件展示页面
-StyledWidget* createInputsShowcase(QWidget* parent) {
-    auto* page = new StyledWidget(parent);
-    auto* scrollArea = new ScrollArea(page);
-    scrollArea->setContentsMargins(0, 0, 0, 0);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    auto* content = new StyledWidget(scrollArea);
-    auto* layout = new QGridLayout(content);
-    layout->setContentsMargins(6, 0, 6, 6);
-    // 减小主网格的间距，让输入控件更贴近选择控件
-    layout->setSpacing(4);
-    layout->setVerticalSpacing(2);
-
-    // 按钮组
-    auto* buttonGroup = new GroupBox("", content);
-    auto* buttonLayout = new QGridLayout(buttonGroup);
-    buttonLayout->setContentsMargins(4, 4, 4, 4);
-    buttonLayout->setHorizontalSpacing(8);
-    buttonLayout->setVerticalSpacing(4);
-    
-    auto* pushBtn = new PushButton("普通按钮", buttonGroup);
-    auto* checkableBtn = new PushButton("可选按钮", buttonGroup);
-    checkableBtn->setCheckable(true);
-    auto* disabledBtn = new PushButton("禁用按钮", buttonGroup);
-    disabledBtn->setEnabled(false);
-    auto* toolBtn = new ToolButton(buttonGroup);
-    toolBtn->setText("工具按钮");
-    // 固定按钮尺寸，避免在布局中被拉伸
-    pushBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    checkableBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    disabledBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    toolBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    
-    buttonLayout->addWidget(pushBtn, 0, 0);
-    buttonLayout->addWidget(checkableBtn, 0, 1);
-    buttonLayout->addWidget(disabledBtn, 1, 0);
-    buttonLayout->addWidget(toolBtn, 1, 1);
-    // 限制左右组最大宽度，避免控件被拉得过长
-    buttonGroup->setMaximumWidth(420);
-    buttonGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    
-    // 输入框组
-    auto* inputGroup = new GroupBox("", content);
-    auto* inputLayout = new QGridLayout(inputGroup);
-    inputLayout->setContentsMargins(4, 4, 4, 4);
-    inputLayout->setHorizontalSpacing(8);
-    inputLayout->setVerticalSpacing(4);
-    
-    auto* lineEdit = new LineEdit(inputGroup);
-    lineEdit->setPlaceholderText("请输入文本...");
-    auto* spinBox = new SpinBox(inputGroup);
-    spinBox->setRange(0, 100);
-    spinBox->setValue(50);
-    auto* comboBox = new ComboBox(inputGroup);
-    comboBox->addItems({"选项1", "选项2", "选项3"});
-    auto* multiCombo = new MultiSelectComboBox(inputGroup);
-    multiCombo->setOptions({"后台", "前端", "移动端", "AI", "测试", "DevOps"});
-    multiCombo->setSelectedOptions({"前端", "AI"});
-    multiCombo->setJoinSelectedText(true, ", ");
-    // 增强：启用搜索过滤、允许所有项、设置选择上限与提示
-    multiCombo->setSearchEnabled(true);
-    // 纯文字展示：不显示选项图标
-    multiCombo->setShowOptionIcons(false);
-    // 允许所有选项可选
-    // multiCombo->setDisabledOptions({});
-    // 示例：设置最大选择上限为 3，并在超过时提示
-    multiCombo->setMaxSelection(3);
-    QObject::connect(multiCombo, &MultiSelectComboBox::selectionLimitReached,
-        multiCombo, [multiCombo](int limit){
-            DialogUtils::messageWarning(multiCombo, "选择上限",
-                QString("不允许超过上限 %1，请取消部分选择。").arg(limit));
-        });
-    // 示例中不设置图标以保持纯文字
-    auto* slider = new Slider(Qt::Horizontal, inputGroup);
-    slider->setRange(0, 100);
-    slider->setValue(30);
-    
-    inputLayout->addWidget(new Label("文本输入:", inputGroup), 0, 0);
-    inputLayout->addWidget(lineEdit, 0, 1);
-    inputLayout->addWidget(new Label("数值输入:", inputGroup), 1, 0);
-    inputLayout->addWidget(spinBox, 1, 1);
-    inputLayout->addWidget(new Label("下拉选择:", inputGroup), 2, 0);
-    inputLayout->addWidget(comboBox, 2, 1);
-    inputLayout->addWidget(new Label("多选下拉:", inputGroup), 3, 0);
-    inputLayout->addWidget(multiCombo, 3, 1);
-    inputLayout->addWidget(new Label("滑块:", inputGroup), 4, 0);
-    inputLayout->addWidget(slider, 4, 1);
-
-    // 日期时间控件组
-    auto* datetimeGroup = new GroupBox("", content);
-    auto* dtLayout = new QGridLayout(datetimeGroup);
-    dtLayout->setContentsMargins(4, 4, 4, 4);
-    dtLayout->setHorizontalSpacing(8);
-    dtLayout->setVerticalSpacing(4);
-    auto* datePicker = new DatePicker(datetimeGroup);
-    datePicker->setWeekNumbersEnabled(true);
-    auto* timePicker = new TimePicker(datetimeGroup);
-    auto* dateTimePicker = new DateTimePicker(datetimeGroup);
-    auto* rangePicker = new DateRangePicker(datetimeGroup);
-    dtLayout->addWidget(new Label("日期选择:", datetimeGroup), 0, 0);
-    dtLayout->addWidget(datePicker, 0, 1);
-    dtLayout->addWidget(new Label("时间选择:", datetimeGroup), 1, 0);
-    dtLayout->addWidget(timePicker, 1, 1);
-    dtLayout->addWidget(new Label("日期时间:", datetimeGroup), 2, 0);
-    dtLayout->addWidget(dateTimePicker, 2, 1);
-    dtLayout->addWidget(new Label("日期范围:", datetimeGroup), 3, 0);
-    dtLayout->addWidget(rangePicker, 3, 1);
-    datetimeGroup->setMaximumWidth(420);
-    datetimeGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-    inputGroup->setMaximumWidth(560);
-    // 允许纵向按内容压缩，避免单元格留高导致上方空白
-    inputGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-    
-    // 选择控件组
-    auto* selectGroup = new GroupBox("", content);
-    // 改为两列横排布局
-    auto* selectLayout = new QGridLayout(selectGroup);
-    // 压缩选择组内部边距与间距
-    selectLayout->setContentsMargins(4, 4, 4, 4);
-    selectLayout->setHorizontalSpacing(8);
-    selectLayout->setVerticalSpacing(4);
-    
-    auto* checkBox1 = new CheckBox("复选框 1", selectGroup);
-    auto* checkBox2 = new CheckBox("复选框 2", selectGroup);
-    checkBox2->setChecked(true);
-    auto* radioBtn1 = new RadioButton("单选按钮 1", selectGroup);
-    auto* radioBtn2 = new RadioButton("单选按钮 2", selectGroup);
-    radioBtn1->setChecked(true);
-    auto* toggleSwitch = new ToggleSwitch(selectGroup);
-    
-    // 每行两个控件：复选、单选两行；开关与标签一行
-    selectLayout->addWidget(checkBox1, 0, 0);
-    selectLayout->addWidget(checkBox2, 0, 1);
-    selectLayout->addWidget(radioBtn1, 1, 0);
-    selectLayout->addWidget(radioBtn2, 1, 1);
-    selectLayout->addWidget(new Label("开关控件:", selectGroup), 2, 0);
-    selectLayout->addWidget(toggleSwitch, 2, 1);
-    selectGroup->setMaximumWidth(420);
-    selectGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Maximum);
-    
-    // 进度指示器组
-    auto* progressGroup = new GroupBox("", content);
-    auto* progressLayout = new QVBoxLayout(progressGroup);
-    progressLayout->setContentsMargins(4, 4, 4, 4);
-    progressLayout->setSpacing(4);
-    
-    auto* progressBar1 = new ProgressBar(progressGroup);
-    progressBar1->setValue(30);
-    auto* progressBar2 = new ProgressBar(progressGroup);
-    progressBar2->setProperty("state", QVariant("success"));
-    progressBar2->setValue(40);
-    auto* progressBar3 = new ProgressBar(progressGroup);
-    progressBar3->setProperty("state", QVariant("danger"));
-    progressBar3->setValue(50);
-    auto* progressBar4 = new ProgressBar(progressGroup);
-    progressBar4->setProperty("state", QVariant("warning"));
-    progressBar4->setValue(60);
-    auto* progressBar5 = new ProgressBar(progressGroup);
-    progressBar5->setRange(0,0);
-    auto* progressBar6 = new ProgressBar(progressGroup);
-    progressBar6->setValue(70);
-    progressBar6->setDisabled(true);
-    auto* busyIndicator = new BusyIndicator(progressGroup);
-    busyIndicator->start();
-    
-    progressLayout->addWidget(new Label("进度条:", progressGroup));
-    progressLayout->addWidget(progressBar1);
-    progressLayout->addWidget(progressBar2);
-    progressLayout->addWidget(progressBar3);
-    progressLayout->addWidget(progressBar4);
-    progressLayout->addWidget(progressBar6);
-    progressLayout->addWidget(new Label("忙碌指示器:", progressGroup));
-    progressLayout->addWidget(progressBar5);
-    progressLayout->addWidget(busyIndicator);
-    progressGroup->setMaximumWidth(420);
-    progressGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    // 导航列表组
-    auto* navGroup = new GroupBox("", content);
-    auto* navLayout = new QHBoxLayout(navGroup);
-    navLayout->setContentsMargins(4, 4, 4, 4);
-    navLayout->setSpacing(8);
-
-    auto* navList = new NavigationList(navGroup);
-    // 添加按钮 - 使用自动ID
-    navList->addButton("首页");
-    navList->addButton("设置");
-    navList->addButton("关于");
-    // 插入按钮 - 混合使用自动ID和指定ID
-    navList->insertButton("个人中心", 1); // 在位置1插入，自动分配ID
-    navList->insertButton("消息", 2, 10); // 在位置2插入，指定ID为10
-    navList->addButton("帮助", 11); // 添加按钮，指定ID为11
-    // 设置默认选中
-    navList->setCurrentButton(0);
-
-    navLayout->addWidget(navList);
-
-    // 当前选中项显示
-    auto* navCurrentLabel = new Label("当前选中: 首页 (ID: 0)", navGroup);
-    navCurrentLabel->setWordWrap(true);
-    navLayout->addWidget(navCurrentLabel);
-
-    navGroup->setMaximumWidth(420);
-    navGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    // 右侧：Dialogs 组件演示区域
-    auto* dialogsGroup = new GroupBox("", content);
-    auto* dialogsLayout = new QGridLayout(dialogsGroup);
-    dialogsLayout->setHorizontalSpacing(10);
-    dialogsLayout->setVerticalSpacing(20);
-    dialogsLayout->setContentsMargins(6, 6, 6, 6);
-    dialogsLayout->setColumnStretch(0, 1);
-    dialogsLayout->setColumnStretch(1, 1);
-    dialogsGroup->setMaximumWidth(480);
-    dialogsGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-
-    // 结果展示标签
-    auto* fileResult = new Label("文件结果: ", dialogsGroup);
-    auto* dirResult = new Label("目录结果: ", dialogsGroup);
-    auto* colorResult = new Label("颜色结果: ", dialogsGroup);
-    auto* fontResult = new Label("字体结果: 使用默认字体", dialogsGroup);
-    auto* inputResult = new Label("输入结果: ", dialogsGroup);
-
-    // 文件对话框
-    auto* openFileBtn = new PushButton("打开文件", dialogsGroup);
-    auto* openFilesBtn = new PushButton("多个文件", dialogsGroup);
-    auto* saveFileBtn = new PushButton("保存文件", dialogsGroup);
-    auto* openDirBtn = new PushButton("打开目录", dialogsGroup);
-    // 固定按钮尺寸，避免在布局中被拉伸
-    openFileBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    openFilesBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    saveFileBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    openDirBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    // 颜色与字体对话框
-    auto* pickColorBtn = new PushButton("选择颜色", dialogsGroup);
-    auto* pickFontBtn = new PushButton("选择字体", dialogsGroup);
-    pickColorBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    pickFontBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    // 消息框
-    auto* msgInfoBtn = new PushButton("信息消息", dialogsGroup);
-    auto* msgWarnBtn = new PushButton("警告消息", dialogsGroup);
-    auto* msgErrorBtn = new PushButton("错误消息", dialogsGroup);
-    auto* msgSuccessBtn = new PushButton("成功消息", dialogsGroup);
-    auto* askQuestionBtn = new PushButton("询问消息", dialogsGroup);
-    msgInfoBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    msgWarnBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    msgErrorBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    msgSuccessBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    askQuestionBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    // 输入对话框
-    auto* inputTextBtn = new PushButton("输入文本", dialogsGroup);
-    auto* inputIntBtn = new PushButton("输入整数", dialogsGroup);
-    auto* inputDoubleBtn = new PushButton("输入小数", dialogsGroup);
-    inputTextBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    inputIntBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    inputDoubleBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    // 调整按钮尺寸以适配两排紧凑布局
-    const int dlgBtnH = 32;
-    const int dlgBtnW = 96;
-    openFileBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    openFilesBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    saveFileBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    openDirBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    pickColorBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    pickFontBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    msgInfoBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    msgWarnBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    msgErrorBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    msgSuccessBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    askQuestionBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    inputTextBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    inputIntBtn->setFixedSize(dlgBtnW, dlgBtnH);
-    inputDoubleBtn->setFixedSize(dlgBtnW, dlgBtnH);
-
-    // 两列竖排布局（左列 7 个，右列 7 个）
-    dialogsLayout->addWidget(openFileBtn,    0, 0);
-    dialogsLayout->addWidget(openFilesBtn,   1, 0);
-    dialogsLayout->addWidget(saveFileBtn,    2, 0);
-    dialogsLayout->addWidget(openDirBtn,     3, 0);
-    dialogsLayout->addWidget(pickColorBtn,   4, 0);
-    dialogsLayout->addWidget(pickFontBtn,    5, 0);
-    dialogsLayout->addWidget(msgInfoBtn,     6, 0);
-    dialogsLayout->addWidget(msgWarnBtn,     0, 1);
-    dialogsLayout->addWidget(msgErrorBtn,    1, 1);
-    dialogsLayout->addWidget(msgSuccessBtn,  2, 1);
-    dialogsLayout->addWidget(askQuestionBtn, 3, 1);
-    dialogsLayout->addWidget(inputTextBtn,   4, 1);
-    dialogsLayout->addWidget(inputIntBtn,    5, 1);
-    dialogsLayout->addWidget(inputDoubleBtn, 6, 1);
-
-    // 结果标签置于两排按钮下方，减少高度占用
-    fileResult->setWordWrap(true);
-    dirResult->setWordWrap(true);
-    colorResult->setWordWrap(true);
-    fontResult->setWordWrap(true);
-    inputResult->setWordWrap(true);
-    dialogsLayout->addWidget(fileResult,  7, 0, 1, 2);
-    dialogsLayout->addWidget(dirResult,   8, 0, 1, 2);
-    dialogsLayout->addWidget(colorResult, 9, 0, 1, 2);
-    dialogsLayout->addWidget(fontResult, 10, 0, 1, 2);
-    dialogsLayout->addWidget(inputResult, 11, 0, 1, 2);
-
-    // 连接：文件与目录
-    QObject::connect(openFileBtn, &PushButton::clicked, [page, fileResult]() {
-        const auto path = DialogUtils::openFile(page, "选择文件");
-        fileResult->setText("文件结果: " + (path.isEmpty() ? QString("<空>") : path));
-    });
-    QObject::connect(openFilesBtn, &PushButton::clicked, [page, fileResult]() {
-        const auto paths = DialogUtils::openFiles(page, "选择多个文件");
-        fileResult->setText("文件结果: " + (paths.isEmpty() ? QString("<空>") : paths.join("; ")));
-    });
-    QObject::connect(saveFileBtn, &PushButton::clicked, [page, fileResult]() {
-        const auto path = DialogUtils::saveFile(page, "保存文件");
-        fileResult->setText("文件结果: " + (path.isEmpty() ? QString("<空>") : path));
-    });
-    QObject::connect(openDirBtn, &PushButton::clicked, [page, dirResult]() {
-        const auto path = DialogUtils::openDirectory(page, "选择目录");
-        dirResult->setText("目录结果: " + (path.isEmpty() ? QString("<空>") : path));
-    });
-
-    // 连接：颜色与字体
-    QObject::connect(pickColorBtn, &PushButton::clicked, [page, colorResult]() {
-        // 传入 QColor() 表示使用库中记录的上次颜色
-        // 用户也可以通过 DialogUtils::getLastPickedColor() 获取
-        const auto c = DialogUtils::pickColor(page, QColor(), "选择颜色");
-        
-        colorResult->setText(QString("颜色结果: %1").arg(c.name()));
-        colorResult->setStyleSheet(QString("background:%1; padding:6px;").arg(c.name()));
-    });
-    QObject::connect(pickFontBtn, &PushButton::clicked, [page, fontResult]() {
-        bool ok = false;
-        const auto f = DialogUtils::pickFont(page, fontResult->font(), &ok, "选择字体");
-        if (ok) {
-            fontResult->setText(QString("字体结果: %1, %2pt").arg(f.family()).arg(f.pointSize()));
-            fontResult->setFont(f);
-        }
-    });
-
-    // 连接：消息框
-    QObject::connect(msgInfoBtn, &PushButton::clicked, [page]() {
-        DialogUtils::messageInfo(page, "信息", "这是一个信息提示");
-    });
-    QObject::connect(msgWarnBtn, &PushButton::clicked, [page]() {
-        DialogUtils::messageWarning(page, "警告", "这是一个警告提示");
-    });
-    QObject::connect(msgErrorBtn, &PushButton::clicked, [page]() {
-        DialogUtils::messageError(page, "错误", "这是一个错误提示");
-    });
-    QObject::connect(msgSuccessBtn, &PushButton::clicked, [page]() {
-        DialogUtils::messageSuccess(page, "成功", "这是一个成功提示");
-    });
-    QObject::connect(askQuestionBtn, &PushButton::clicked, [page, inputResult]() {
-        const bool yes = DialogUtils::askQuestion(page, "询问", "是否继续操作？");
-        inputResult->setText(QString("输入结果: 询问 = %1").arg(yes ? "是" : "否"));
-    });
-
-    // 连接：输入框
-    QObject::connect(inputTextBtn, &PushButton::clicked, [page, inputResult]() {
-        const auto t = DialogUtils::inputText(page, "输入文本", "请输入内容:");
-        inputResult->setText("输入结果: 文本 = " + t);
-    });
-    QObject::connect(inputIntBtn, &PushButton::clicked, [page, inputResult]() {
-        const int v = DialogUtils::inputInt(page, "输入整数", "请输入整数:", 5, 0, 100, 1);
-        inputResult->setText(QString("输入结果: 整数 = %1").arg(v));
-    });
-    QObject::connect(inputDoubleBtn, &PushButton::clicked, [page, inputResult]() {
-        const double v = DialogUtils::inputDouble(page, "输入小数", "请输入小数:", 1.2, 0.0, 10.0, 2);
-        inputResult->setText(QString("输入结果: 小数 = %1").arg(v));
-    });
-
-    // 已移除示例对话框按钮与触发逻辑
-    
-    // 左侧列：使用一个垂直容器紧密堆叠控制类分组，减少行间空白
-    auto* leftPanel = new QWidget(content);
-    auto* leftPanelLayout = new QVBoxLayout(leftPanel);
-    leftPanelLayout->setContentsMargins(4, 4, 4, 4);
-    leftPanelLayout->setSpacing(6);
-    // 让分组在垂直方向尽量压缩
-    buttonGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-    selectGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-    inputGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-    progressGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-    datetimeGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-    navGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-
-    leftPanelLayout->addWidget(dialogsGroup);
-    leftPanelLayout->addWidget(buttonGroup);
-    leftPanelLayout->addWidget(selectGroup);
-    leftPanelLayout->addWidget(inputGroup);
-    leftPanelLayout->addWidget(progressGroup);
-    leftPanelLayout->addWidget(datetimeGroup);
-    leftPanelLayout->addWidget(navGroup);
-    leftPanel->setLayout(leftPanelLayout);
-
-    // 左列放置该容器，整体顶部对齐
-    layout->addWidget(leftPanel, 0, 0, 5, 1, Qt::AlignTop);
-
-    // 视图控件组（合并自“视图图表”页）
+class DemoMainWindow : public FramelessWidgetWindow {
+protected:
+    void closeEvent(QCloseEvent* ev) override
     {
-        auto* viewGroup = new GroupBox("", content);
-        auto* viewLayout = new QGridLayout(viewGroup);
-
-        auto* listView = new ListView(viewGroup);
-        auto* tableView = new TableView(viewGroup);
-        listView->setMinimumHeight(140);
-        tableView->setMinimumHeight(180);
-        auto* treeTable = new TreeTable(viewGroup);
-        // 列表视图模型
-        {
-            auto* listModel = new QStandardItemModel(listView);
-            listModel->setColumnCount(1);
-            listModel->appendRow(new QStandardItem("任务 A"));
-            listModel->appendRow(new QStandardItem("任务 B"));
-            listModel->appendRow(new QStandardItem("任务 C"));
-            listView->setModel(listModel);
+        if (!DialogUtils::askQuestion(this, "请确认", "是否关闭软件？")) {
+            ev->ignore();
+            return;
         }
-        // 表格视图模型
-        {
-            auto* tableModel = new QStandardItemModel(tableView);
-            tableModel->setColumnCount(3);
-            tableModel->setHorizontalHeaderLabels({"产品", "区域", "销量"});
-            tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("A"), new QStandardItem("华北"), new QStandardItem("120")});
-            tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("B"), new QStandardItem("华东"), new QStandardItem("98")});
-            tableModel->appendRow(QList<QStandardItem*>{new QStandardItem("C"), new QStandardItem("华南"), new QStandardItem("150")});
-            tableView->setModel(tableModel);
-            tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-        }
-        // TreeTable 示例模型
-        auto* tmodel = new QStandardItemModel(treeTable);
-        tmodel->setColumnCount(3);
-        tmodel->setHorizontalHeaderLabels({"类别", "项目", "数值"});
-        auto* sales = new QStandardItem("销售");
-        auto* rnd = new QStandardItem("研发");
-        tmodel->appendRow(QList<QStandardItem*>{sales, new QStandardItem(), new QStandardItem()});
-        tmodel->appendRow(QList<QStandardItem*>{rnd, new QStandardItem(), new QStandardItem()});
-        sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q1"), new QStandardItem(), new QStandardItem("120.5")});
-        sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q2"), new QStandardItem(), new QStandardItem("98.0")});
-        sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q3"), new QStandardItem(), new QStandardItem("150.3")});
-        sales->appendRow(QList<QStandardItem*>{new QStandardItem("Q4"), new QStandardItem(), new QStandardItem("110.0")});
-        rnd->appendRow(QList<QStandardItem*>{new QStandardItem("平台"), new QStandardItem(), new QStandardItem("80.0")});
-        rnd->appendRow(QList<QStandardItem*>{new QStandardItem("算法"), new QStandardItem(), new QStandardItem("132.7")});
-        rnd->appendRow(QList<QStandardItem*>{new QStandardItem("客户端"), new QStandardItem(), new QStandardItem("64.2")});
-        treeTable->setModel(tmodel);
-        treeTable->clearColumnAggregations();
-        treeTable->setColumnAggregation(2, TreeTable::Sum);
-        treeTable->expandAll();
-        treeTable->header()->setSectionResizeMode(QHeaderView::Stretch);
-
-        viewLayout->addWidget(new Label("列表视图:", viewGroup), 0, 0);
-        viewLayout->addWidget(listView, 1, 0);
-        viewLayout->addWidget(new Label("表格视图:", viewGroup), 2, 0);
-        viewLayout->addWidget(tableView, 3, 0);
-        viewLayout->addWidget(new Label("树形表格:", viewGroup), 4, 0);
-        viewLayout->addWidget(treeTable, 5, 0);
-        viewLayout->setColumnStretch(0, 1);
-        // 视图控件置于右列第二行
-    layout->addWidget(viewGroup, 1, 1);
+        FramelessWidgetWindow::closeEvent(ev);
     }
-
-    // 图表控件组（已迁移至 createViewsChartsShowcase，旧组移除）
-
-    // 文本编辑器组与示例容器（合并自“文本对话框”页）
-    {
-        auto* textGroup = new GroupBox("", content);
-        auto* textLayout = new QGridLayout(textGroup);
-        auto* textEdit = new TextEdit(textGroup);
-        textEdit->setPlainText("这是一个富文本编辑器\n支持多种格式");
-        textEdit->setMinimumHeight(120);
-        auto* plainTextEdit = new PlainTextEdit(textGroup);
-        plainTextEdit->setPlainText("这是一个纯文本编辑器\n适合代码编辑");
-        plainTextEdit->setMinimumHeight(120);
-        textLayout->addWidget(new Label("富文本编辑器:", textGroup), 0, 0);
-        textLayout->addWidget(textEdit, 1, 0);
-        textLayout->addWidget(new Label("纯文本编辑器:", textGroup), 0, 1);
-        textLayout->addWidget(plainTextEdit, 1, 1);
-        // 文本编辑器组置于右列第四行
-        layout->addWidget(textGroup, 3, 1);
-
-        auto* dialogGroup = new GroupBox("", content);
-        auto* dialogLayout = new QVBoxLayout(dialogGroup);
-        auto* frameExample = new Frame(dialogGroup);
-        frameExample->setMinimumHeight(80);
-        auto* frameLayout = new QVBoxLayout(frameExample);
-        frameLayout->addWidget(new Label("这是一个 Frame 容器", frameExample));
-        frameLayout->addWidget(new Label("可以包含其他控件", frameExample));
-        frameExample->setLayout(frameLayout);
-        dialogLayout->addWidget(new Label("Frame 容器示例:", dialogGroup));
-        dialogLayout->addWidget(frameExample);
-        // 工具示例容器并入右列底部，与 dialogsGroup 同层次
-        layout->addWidget(dialogGroup, 4, 1);
-    }
-
-    // 列伸缩：左列保持最小，右列作为主显示区
-    layout->setColumnStretch(0, 0);
-    layout->setColumnStretch(1, 1);
-    // 行伸缩：前四行固定，底部一行吸收多余空间
-    layout->setRowStretch(0, 0);
-    layout->setRowStretch(1, 0);
-    layout->setRowStretch(2, 0);
-    layout->setRowStretch(3, 0);
-    layout->setRowStretch(4, 1);
-
-    // 连接NavigationList信号以更新当前选中项显示
-    // 使用currentItemChanged信号，无论是点击还是程序设置都会触发
-    QObject::connect(navList, &NavigationList::currentItemChanged,
-        [navList, navCurrentLabel](QListWidgetItem* current, QListWidgetItem* previous){
-            if(current) {
-                int id = navList->getCurrentButton();
-                QString title = current->text();
-                navCurrentLabel->setText(QString("当前选中: %1 (ID: %2)").arg(title).arg(id));
-            }
-        });
-
-    content->setLayout(layout);
-    scrollArea->setWidget(content);
-    
-    auto* pageLayout = new QVBoxLayout(page);
-    pageLayout->setContentsMargins(0, 0, 0, 0);
-    pageLayout->addWidget(scrollArea);
-    page->setLayout(pageLayout);
-    
-    return page;
-}
+};
 
 // 创建视图和图表展示页面
 StyledWidget* createViewsChartsShowcase(QWidget* parent) {
@@ -730,22 +216,28 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
         plotMap->replot();
     });
 
-    // 主题同步：配色跟随主题变化（背景由组件内部处理）
+    // 主题同步：曲线和渐变统一跟随主题 token，避免示例与样式系统脱节
     auto syncTheme = [plotLine, plotMap, line1, line2, line3, cmap](){
         auto* mgr = StyleManagerAdapter::instance();
         const QPalette pal = qApp->palette();
-        // 多折线采用不同颜色
-        QPen p1(QColor(66,135,245), 2);   // 蓝
-        QPen p2(QColor(241,90,34), 2);    // 橙
-        QPen p3(QColor(60,179,113), 2);   // 绿
-        line1->setPen(p1);
-        line2->setPen(p2);
-        line3->setPen(p3);
+        auto resolveThemeColor = [mgr](const QString& token, const QColor& fallback) {
+            const QColor themed = mgr->themeColor(token);
+            return themed.isValid() ? themed : fallback;
+        };
+
+        const QColor primary = resolveThemeColor("primaryColor", pal.color(QPalette::Highlight));
+        const QColor warning = resolveThemeColor("warningColor", QColor(241, 90, 34));
+        const QColor success = resolveThemeColor("successColor", QColor(60, 179, 113));
+        const QColor low = resolveThemeColor("secondaryLightColor", primary.lighter(150));
+
+        line1->setPen(QPen(primary, 2));
+        line2->setPen(QPen(warning, 2));
+        line3->setPen(QPen(success, 2));
         plotLine->replot();
-        // 瀑布图渐变采用固定蓝->红
+
         QCPColorGradient grad;
-        grad.setColorStopAt(0.0, QColor(0,0,255));
-        grad.setColorStopAt(1.0, QColor(255,0,0));
+        grad.setColorStopAt(0.0, low);
+        grad.setColorStopAt(1.0, primary);
         cmap->setGradient(grad);
         plotMap->replot();
     };
@@ -1017,61 +509,6 @@ StyledWidget* createGaugesShowcase(QWidget* parent) {
     return page;
 }
 
-// 创建文本和对话框展示页面
-StyledWidget* createTextDialogShowcase(QWidget* parent) {
-    auto* page = new StyledWidget(parent);
-    auto* scrollArea = new ScrollArea(page);
-    auto* content = new StyledWidget(scrollArea);
-    auto* layout = new QGridLayout(content);
-    layout->setContentsMargins(16, 16, 16, 16);
-    layout->setSpacing(16);
-
-    // 文本编辑器组
-    auto* textGroup = new GroupBox("", content);
-    auto* textLayout = new QGridLayout(textGroup);
-    
-    auto* textEdit = new TextEdit(textGroup);
-    textEdit->setPlainText("这是一个富文本编辑器\n支持多种格式");
-    textEdit->setMinimumHeight(120);
-    
-    auto* plainTextEdit = new PlainTextEdit(textGroup);
-    plainTextEdit->setPlainText("这是一个纯文本编辑器\n适合代码编辑");
-    plainTextEdit->setMinimumHeight(120);
-    
-    textLayout->addWidget(new Label("富文本编辑器:", textGroup), 0, 0);
-    textLayout->addWidget(textEdit, 1, 0);
-    textLayout->addWidget(new Label("纯文本编辑器:", textGroup), 0, 1);
-    textLayout->addWidget(plainTextEdit, 1, 1);
-    
-    // 对话框和工具组
-    auto* dialogGroup = new GroupBox("", content);
-    auto* dialogLayout = new QVBoxLayout(dialogGroup);
-    
-    
-    auto* frameExample = new Frame(dialogGroup);
-    frameExample->setMinimumHeight(80);
-    auto* frameLayout = new QVBoxLayout(frameExample);
-    frameLayout->addWidget(new Label("这是一个 Frame 容器", frameExample));
-    frameLayout->addWidget(new Label("可以包含其他控件", frameExample));
-    frameExample->setLayout(frameLayout);
-    
-    dialogLayout->addWidget(new Label("Frame 容器示例:", dialogGroup));
-    dialogLayout->addWidget(frameExample);
-    
-    layout->addWidget(textGroup, 0, 0);
-    layout->addWidget(dialogGroup, 1, 0);
-    
-    content->setLayout(layout);
-    scrollArea->setWidget(content);
-    
-    auto* pageLayout = new QVBoxLayout(page);
-    pageLayout->setContentsMargins(0, 0, 0, 0);
-    pageLayout->addWidget(scrollArea);
-    page->setLayout(pageLayout);
-    
-    return page;
-}
-
 int main(int argc, char *argv[])
 {
     StyleManagerAdapter::EnableHighDpi();
@@ -1081,7 +518,7 @@ int main(int argc, char *argv[])
     StyleManagerAdapter::initialize();
 
     // 创建主窗口（使用基于 QWidget 的无边框主界面）
-    auto* window = new FramelessWidgetWindow();
+    auto* window = new DemoMainWindow();
     window->setTitle("basewidgets 组件全面展示");
     // 设置窗口图标（会自动同步到标题栏）
     window->setWindowIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/logo/logo.svg"));
@@ -1110,7 +547,7 @@ int main(int argc, char *argv[])
     window->setMenuBar(menuBar);
 
     // 创建工具栏
-    auto* toolBar = new ToolBar(contentRoot);
+    auto* toolBar = new ToolBar(window);
     toolBar->setWindowTitle("主工具栏");
     toolBar->addAction("新建", [](){});
     toolBar->addAction("打开", [](){});
@@ -1147,10 +584,10 @@ int main(int argc, char *argv[])
     themeCombo->addItem("浅色主题");
     toolBar->addWidget(themeCombo);
     
-    rootLayout->addWidget(toolBar);
+    window->setToolBar(toolBar);
 
     // 创建状态栏
-    auto* statusBar = new StatusBar(contentRoot);
+    auto* statusBar = new StatusBar(window);
     statusBar->showMessage("basewidgets 组件展示 - 就绪");
     
     // 添加永久控件
@@ -1177,7 +614,9 @@ int main(int argc, char *argv[])
 
     // 添加主要展示页面
     // 顶部标签取消 Emoji 图标，避免跨平台字体缺失
-    mainTabWidget->addTab(createInputsShowcase(mainTabWidget), "输入控件");
+    mainTabWidget->addTab(new InputsPage(mainTabWidget), "输入控件");
+    mainTabWidget->addTab(new ViewsPage(mainTabWidget), "视图控件");
+    mainTabWidget->addTab(new TextPage(mainTabWidget), "文本&容器");
     // 图表控件页
     mainTabWidget->addTab(createViewsChartsShowcase(mainTabWidget), "图表控件");
     // 仪表盘控件页（独立）
@@ -1195,10 +634,9 @@ int main(int argc, char *argv[])
 
     // 主内容
     rootLayout->addWidget(centralWidget, 1);
-    // 底部状态栏
-    rootLayout->addWidget(statusBar);
     contentRoot->setLayout(rootLayout);
     window->setContentWidget(contentRoot);
+    window->setStatusBar(statusBar);
 
     // 主题切换逻辑保持不变
 

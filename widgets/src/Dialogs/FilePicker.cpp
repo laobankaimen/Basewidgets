@@ -64,6 +64,9 @@ QString FilePickerWidget::selectedPath() const
 {
     // Get the path from the name edit field, handling absolute and relative paths
     QString name = m_nameEdit->text();
+    if (m_mode == SaveFile) {
+        name = name.trimmed();
+    }
     if (name.isEmpty()) return m_selectedPath;
     
     QFileInfo fi(name);

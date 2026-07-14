@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -15,13 +15,22 @@ PagedProxyModel::PagedProxyModel(QObject* parent)
 
 void PagedProxyModel::setSourceModel(QAbstractItemModel* source)
 {
+    if (auto* oldSource = sourceModel()) {
+        disconnect(oldSource, nullptr, this, nullptr);
+    }
+
     QAbstractProxyModel::setSourceModel(source);
-    if (!source) return;
-    connect(source, &QAbstractItemModel::modelReset, this, &PagedProxyModel::resetPage);
-    connect(source, &QAbstractItemModel::layoutChanged, this, &PagedProxyModel::invalidateAndReset);
-    connect(source, &QAbstractItemModel::dataChanged, this, &PagedProxyModel::invalidateAndReset);
-    connect(source, &QAbstractItemModel::rowsInserted, this, &PagedProxyModel::invalidateAndReset);
-    connect(source, &QAbstractItemModel::rowsRemoved, this, &PagedProxyModel::invalidateAndReset);
+    m_currentPage = 0;
+    if (!source) {
+        invalidateAndReset();
+        return;
+    }
+
+    connect(source, &QAbstractItemModel::modelReset, this, &PagedProxyModel::resetPage, Qt::UniqueConnection);
+    connect(source, &QAbstractItemModel::layoutChanged, this, &PagedProxyModel::invalidateAndReset, Qt::UniqueConnection);
+    connect(source, &QAbstractItemModel::dataChanged, this, &PagedProxyModel::invalidateAndReset, Qt::UniqueConnection);
+    connect(source, &QAbstractItemModel::rowsInserted, this, &PagedProxyModel::invalidateAndReset, Qt::UniqueConnection);
+    connect(source, &QAbstractItemModel::rowsRemoved, this, &PagedProxyModel::invalidateAndReset, Qt::UniqueConnection);
     invalidateAndReset();
 }
 
@@ -133,4 +142,3 @@ void PagedProxyModel::resetPage()
 }
 
 } // namespace basewidgets
-

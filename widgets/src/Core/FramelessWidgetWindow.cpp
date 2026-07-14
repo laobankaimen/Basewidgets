@@ -11,7 +11,6 @@
 #include <QSettings>
 
 #include "basewidgets/Charts/QCPBarChart.h"
-#include "basewidgets/Dialogs/DialogUtils.h"
 #include <basewidgets/Core/FramelessWidgetWindow.h>
 #include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
@@ -504,14 +503,13 @@ void FramelessWidgetWindow::showEvent(QShowEvent *ev)
 
 void FramelessWidgetWindow::closeEvent(QCloseEvent *ev)
 {
-    QSettings setting("ZKHX",objectName().isEmpty()?"MainWindow":objectName());
-    setting.setValue("geometry",saveGeometry());
-    //QMainWindow::closeEvent(ev);
-    if(DialogUtils::askQuestion(this, "请确认", "是否关闭软件？")) {
-        ev->accept();
+    QMainWindow::closeEvent(ev);
+    if (!ev->isAccepted()) {
+        return;
     }
-    else
-        ev->ignore();
+
+    QSettings setting("ZKHX", objectName().isEmpty() ? "MainWindow" : objectName());
+    setting.setValue("geometry", saveGeometry());
 }
 
 void FramelessWidgetWindow::showFullScreen()

@@ -62,7 +62,7 @@ QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QStri
 {
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title.isEmpty() ? QObject::tr("保存文件") : title);
-    auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::OpenFiles);
+    auto* widget = new FilePickerWidget(&dlg, initialDir, filter, FilePickerWidget::SaveFile);
     widget->setProperty("bwMsgContent", QVariant(true));
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);

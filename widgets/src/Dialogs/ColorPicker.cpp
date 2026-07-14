@@ -232,6 +232,11 @@ public:
         connect(m_timer, &QTimer::timeout, this, &ScreenPicker::checkMouse);
     }
 
+    ~ScreenPicker() override
+    {
+        stop();
+    }
+
     void start()
     {
 #ifdef Q_OS_WIN
@@ -248,8 +253,14 @@ public:
 
     void stop()
     {
+        if (!m_isPicking) {
+            return;
+        }
         m_isPicking = false;
         m_timer->stop();
+        if (QApplication::overrideCursor()) {
+            QApplication::restoreOverrideCursor();
+        }
     }
 
 signals:
@@ -584,8 +595,6 @@ void ColorPickerWidget::setupUi(const QColor& initial)
              emit colorChanged(m_color);
              
              picker->deleteLater();
-             // Restore cursor
-             QApplication::restoreOverrideCursor();
         });
         
         // Change cursor to crosshair globally
