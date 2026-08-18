@@ -15,8 +15,32 @@ set(BASEWIDGETS_COMPONENT_RUNTIME "Runtime")
 set(BASEWIDGETS_COMPONENT_DEVELOPMENT "Development")
 set(BASEWIDGETS_COMPONENT_ASSETS "Assets")
 
+option(BASEWIDGETS_INSTALL_TO_SYSTEM_PREFIX "Allow installing to the system-wide CMAKE_INSTALL_PREFIX (e.g. /usr/local). OFF by default to avoid polluting the system." OFF)
+mark_as_advanced(BASEWIDGETS_INSTALL_TO_SYSTEM_PREFIX)
+
+set(_BASEWIDGETS_SYSTEM_PREFIXES
+    "/usr/local"
+    "/usr"
+    "C:/Program Files/${PROJECT_NAME}"
+    "C:/Program Files (x86)/${PROJECT_NAME}"
+    "C:/Program Files"
+    "C:/Program Files (x86)"
+)
+set(_BASEWIDGETS_IS_SYSTEM_PREFIX OFF)
+foreach(_PREFIX IN LISTS _BASEWIDGETS_SYSTEM_PREFIXES)
+    if("${CMAKE_INSTALL_PREFIX}" STREQUAL "${_PREFIX}")
+        set(_BASEWIDGETS_IS_SYSTEM_PREFIX ON)
+        break()
+    endif()
+endforeach()
+
+if(NOT BASEWIDGETS_INSTALL_TO_SYSTEM_PREFIX AND _BASEWIDGETS_IS_SYSTEM_PREFIX)
+    message(STATUS "BaseWidgets: CMAKE_INSTALL_PREFIX (${CMAKE_INSTALL_PREFIX}) is a system prefix but BASEWIDGETS_INSTALL_TO_SYSTEM_PREFIX=OFF, using '${BASEWIDGETS_INSTALL_TREE_DIR}' instead.")
+    set(CMAKE_INSTALL_PREFIX "${BASEWIDGETS_INSTALL_TREE_DIR}" CACHE PATH "Install prefix" FORCE)
+endif()
+
 install(FILES "${CMAKE_SOURCE_DIR}/README.md"
-    DESTINATION "."
+    DESTINATION "${CMAKE_INSTALL_DOCDIR}"
     COMPONENT ${BASEWIDGETS_COMPONENT_DEVELOPMENT}
 )
 

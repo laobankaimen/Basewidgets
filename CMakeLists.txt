@@ -23,7 +23,12 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Svg)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Svg)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include(package/package)
+if(UI_ENABLE_PLUGIN_RELEASE)
+    message(STATUS "BaseWidgets: Using LEGACY plugin release workflow (UI_ENABLE_PLUGIN_RELEASE=ON)")
+else()
+    message(STATUS "BaseWidgets: Using CMake/CPack release workflow (UI_ENABLE_PLUGIN_RELEASE=OFF)")
+    include(package/package)
+endif()
 
 # Subdirectories
 add_subdirectory(widgets)
