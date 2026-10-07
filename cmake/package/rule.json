@@ -20,7 +20,7 @@
     "debug",
     "release"
   ],
-  "outputDir": "package",
+  "outputDir": "cmake/publish",
   "package": {
     "name": "@zkhx/basewidgets",
     "version": "1.0.1",
