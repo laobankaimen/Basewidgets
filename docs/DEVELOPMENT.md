@@ -60,7 +60,7 @@ target_link_libraries(YourApp PRIVATE BaseWidgets::BaseWidgets)
 如果你在同一工作区联编，也可以继续使用：
 
 ```cmake
-add_subdirectory(path/to/basewidgets/widgets)
+add_subdirectory(path/to/basewidgets/src)
 target_link_libraries(YourApp PRIVATE BaseWidgets)
 ```
 
@@ -237,16 +237,15 @@ chart->installThemeSync(customPlotWidget);
 
 ## 5. 目录结构说明
 
-*   **`widgets/`**: 核心库源码。
-    *   `interface/basewidgets/`: **(重要)** 公开的头文件，开发时只需关注这里。
-        *   `Core/`: 核心基础类（`StyledWidget` 等）。
-        *   `Inputs/`: 基础输入控件（`LineEdit`, `PushButton` 等）。
-        *   `Gauges/`: 仪表盘控件。
-        *   `Dialogs/`: 对话框（颜色、文件）。
-        *   `Views/`: 数据视图（表格、树）。
-        *   `Charts/`: 图表控件。
-    *   `src/`: 具体的 `.cpp` 实现文件。
-    *   `assets/`: 统一的资源目录，包含编译好的 `themes.rcc`；CMake/CPack 与 Node 打包链都只以该目录为输入。
+*   **`interface/basewidgets/`**: **(重要)** 公开的头文件，开发时只需关注这里。
+    *   `Core/`: 核心基础类（`StyledWidget` 等）。
+    *   `Inputs/`: 基础输入控件（`LineEdit`, `PushButton` 等）。
+    *   `Gauges/`: 仪表盘控件。
+    *   `Dialogs/`: 对话框（颜色、文件）。
+    *   `Views/`: 数据视图（表格、树）。
+    *   `Charts/`: 图表控件。
+*   **`src/`**: 核心库的具体 `.cpp` 实现文件与目标定义（`src/CMakeLists.txt`）。
+*   **`assets/`**: 统一的资源目录，包含编译好的 `themes.rcc`；CMake/CPack 与 Node 打包链都只以该目录为输入。
 *   **`examples/`**: 示例代码，初学者可以参考 `widgets_demo` 中的用法。
 *   **`tools/theme_builder/`**: 主题生成工具，如果你需要自定义颜色或图标，可以使用此工具重新生成 `themes.rcc`。
 

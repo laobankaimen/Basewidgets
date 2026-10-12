@@ -33,11 +33,11 @@
   },
   "publishResources": [
     {
-      "source": "widgets/interface",
+      "source": "interface",
       "dest": "."
     },
     {
-      "source": "widgets/assets",
+      "source": "assets",
       "dest": "."
     }
   ],

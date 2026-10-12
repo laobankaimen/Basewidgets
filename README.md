@@ -9,7 +9,7 @@
 ![light.png](docs/light.png)
 ## 项目简介
 
-- **核心组件库**：位于 `widgets/` 目录下，集成了样式引擎 (`QtAdvancedStylesheet`) 与各类高级 UI 控件。
+- **核心组件库**：位于 `src/` 目录下，集成了样式引擎 (`QtAdvancedStylesheet`) 与各类高级 UI 控件。
 - **示例程序**：位于 `examples/widgets_demo/`，全方位展示控件的外观、交互与主题切换效果。
 - **主题工具**：位于 `tools/theme_builder/`，用于管理、编辑与生成项目所需的主题资源文件 (`themes.rcc`)。
 
@@ -30,25 +30,25 @@
 
 ```
 QtAdvancedUI/
-├── CMakeLists.txt              # 根构建文件
+├── CMakeLists.txt              # 根构建文件（骨架，双发布流程分支）
+├── src/                        # 核心库实现
+│   └── CMakeLists.txt          # BaseWidgets 目标定义
+│       ├── ... (对应头文件目录)
+├── interface/basewidgets/      # 公共头文件
+│   ├── Charts/
+│   ├── Containers/
+│   ├── Core/
+│   ├── Dialogs/
+│   ├── Gauges/
+│   ├── Inputs/
+│   ├── Styles/                 # 样式引擎接口
+│   └── Views/
+├── assets/                     # 主题资源 (themes.rcc)
 ├── examples/
 │   └── widgets_demo/           # 演示程序源码
-├── tools/
-│   └── theme_builder/          # 主题构建工具与原始资源
-│       └── styles/themes/      # 主题定义文件 (XML/CSS/SVG)
-└── widgets/                         # 核心库
-    ├── CMakeLists.txt
-    ├── interface/basewidget/   # 公共头文件
-    │   ├── Charts/
-    │   ├── Containers/
-    │   ├── Core/
-    │   ├── Dialogs/
-    │   ├── Gauges/
-    │   ├── Inputs/
-    │   ├── Styles/             # 样式引擎接口
-    │   └── Views/
-    └── src/                    # 源代码实现
-        ├── ... (对应头文件目录)
+└── tools/
+    └── theme_builder/          # 主题构建工具与原始资源
+        └── styles/themes/      # 主题定义文件 (XML/CSS/SVG)
 ```
 
 ## 构建环境
@@ -148,7 +148,7 @@ cmake --build build/package_consumer -j 8
 ## 开发指南
 
 ### 仪表盘 (Gauges)
-仪表盘控件已模块化，位于 `widgets/include/basewidgets/Gauges/`。
+仪表盘控件已模块化，位于 `interface/basewidgets/Gauges/`。
 - **CircularGauge**：通用圆形仪表，支持多段颜色环、刻度标签定制及玻璃质感盖层。
 - **使用示例**：
   ```cpp
@@ -162,8 +162,8 @@ cmake --build build/package_consumer -j 8
 项目使用自定义的样式引擎加载 `themes.rcc` 资源包。
 - 若需修改主题（颜色、图标），请在 `tools/theme_builder/styles/themes/` 中修改对应文件。
 - 修改后需通过 `theme_builder` 工具或相关构建流程重新生成资源文件。
-- 运行时默认会从应用目录下查找 `themes.rcc`，CMake 打包链的规范资源目录为 `widgets/assets/`。
-- Node 打包链也以 `widgets/assets/` 为唯一资源输入目录。
+- 运行时默认会从应用目录下查找 `themes.rcc`，CMake 打包链的规范资源目录为 `assets/`。
+- Node 打包链也以 `assets/` 为唯一资源输入目录。
 - `StyleManagerAdapter::initialize()` 的第一个参数表示样式目录 `stylesDir`；若留空则默认使用应用目录下的 `styles/`，并回退查找应用目录中的 `themes.rcc`。
 
 ## 硬规则（长期架构约束）

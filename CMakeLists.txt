@@ -25,16 +25,26 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Svg)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 if(UI_ENABLE_PLUGIN_RELEASE)
     message(STATUS "BaseWidgets: Using LEGACY plugin release workflow (UI_ENABLE_PLUGIN_RELEASE=ON)")
+    include(../com.plugin.releases/plugin_framework_release.cmake)
+    PF_PUBLISH_FLOW_BEGIN(ENABLE_AUTO_BUILD)
 else()
     message(STATUS "BaseWidgets: Using CMake/CPack release workflow (UI_ENABLE_PLUGIN_RELEASE=OFF)")
     include(package/package)
 endif()
 
+# Unified output directories (baselib-style): runtime -> bin/<Config>, shared objects -> lib
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 # Subdirectories
-add_subdirectory(widgets)
+add_subdirectory(src)
 if(UI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
 # Build tools
 add_subdirectory(tools)
+
+if(UI_ENABLE_PLUGIN_RELEASE)
+    PF_PUBLISH_TARGET("BaseWidgets")
+endif()
