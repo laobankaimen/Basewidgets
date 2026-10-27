@@ -113,7 +113,7 @@ void FramelessDialog::initUI()
     // 自定义标题栏（包含最小化/最大化/关闭、拖动/停靠）
     auto* customTitleBar = new CustomTitleBar(this);
     customTitleBar->attachToWindow(this);
-    customTitleBar->setFixedHeight(m_titlebarHeight);
+    customTitleBar->setProfile(CustomTitleBar::Profile::Dialog);
     // 对话框：仅显示关闭按钮，禁用双击放大
     customTitleBar->setButtonsVisible(false, false, true);
     customTitleBar->setDoubleClickToToggleEnabled(false);
@@ -159,6 +159,8 @@ void FramelessDialog::initUI()
     // Default sizing to avoid too small dialogs
     setMinimumSize(380, 240);
 }
+
+CustomTitleBar* FramelessDialog::titleBar() const { return qobject_cast<CustomTitleBar*>(m_titleBar); }
 
 void FramelessDialog::setTitle(const QString& title)
 {
@@ -237,6 +239,11 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, Na
         *result = WVR_REDRAW;
         return true;
     }
+    case WM_NCLBUTTONDBLCLK:
+        if (msg->wParam==HTCAPTION && titleBar() && !titleBar()->doubleClickToToggleEnabled()) {
+            *result=0; return true;
+        }
+        return QDialog::nativeEvent(eventType,message,result);
     case WM_NCHITTEST:
     {
         long x = GET_X_LPARAM(msg->lParam);
@@ -247,13 +254,8 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, Na
             const qreal dpr=devicePixelRatioF();
             const QPoint titlePos=m_titleBar->mapFrom(this,QPoint(qRound(clientPoint.x/dpr),qRound(clientPoint.y/dpr)));
 
-            QWidget* child = m_titleBar->childAt(titlePos);
-            //鼠标标题栏的子控件，让子控件接收事件（过滤掉其他不需要鼠标交互的控件）
-            if (child && (child->objectName().contains("TitleBarCloseButton") ||
-                child->objectName().contains("TitleBarMaxButton") ||
-                child->objectName().contains("TitleBarMinButton"))) {
-                *result = HTCLIENT;
-                return true;
+            if (titleBar() && !titleBar()->isDraggableAt(titlePos)) {
+                *result=HTCLIENT; return true;
             }
             //不在子控件上，且在标题栏内
             if (m_titleBar->rect().contains(titlePos)) {
@@ -262,11 +264,6 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, Na
             }
         }
         *result = HTCLIENT;
-        return true;
-    }
-    case WM_NCLBUTTONDBLCLK: {
-        //拦截双击放大
-        *result = 0;
         return true;
     }
     default:

@@ -16,6 +16,7 @@
 #include <basewidgets/Gauges/StorageCapacityMeter.h>
 #include <basewidgets/Gauges/DataManagementDashboards.h>
 #include <QContextMenuEvent>
+#include <QShortcut>
 #include <basewidgets/Gauges/TransferRateMeter.h>
 #include <QScopedPointer>
 #include <basewidgets/Acoustics/AcousticAnalysis.h>
@@ -53,6 +54,8 @@
 #include <QStatusBar>
 #include <basewidgets/Core/FramelessWidgetWindow.h>
 #include <basewidgets/Core/WindowPlacement.h>
+#include <basewidgets/Core/ScreenWindow.h>
+#include <basewidgets/Core/MultiScreenWorkspace.h>
 #include <QScreen>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -374,6 +377,301 @@ private slots:
         QVERIFY(title->findChild<QToolButton*>("TitleBarMinButton")->isHidden());
         QVERIFY(title->findChild<QToolButton*>("TitleBarMaxButton")->isHidden());
         dialog.setContentWidget(nullptr); QVERIFY(!dialog.contentWidget());
+    }
+    void titleIconDpiAndAspectRatio()
+    {
+        CustomTitleBar title; title.resize(600,48); title.setTitle("水声数据管理"); title.setSettingsVisible(true); title.setUserVisible(true);
+        title.setUserInfo("演示用户"); title.show(); QCoreApplication::processEvents();
+        auto* label=title.findChild<QLabel*>("TitleIcon"); QVERIFY(label);
+        QCOMPARE(label->size(),QSize(20,20)); QCOMPARE(title.settingsButton()->iconSize(),QSize(18,18)); QCOMPARE(title.userButton()->iconSize(),QSize(22,22));
+        const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        for(qreal scale:{1.,1.25,1.5,2.}) {
+            QImage image(QSize(qRound(title.width()*scale),qRound(title.height()*scale)),QImage::Format_ARGB32_Premultiplied);
+            image.setDevicePixelRatio(scale); image.fill(Qt::transparent); title.render(&image);
+            if(!directory.isEmpty()) { QDir().mkpath(directory); QVERIFY(image.save(QString("%1/title-vector-%2.png").arg(directory).arg(scale))); }
+            QImage mark(QSize(qRound(20*scale),qRound(20*scale)),QImage::Format_ARGB32_Premultiplied);
+            mark.setDevicePixelRatio(scale); mark.fill(Qt::transparent); label->render(&mark);
+            QRect blue;
+            for(int y=0;y<mark.height();++y)for(int x=0;x<mark.width();++x) {
+                const auto color=mark.pixelColor(x,y);
+                if(color.blue()>color.red()+50 && color.blue()>color.green()+20)blue=blue.united(QRect(x,y,1,1));
+            }
+            QVERIFY(!blue.isEmpty()); QVERIFY(qAbs(blue.center().x()-mark.rect().center().x())<=1);
+            QVERIFY(qAbs(blue.center().y()-mark.rect().center().y())<=1);
+            QVERIFY(blue.width()>16*scale); QVERIFY(blue.height()>16*scale);
+        }
+        // A non-square application icon must fit rather than stretch/crop, even at DPR=2.
+        QPixmap wide(80,40); wide.fill(Qt::red); title.setIcon(QIcon(wide));
+        QImage image(40,40,QImage::Format_ARGB32_Premultiplied); image.setDevicePixelRatio(2); image.fill(Qt::transparent); label->render(&image);
+        QRect red;
+        for(int y=0;y<40;++y)for(int x=0;x<40;++x) {
+            const auto color=image.pixelColor(x,y); if(color.red()>200&&color.green()<50)red=red.united(QRect(x,y,1,1));
+        }
+        QVERIFY(qAbs(red.width()-2*red.height())<=2); QVERIFY(qAbs(red.center().y()-19)<=1);
+        for(const auto& icon:{"settings","search","more","user"})
+            QVERIFY(QFile::exists(QString(":/styles/themes/common/icons/titlebar/%1.svg").arg(icon)));
+    }
+    void screenWorkspaceRolesAndSharedModel()
+    {
+        ScreenWindow primary; primary.setTitle("主控"); primary.resize(700,500); primary.show();
+        MultiScreenWorkspace workspace(&primary);
+        QStandardItemModel model(3,2); model.setData(model.index(0,0),"shared recording");
+        int created=0;
+        connect(&workspace,&MultiScreenWorkspace::windowCreated,&primary,[&](const QString&,ScreenWindow* window) {
+            ++created; auto* table=new AdvancedTable; table->setSourceModel(&model); window->setContentWidget(table);
+            window->setContextText("采集源 A / 子屏独立状态");
+        });
+        QVERIFY(!workspace.openSecondary("",primary.screen())); QVERIFY(!workspace.openSecondary("invalid",nullptr));
+        auto* direction=workspace.openSecondary("direction",primary.screen(),"测向子屏");
+        auto* data=workspace.openSecondary("data",primary.screen(),"数据管理子屏");
+        QVERIFY(direction&&data); QCOMPARE(created,2); QVERIFY(direction!=data);
+        QVERIFY(!direction->parentWidget()); QVERIFY(!direction->testAttribute(Qt::WA_QuitOnClose));
+        QCOMPARE(primary.role(),ScreenWindow::Role::Primary); QCOMPARE(direction->role(),ScreenWindow::Role::Secondary);
+        QCOMPARE(direction->titleBar()->profile(),CustomTitleBar::Profile::SecondaryWindow);
+        QCOMPARE(direction->titleBar()->height(),qMax(40,direction->titleBar()->fontMetrics().height()+20)); QCOMPARE(primary.titleBar()->height(),qMax(48,primary.titleBar()->fontMetrics().height()+20));
+        QVERIFY(direction->titleBar()->settingsButton()->isHidden()); QVERIFY(direction->titleBar()->userButton()->isHidden());
+        QVERIFY(!direction->titleBar()->findChild<QToolButton*>("TitleBarMaxButton")->isHidden());
+        QCOMPARE(direction->statusBar()->objectName(),QString("SecondaryScreenStatusBar"));
+        QCOMPARE(primary.statusBar()->objectName(),QString("PrimaryScreenStatusBar"));
+        QVERIFY(direction->findChild<QToolButton*>("ReturnToPrimaryButton"));
+        auto* first=qobject_cast<AdvancedTable*>(direction->contentWidget()); auto* second=qobject_cast<AdvancedTable*>(data->contentWidget());
+        QVERIFY(first&&second); QCOMPARE(first->sourceModel(),second->sourceModel());
+        model.setData(model.index(0,0),"updated across screens");
+        QCOMPARE(first->pager()->index(0,0).data().toString(),QString("updated across screens"));
+        QCOMPARE(second->pager()->index(0,0).data().toString(),QString("updated across screens"));
+        primary.showMinimized(); QCoreApplication::processEvents(); QVERIFY(direction->isVisible()); QVERIFY(!direction->isMinimized());
+        direction->findChild<QToolButton*>("ReturnToPrimaryButton")->click(); QVERIFY(!primary.isMinimized());
+        workspace.closeSecondary("direction"); QVERIFY(!direction->isVisible()); QVERIFY(data->isVisible());
+        QCOMPARE(workspace.openSecondary("direction",primary.screen()),direction); QCOMPARE(created,2); QVERIFY(direction->isVisible());
+        QVERIFY(!workspace.setPrimaryScreen(nullptr)); QVERIFY(workspace.setPrimaryScreen(primary.screen()));
+        primary.close(); QVERIFY(!direction->isVisible()); QVERIFY(!data->isVisible());
+        QVERIFY(!workspace.openSecondary("after shutdown",primary.screen()));
+    }
+    void screenWorkspaceTopologyAndOwnership()
+    {
+        QCOMPARE(MultiScreenWorkspace::secondaryScreenIndexes(1,0),QList<int>());
+        QCOMPARE(MultiScreenWorkspace::secondaryScreenIndexes(2,0),QList<int>({1}));
+        QCOMPARE(MultiScreenWorkspace::secondaryScreenIndexes(3,1),QList<int>({0,2}));
+        QCOMPARE(MultiScreenWorkspace::secondaryScreenIndexes(3,2),QList<int>({0,1}));
+        QVERIFY(MultiScreenWorkspace::secondaryScreenIndexes(3,-1).isEmpty());
+        ScreenWindow primary;
+        auto* workspace=new MultiScreenWorkspace(&primary);
+        QPointer<ScreenWindow> a=workspace->openSecondary("view-a",primary.screen());
+        QPointer<ScreenWindow> b=workspace->openSecondary("view-b",primary.screen());
+        QVERIFY(a&&b); QVERIFY(!MultiScreenWorkspace::screenKey(primary.screen()).isEmpty());
+        QCOMPARE(workspace->targetScreen("view-a"),primary.screen());
+        workspace->setAutomaticSecondaryWindows(true); QVERIFY(workspace->automaticSecondaryWindows());
+        workspace->setAutomaticSecondaryWindows(false); QVERIFY(a->isVisible()); // manually assigned views remain open
+        delete a; QVERIFY(!workspace->secondaryIds().contains("view-a"));
+        delete workspace; QVERIFY(b.isNull()); // controller owns top-level child-screen lifetimes
+        // A window-created hook may reject/delete a window without leaving a dangling entry.
+        MultiScreenWorkspace rejecting(&primary);
+        connect(&rejecting,&MultiScreenWorkspace::windowCreated,&primary,[](const QString&,ScreenWindow* window) { delete window; });
+        QVERIFY(!rejecting.openSecondary("rejected",primary.screen())); QVERIFY(rejecting.secondaryIds().isEmpty());
+    }
+    void screenWorkspaceSimulatedDisconnect()
+    {
+        // Exercise only controller signal handling; QGuiApplication's real screen inventory
+        // is unchanged. This does not claim a physical hotplug or compositor test.
+        ScreenWindow primary; MultiScreenWorkspace workspace(&primary);
+        auto* screen=primary.screen(); auto* child=workspace.openSecondary("preview",screen); QVERIFY(child);
+        QSignalSpy available(&workspace,&MultiScreenWorkspace::secondaryAvailabilityChanged);
+        QVERIFY(QMetaObject::invokeMethod(qGuiApp,"screenRemoved",Qt::DirectConnection,Q_ARG(QScreen*,screen)));
+        QVERIFY(!child->isVisible()); QVERIFY(workspace.isSuspended("preview"));
+        workspace.synchronizeScreens(); QVERIFY(child->isVisible()); QVERIFY(!workspace.isSuspended("preview"));
+        QVERIFY(available.count()>=2);
+        workspace.closeSecondary("preview");
+        QVERIFY(QMetaObject::invokeMethod(qGuiApp,"screenRemoved",Qt::DirectConnection,Q_ARG(QScreen*,screen)));
+        workspace.synchronizeScreens(); QVERIFY(!child->isVisible()); QVERIFY(!workspace.isSuspended("preview"));
+    }
+    void screenRoleVisuals()
+    {
+        ScreenWindow primary; ScreenWindow secondary(ScreenWindow::Role::Secondary);
+        primary.setTitle("水声数据管理 · 主控"); primary.titleBar()->setSearchVisible(true); primary.titleBar()->setSettingsVisible(true); primary.titleBar()->setUserVisible(true); primary.titleBar()->setUserInfo("演示用户");
+        secondary.setTitle("测向分析 · 子屏 2");
+        primary.setContextText("主控会话 / 全局任务状态"); secondary.setContextText("测站 A · 测向视图");
+        for(auto* window:{&primary,&secondary}) {
+            auto* content=new QWidget; auto* layout=new QVBoxLayout(content);
+            auto* checked=new CheckBox("选中"); checked->setChecked(true); auto* half=new CheckBox("半选"); half->setTristate(true); half->setCheckState(Qt::PartiallyChecked);
+            auto* radio=new RadioButton("选项 A"); radio->setChecked(true); auto* unchecked=new RadioButton("选项 B");
+            layout->addWidget(checked); layout->addWidget(half); layout->addWidget(radio); layout->addWidget(unchecked); layout->addStretch();
+            window->setContentWidget(content); window->resize(900,360);
+        }
+        const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        for(const QString theme:{QString("dark"),QString("light")}) {
+            auto* manager=StyleManagerAdapter::instance(); QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for(auto* window:{&primary,&secondary}) {
+                window->show(); QCoreApplication::processEvents();
+                for(qreal dpr:{1.,1.25,1.5,2.}) {
+                    QImage image(QSize(qRound(window->width()*dpr),qRound(window->height()*dpr)),QImage::Format_ARGB32_Premultiplied);
+                    image.setDevicePixelRatio(dpr); image.fill(Qt::transparent); window->render(&image);
+                    if(!directory.isEmpty()) {
+                        QDir().mkpath(directory);
+                        QVERIFY(image.save(QString("%1/ScreenRole-%2-%3-%4.png").arg(directory,theme).arg(int(window->role())).arg(dpr)));
+                    }
+                }
+            }
+        }
+    }
+    void titleBarIdentityAndProfiles()
+    {
+        QWidget window,other;
+        window.setWindowTitle("Window identity"); other.setWindowTitle("Second identity");
+        QPixmap red(24,24); red.fill(Qt::red); QPixmap blue(24,24); blue.fill(Qt::blue);
+        const QIcon windowIcon(red),overrideIcon(blue); window.setWindowIcon(windowIcon);
+        CustomTitleBar title;
+        title.attachToWindow(&window); QCOMPARE(title.title(),QString("Window identity")); QCOMPARE(title.icon().cacheKey(),windowIcon.cacheKey());
+        title.setTitle("Independent title"); title.setIcon(overrideIcon);
+        window.setWindowTitle("Changed window"); window.setWindowIcon(QIcon()); title.updateIcons();
+        QCOMPARE(title.title(),QString("Independent title")); QCOMPARE(title.icon().cacheKey(),overrideIcon.cacheKey());
+        QCOMPARE(window.windowTitle(),QString("Changed window"));
+        title.attachToWindow(&other); QCOMPARE(title.title(),QString("Independent title"));
+        title.resetTitle(); QCOMPARE(title.title(),QString("Second identity"));
+        window.setWindowTitle("Old window must not affect new binding"); QCOMPARE(title.title(),QString("Second identity"));
+        title.setTitle(""); title.setIcon(QIcon()); QVERIFY(title.title().isEmpty()); QVERIFY(title.icon().isNull());
+        title.resetTitle(); title.resetIcon(); QVERIFY(!title.icon().isNull());
+        title.setSearchVisible(true); title.setSettingsVisible(true); title.setUserVisible(true);
+        title.setProfile(CustomTitleBar::Profile::Dialog);
+        QCOMPARE(title.profile(),CustomTitleBar::Profile::Dialog); QVERIFY(title.icon().isNull());
+        QVERIFY(title.settingsButton()->isHidden()); QVERIFY(title.userButton()->isHidden()); QVERIFY(title.searchEdit()->isHidden());
+        QVERIFY(title.findChild<QToolButton*>("TitleBarMaxButton")->isHidden()); QVERIFY(!title.doubleClickToToggleEnabled());
+        title.setIcon(overrideIcon); QCOMPARE(title.icon().cacheKey(),overrideIcon.cacheKey());
+        title.setProfile(CustomTitleBar::Profile::MainWindow); QVERIFY(title.doubleClickToToggleEnabled());
+        QVERIFY(!title.settingsButton()->isHidden());
+        title.attachToWindow(nullptr); title.resetTitle(); QVERIFY(!title.title().isEmpty());
+        FramelessWidgetWindow main; FramelessDialog dialog;
+        QCOMPARE(main.titleBar()->profile(),CustomTitleBar::Profile::MainWindow);
+        QCOMPARE(dialog.titleBar()->profile(),CustomTitleBar::Profile::Dialog);
+    }
+    void titleBarLayoutAndInteraction()
+    {
+        QWidget window;
+        auto* layout=new QVBoxLayout(&window); layout->setContentsMargins(0,0,0,0); layout->setSpacing(0);
+        auto* title=new CustomTitleBar(&window); title->attachToWindow(&window); title->setTitle("水声数据管理中心");
+        title->setSearchVisible(true); title->setSettingsVisible(true); title->setUserVisible(true);
+        title->setUserInfo("演示用户",QPixmap(),"只读分析员"); layout->addWidget(title); layout->addStretch();
+        auto* task=new QAction("任务中心",&window); title->addTitleAction(task);
+        window.resize(1100,240); window.show(); QTest::qWait(15);
+        QVERIFY(!title->searchEdit()->isHidden());
+        auto* label=title->findChild<QLabel*>("TitleLabel"); QVERIFY(label);
+        auto verifyNoOverlap=[&] {
+            const auto children=title->findChildren<QWidget*>(QString(),Qt::FindDirectChildrenOnly);
+            QList<QWidget*> visible;
+            for(auto* child:children)if(!child->isWindow()&&!child->isHidden()&&child->width()>0) {
+                QVERIFY2(title->rect().contains(child->geometry()),qPrintable(child->objectName())); visible.append(child);
+            }
+            for(int i=0;i<visible.size();++i)for(int j=i+1;j<visible.size();++j)
+                QVERIFY2(!visible[i]->geometry().intersects(visible[j]->geometry()),qPrintable(visible[i]->objectName()+" intersects "+visible[j]->objectName()));
+        };
+        verifyNoOverlap();
+        QSignalSpy settings(title,&CustomTitleBar::settingsRequested),users(title,&CustomTitleBar::userRequested);
+        title->settingsButton()->click(); title->userButton()->click(); QCOMPARE(settings.count(),1); QCOMPARE(users.count(),1);
+        QVERIFY(!title->isDraggableAt(title->settingsButton()->geometry().center()));
+        QVERIFY(!title->isDraggableAt(title->searchEdit()->geometry().center()));
+        QVERIFY(title->isDraggableAt(label->geometry().center()));
+        const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        for(auto alignment:{CustomTitleBar::TitleAlignment::Left,CustomTitleBar::TitleAlignment::Center}) {
+            title->setTitleAlignment(alignment);
+            for(int width:{1100,640,380,240}) {
+                window.resize(width,240); QApplication::processEvents(); verifyNoOverlap();
+                if(alignment==CustomTitleBar::TitleAlignment::Center && width>=640)
+                    QVERIFY(qAbs(label->geometry().center().x()-title->rect().center().x())<=1);
+                if(!directory.isEmpty()) {
+                    QDir().mkpath(directory);
+                    QVERIFY(render(*title).save(QString("%1/TitleBar-%2-%3.png").arg(directory).arg(int(alignment)).arg(width)));
+                }
+            }
+        }
+        window.resize(640,240); title->setTitleAlignment(CustomTitleBar::TitleAlignment::Left); QApplication::processEvents();
+        auto* more=title->findChild<QToolButton*>("TitleBarMoreButton"); QVERIFY(more); QVERIFY(more->menu()->actions().contains(task));
+        QSignalSpy taskTriggered(task,&QAction::triggered); task->trigger(); QCOMPARE(taskTriggered.count(),1);
+        task->setVisible(false); QVERIFY(!more->menu()->actions().contains(task));
+        task->setVisible(true); QVERIFY(more->menu()->actions().contains(task));
+        delete task; QVERIFY(more->isHidden());
+        QFont large=title->font(); large.setPixelSize(28); title->setFont(large); QApplication::processEvents();
+        QVERIFY(title->height()>=title->fontMetrics().height()+20); verifyNoOverlap();
+        title->setLayoutDirection(Qt::RightToLeft); QApplication::processEvents(); verifyNoOverlap();
+    }
+    void titleBarSearchAndOverflow()
+    {
+        QWidget window; auto* layout=new QVBoxLayout(&window); layout->setContentsMargins(0,0,0,0);
+        auto* title=new CustomTitleBar(&window); layout->addWidget(title); layout->addStretch(); title->attachToWindow(&window);
+        title->setSearchVisible(true); title->setSettingsVisible(true); title->setUserVisible(true);
+        window.resize(1100,240); window.show(); window.activateWindow(); QTest::qWait(15);
+        QSignalSpy text(title,&CustomTitleBar::searchTextChanged),submit(title,&CustomTitleBar::searchSubmitted);
+        title->setSearchText("station_1"); QCOMPARE(text.count(),1); title->setSearchText("station_1"); QCOMPARE(text.count(),1);
+        title->focusSearch(); QVERIFY(title->searchEdit()->hasFocus());
+        QTest::keyClick(title->searchEdit(),Qt::Key_Return); QCOMPARE(submit.count(),1); QCOMPARE(submit.last().first().toString(),QString("station_1"));
+        window.resize(640,240); QApplication::processEvents(); QVERIFY(title->searchEdit()->isHidden());
+        title->settingsButton()->setFocus();
+        QTest::keyClick(title->settingsButton(),Qt::Key_K,Qt::ControlModifier); QApplication::processEvents();
+        auto* popup=title->findChild<QFrame*>("TitleBarSearchPopup"); auto* input=title->findChild<QLineEdit*>("TitleBarPopupSearchEdit");
+        QVERIFY(popup && input); QVERIFY(popup->isVisible()); QCOMPARE(input->text(),QString("station_1"));
+        input->setText("new query"); QCOMPARE(title->searchText(),QString("new query")); QCOMPARE(text.count(),2);
+        QTest::keyClick(input,Qt::Key_Return); QCOMPARE(submit.count(),2); QVERIFY(!popup->isVisible());
+        title->focusSearch(); QVERIFY(popup->isVisible()); QTest::keyClick(input,Qt::Key_Escape); QTRY_VERIFY(!popup->isVisible());
+        title->setSearchVisible(false); title->focusSearch(); QVERIFY(!popup->isVisible());
+        window.resize(240,240); QApplication::processEvents();
+        auto* more=title->findChild<QToolButton*>("TitleBarMoreButton"); QVERIFY(!more->isHidden());
+        QSignalSpy settings(title,&CustomTitleBar::settingsRequested);
+        const auto actions=more->menu()->actions(); QVERIFY(!actions.isEmpty()); actions.first()->trigger(); QCOMPARE(settings.count(),1);
+        title->setSearchVisible(true); title->setProfile(CustomTitleBar::Profile::Dialog); title->focusSearch(); QVERIFY(!popup->isVisible());
+    }
+    void titleBarMenusAndActionOwnership()
+    {
+        QWidget window; auto* layout=new QVBoxLayout(&window); layout->setContentsMargins(0,0,0,0);
+        auto* title=new CustomTitleBar(&window); layout->addWidget(title); layout->addStretch(); title->attachToWindow(&window);
+        title->setSettingsVisible(true); title->setUserVisible(true); window.resize(1100,240); window.show(); QTest::qWait(10);
+        auto* settings=new QMenu(title); auto* preference=settings->addAction("Preferences"); title->settingsButton()->setMenu(settings);
+        QCoreApplication::processEvents(); QSignalSpy selected(preference,&QAction::triggered);
+        bool opened=false;
+        QTimer::singleShot(20,&window,[&] {
+            auto* menu=qobject_cast<QMenu*>(QApplication::activePopupWidget()); if(!menu)return;
+            opened=true; menu->setActiveAction(preference); QTest::keyClick(menu,Qt::Key_Return);
+        });
+        QTest::mouseClick(title->settingsButton(),Qt::LeftButton); QTRY_VERIFY(opened); QCOMPARE(selected.count(),1);
+        window.resize(240,240); QCoreApplication::processEvents();
+        auto* more=title->findChild<QToolButton*>("TitleBarMoreButton"); QVERIFY(more);
+        bool submenu=false;
+        for(auto* action:more->menu()->actions())if(action->menu()==settings)submenu=true;
+        QVERIFY(submenu); // settings remain reachable when the gear moves into overflow
+        auto* external=new QAction("External action",&window); QPointer<QAction> alive=external;
+        title->addTitleAction(external); title->addTitleAction(external);
+        QCOMPARE(more->menu()->actions().count(external),1);
+        title->removeTitleAction(external); QVERIFY(alive); QVERIFY(!more->menu()->actions().contains(external));
+        title->setSearchVisible(true); title->setSearchShortcut(QKeySequence());
+        QVERIFY(!title->findChild<QShortcut*>()->isEnabled());
+        title->setSearchShortcut(QKeySequence("Ctrl+F")); QVERIFY(title->findChild<QShortcut*>()->isEnabled());
+    }
+    void titleBarThemeAndAvatarRendering()
+    {
+        FramelessWidgetWindow window; window.setContentWidget(new QLabel("Content"));
+        auto* title=window.titleBar(); title->setTitle("项目 / 水声数据处理"); title->setSettingsVisible(true); title->setSearchVisible(true); title->setUserVisible(true);
+        QPixmap avatar(100,70); avatar.fill(QColor("#568AB0"));
+        { QPainter painter(&avatar); painter.setBrush(Qt::white); painter.drawEllipse(30,10,30,30); }
+        title->setUserInfo("演示用户",avatar,"业务角色 / 数据分析");
+        auto* menu=new QMenu(title); menu->addAction("Preferences"); title->settingsButton()->setMenu(menu);
+        auto* userMenu=new QMenu(title); userMenu->addAction("Profile"); title->userButton()->setMenu(userMenu);
+        auto* manager=StyleManagerAdapter::instance();
+        const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        for(const auto& theme:{QString("dark"),QString("light")}) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for(auto alignment:{CustomTitleBar::TitleAlignment::Left,CustomTitleBar::TitleAlignment::Center}) {
+                title->setTitleAlignment(alignment);
+                for(int width:{1100,640}) {
+                    window.resize(width,300); window.show(); QApplication::processEvents();
+                    QVERIFY(!title->userButton()->icon().isNull());
+                    if(!directory.isEmpty()) {
+                        QDir().mkpath(directory);
+                        QVERIFY(render(*title).save(QString("%1/TitleBar-%2-%3-%4.png").arg(directory,theme).arg(int(alignment)).arg(width)));
+                    }
+                }
+            }
+            FramelessDialog dialog; dialog.setTitle("录音详情"); dialog.titleBar()->setTitleAlignment(CustomTitleBar::TitleAlignment::Center);
+            dialog.resize(440,260); dialog.show(); QApplication::processEvents();
+            QVERIFY(dialog.titleBar()->findChild<QLabel*>("TitleIcon")->isHidden());
+            if(!directory.isEmpty())QVERIFY(render(dialog).save(directory+"/TitleBar-Dialog-"+theme+".png"));
+        }
     }
     void iconSurvivesManager()
     {

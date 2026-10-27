@@ -15,6 +15,11 @@
 #include <basewidgets/Core/StyleManagerAdapter.h>
 #include <basewidgets/Core/FramelessWidgetWindow.h>
 #include <basewidgets/Core/WindowPlacement.h>
+#include <basewidgets/Core/ScreenWindow.h>
+#include <basewidgets/Core/MultiScreenWorkspace.h>
+#include <basewidgets/Core/CustomTitleBar.h>
+#include <basewidgets/Views/AdvancedTable.h>
+#include <QPainter>
 #include <basewidgets/Core/StyledWidget.h>
 #include <basewidgets/Containers/MenuBar.h>
 #include <basewidgets/Containers/ToolBar.h>
@@ -71,7 +76,7 @@
 
 using namespace basewidgets;
 
-class DemoMainWindow : public FramelessWidgetWindow {
+class DemoMainWindow : public ScreenWindow {
 protected:
     void closeEvent(QCloseEvent* ev) override
     {
@@ -79,39 +84,8 @@ protected:
             ev->ignore();
             return;
         }
-        FramelessWidgetWindow::closeEvent(ev);
+        ScreenWindow::closeEvent(ev);
     }
-};
-
-
-// 独立监控窗口可同时放到第二、第三屏，每个屏幕身份使用单独的应用设置键。
-// 生产应用可把 DataManagementPage 换成共享业务模型驱动的真实监控页。
-class DemoMonitorWindow : public FramelessWidgetWindow {
-public:
-    DemoMonitorWindow(const QString& key,QWidget* parent) : FramelessWidgetWindow(parent),m_key(key)
-    {
-        setAttribute(Qt::WA_DeleteOnClose);
-        setTitle("数据管理 · 独立监控窗口（模拟）");
-        setContentWidget(new DataManagementPage);
-        resize(1000,760);
-        if(!qApp->arguments().contains("--smoke-test")) {
-            QSettings settings; WindowPlacement::restore(this,settings.value(m_key).toByteArray());
-        }
-        connect(qApp,&QCoreApplication::aboutToQuit,this,[this] { savePlacement(); });
-    }
-protected:
-    void closeEvent(QCloseEvent* event) override
-    {
-        FramelessWidgetWindow::closeEvent(event);
-        if(event->isAccepted())savePlacement();
-    }
-private:
-    void savePlacement()
-    {
-        if(qApp->arguments().contains("--smoke-test"))return;
-        QSettings settings; settings.setValue(m_key,WindowPlacement::save(this));
-    }
-    QString m_key;
 };
 
 
@@ -206,46 +180,30 @@ int main(int argc, char *argv[])
     
     window->setToolBar(toolBar);
 
-    // 菜单每次展开重新枚举，允许运行中增减第二/第三屏；不缓存失效 QScreen 指针。
-    auto* screensMenu=menuBar->addMenu("屏幕(&S)");
-    screensMenu->setObjectName("ScreenPlacementMenu");
-    QObject::connect(screensMenu,&QMenu::aboutToShow,window,[screensMenu,window] {
+    // 一个主控窗口 + 多个子屏业务窗口。主屏可任选，不要求等于系统 primaryScreen。
+    auto* workspace=new MultiScreenWorkspace(window);
+    workspace->setObjectName("DemoMultiScreenWorkspace");
+    auto* screensMenu=menuBar->addMenu("屏幕(&S)"); screensMenu->setObjectName("ScreenPlacementMenu");
+    QObject::connect(screensMenu,&QMenu::aboutToShow,window,[screensMenu,workspace] {
         screensMenu->clear();
-        int number=0;
-        for(auto* screen:QGuiApplication::screens()) {
-            const QRect area=screen->availableGeometry();
-            auto* action=screensMenu->addAction(QString("%1 · %2 · %3×%4 · %5%")
-                .arg(++number).arg(screen->name()).arg(area.width()).arg(area.height()).arg(qRound(screen->devicePixelRatio()*100)));
-            action->setCheckable(true); action->setChecked(window->screen()==screen);
-            const QPointer<QScreen> target(screen);
-            QObject::connect(action,&QAction::triggered,window,[window,target] {
-                if(!target)return;
-                const auto result=WindowPlacement::moveToScreen(window,target);
-                if(result==WindowPlacement::MoveResult::CompositorManaged && window->statusBar())
-                    window->statusBar()->showMessage("Wayland 下目标屏幕已请求，最终位置由桌面合成器决定。",6000);
-            });
-        }
-        screensMenu->addSeparator();
-        auto* separate=screensMenu->addMenu("在指定屏幕打开独立监控窗口");
-        separate->setObjectName("MonitorScreensMenu");
+        auto* primary=screensMenu->addMenu("选择主控屏幕");
         for(auto* screen:QGuiApplication::screens()) {
             const QPointer<QScreen> target(screen);
-            auto* open=separate->addAction(screen->name());
-            QObject::connect(open,&QAction::triggered,window,[window,target] {
-                if(!target)return;
-                const auto id=QString::fromLatin1(QCryptographicHash::hash((target->name()+"/"+target->serialNumber()).toUtf8(),QCryptographicHash::Sha256).toHex());
-                const QString name="MonitorWindow-"+id;
-                auto* monitor=window->findChild<FramelessWidgetWindow*>(name,Qt::FindDirectChildrenOnly);
-                if(!monitor) {
-                    monitor=new DemoMonitorWindow("monitorWindows/"+id+"/placement",window);
-                    monitor->setObjectName(name);
-                }
-                WindowPlacement::moveToScreen(monitor,target);
-                monitor->show(); monitor->raise(); monitor->activateWindow();
+            auto* action=primary->addAction(screen->name()); action->setCheckable(true); action->setChecked(screen==workspace->primaryScreen());
+            QObject::connect(action,&QAction::triggered,workspace,[workspace,target] { if(target)workspace->setPrimaryScreen(target); });
+        }
+        auto* automatic=screensMenu->addAction("在其余屏幕自动创建子屏工作区"); automatic->setCheckable(true); automatic->setChecked(workspace->automaticSecondaryWindows());
+        QObject::connect(automatic,&QAction::toggled,workspace,&MultiScreenWorkspace::setAutomaticSecondaryWindows);
+        auto* reopen=screensMenu->addAction("重新显示所有子屏");
+        QObject::connect(reopen,&QAction::triggered,workspace,&MultiScreenWorkspace::showAllSecondaryScreens);
+        // 单屏开发也能查看角色差异，显式预览允许与主控共用物理屏幕。
+        auto* preview=screensMenu->addMenu("子屏工作区预览 / 指定屏幕"); preview->setObjectName("MonitorScreensMenu");
+        for(auto* screen:QGuiApplication::screens()) {
+            const QPointer<QScreen> target(screen); auto* action=preview->addAction(screen->name());
+            QObject::connect(action,&QAction::triggered,workspace,[workspace,target] {
+                if(target)workspace->openSecondary("preview-"+MultiScreenWorkspace::screenKey(target),target,"子屏业务工作区 · 预览");
             });
         }
-        auto* recover=screensMenu->addAction("恢复到可见区域");
-        QObject::connect(recover,&QAction::triggered,window,[window] { WindowPlacement::ensureVisible(window); });
     });
 
     // 创建状态栏
@@ -253,7 +211,7 @@ int main(int argc, char *argv[])
     statusBar->showMessage("basewidgets 组件展示 - 就绪");
     
     // 添加永久控件
-    auto* networkLabel = new Label("网络: 已连接", statusBar);
+    auto* networkLabel = new Label("主控 · 演示会话", statusBar);
     statusBar->addPermanentWidget(networkLabel);
     
     auto* progressBar = new ProgressBar(statusBar);
@@ -297,9 +255,70 @@ int main(int argc, char *argv[])
     window->setContentWidget(contentRoot);
     window->setStatusBar(statusBar);
 
-    // 主题切换逻辑保持不变
+    // 子屏有自己的标题栏和状态栏，无主控的账户/全局搜索/菜单/工具栏。
+    // 各屏可以同时打开不同分析页面；共享录音列表直接复用主屏源模型，不复制数据。
+    QPointer<QAbstractItemModel> recordings=window->findChild<AdvancedTable*>("RecordingAdvancedTable")->sourceModel();
+    QObject::connect(workspace,&MultiScreenWorkspace::windowCreated,window,[recordings,workspace](const QString& id,ScreenWindow* secondary) {
+        auto* pages=new TabWidget;
+        pages->addTab(new DirectionAnalysisPage(pages),"测向监视");
+        pages->addTab(new DataManagementPage(pages),"数据监控");
+        auto* table=new AdvancedTable(pages); table->setSourceModel(recordings); table->setPageSize(20);
+        table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        pages->addTab(table,"共享录音列表");
+        pages->setCurrentIndex((workspace->secondaryIds().size()-1)%2);
+        secondary->setContentWidget(pages);
+        secondary->setContextText("模拟视图 · 共享录音源");
+        secondary->titleBar()->setTitleAlignment(CustomTitleBar::TitleAlignment::Left);
+        if(id.startsWith("screen-"))secondary->setWindowState(Qt::WindowMaximized);
+        // 子屏之间独立切换页签/缩放；只有业务数据模型共享。
+        QObject::connect(pages,&QTabWidget::currentChanged,secondary,[secondary,pages](int index) {
+            secondary->setContextText(QString("%1 · 模拟视图").arg(pages->tabText(index)));
+        });
+    });
+    QObject::connect(workspace,&MultiScreenWorkspace::compositorPlacementRequested,statusBar,[statusBar](const QString&,QScreen*) {
+        statusBar->showMessage("已创建对应角色窗口；Wayland 下最终屏幕位置由合成器决定。",6000);
+    });
 
-    // 取消标题栏注入与按钮控制示例，恢复默认布局
+    // 主标题栏独立配置，系统窗口标题/图标默认同步；这里演示覆盖展示标题。
+    // 标题栏只发送搜索/操作信号，业务行为由应用实现。
+    auto* titleBar=window->titleBar();
+    titleBar->setTitle("水声数据管理中心");
+    titleBar->setSearchVisible(true); titleBar->setSettingsVisible(true); titleBar->setUserVisible(true);
+    titleBar->setSearchPlaceholderText("搜索录音 · Ctrl+K");
+    // 无照片时采用姓名字形占位，不把低分辨率示意头像放大。
+    titleBar->setUserInfo("演示用户",QPixmap(),"本地示例 · 数据分析");
+    auto* accountMenu=new QMenu(titleBar);
+    auto* accountLabel=accountMenu->addAction("演示用户 · 本地账户"); accountLabel->setEnabled(false);
+    accountMenu->addSeparator();
+    auto* profileAction=accountMenu->addAction("用户信息");
+    QObject::connect(profileAction,&QAction::triggered,window,[window] {
+        DialogUtils::messageInfo(window,"用户信息","演示用户\n角色：数据分析\n此处可接入应用的账户信息和权限服务。");
+    });
+    titleBar->userButton()->setMenu(accountMenu);
+    auto* titleSettings=new QMenu(titleBar); titleBar->settingsButton()->setMenu(titleSettings);
+    auto* alignment=titleSettings->addMenu("标题位置"); auto* alignmentGroup=new QActionGroup(titleBar);
+    auto* left=alignment->addAction("左侧"); auto* center=alignment->addAction("居中");
+    for(auto* action:{left,center}) { action->setCheckable(true); alignmentGroup->addAction(action); }
+    left->setChecked(true);
+    QObject::connect(left,&QAction::triggered,titleBar,[titleBar] { titleBar->setTitleAlignment(CustomTitleBar::TitleAlignment::Left); });
+    QObject::connect(center,&QAction::triggered,titleBar,[titleBar] { titleBar->setTitleAlignment(CustomTitleBar::TitleAlignment::Center); });
+    auto* ownTitle=titleSettings->addAction("使用独立展示标题"); ownTitle->setCheckable(true); ownTitle->setChecked(true);
+    QObject::connect(ownTitle,&QAction::toggled,titleBar,[titleBar](bool enabled) { if(enabled)titleBar->setTitle("水声数据管理中心"); else titleBar->resetTitle(); });
+    auto* showIcon=titleSettings->addAction("显示应用图标"); showIcon->setCheckable(true); showIcon->setChecked(true);
+    QObject::connect(showIcon,&QAction::toggled,titleBar,&CustomTitleBar::setIconVisible);
+    auto* searchToggle=titleSettings->addAction("显示全局搜索"); searchToggle->setCheckable(true); searchToggle->setChecked(true);
+    QObject::connect(searchToggle,&QAction::toggled,titleBar,&CustomTitleBar::setSearchVisible);
+    auto* themeAction=titleSettings->addAction("切换明暗主题");
+    QObject::connect(themeAction,&QAction::triggered,themeCombo,[themeCombo] { themeCombo->setCurrentIndex(1-themeCombo->currentIndex()); });
+    // 可复用 QAction；窄窗口会自动出现在“更多操作”菜单，动作仍是同一个对象。
+    auto* taskAction=new QAction("任务中心",titleBar); titleBar->addTitleAction(taskAction);
+    QObject::connect(taskAction,&QAction::triggered,mainTabWidget,[mainTabWidget] { mainTabWidget->setCurrentIndex(6); });
+    QObject::connect(titleBar,&CustomTitleBar::searchSubmitted,window,[window,mainTabWidget,statusBar](const QString& text) {
+        auto* table=window->findChild<AdvancedTable*>("RecordingAdvancedTable");
+        if(!table)return;
+        table->setFilterText(text); mainTabWidget->setCurrentIndex(8);
+        statusBar->showMessage(text.isEmpty()?"已清空录音筛选":QString("录音搜索：%1 · %2 条结果").arg(text).arg(table->pager()->totalRows()),6000);
+    });
 
     // 切换主题色和 SVG 资源；StyleManagerAdapter 刷新自绘样式，不生成或应用 QSS。
     QObject::connect(themeCombo, QOverload<int>::of(&ComboBox::currentIndexChanged), 
@@ -330,6 +349,10 @@ int main(int argc, char *argv[])
         window->resize(1100,760);
     }
     window->show();
+    if(!smoke) {
+        workspace->setPrimaryScreen(window->screen());
+        workspace->setAutomaticSecondaryWindows(true);
+    }
     // Reproducible headless smoke test of the real composite pages.
     if (smoke) {
         QTimer::singleShot(150, &app, [window, mainTabWidget, &app] {
@@ -353,23 +376,37 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-            // Exercise the actual screen-menu action and auxiliary-window reuse without writing settings.
-            if(auto* screens=window->findChild<QMenu*>("ScreenPlacementMenu")) {
-                QMetaObject::invokeMethod(screens,"aboutToShow",Qt::DirectConnection);
-                auto* monitors=screens->findChild<QMenu*>("MonitorScreensMenu");
-                if(monitors && !monitors->actions().isEmpty()) {
-                    monitors->actions().first()->trigger(); QApplication::processEvents();
-                    int count=0; QPointer<FramelessWidgetWindow> auxiliary;
-                    for(auto* candidate:window->findChildren<FramelessWidgetWindow*>(QString(),Qt::FindDirectChildrenOnly))
-                        if(candidate->objectName().startsWith("MonitorWindow-")) { ++count; auxiliary=candidate; }
-                    ok=count==1 && auxiliary && auxiliary->isVisible() && ok;
-                    monitors->actions().first()->trigger(); QApplication::processEvents();
-                    if(auxiliary) {
-                        ok=auxiliary->contentWidget()!=nullptr && !auxiliary->grab().isNull() && ok;
-                        auxiliary->close(); QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
-                        ok=auxiliary.isNull() && ok;
-                    }
-                } else ok=false;
+            // Verify the title-bar business integration: submit a query and open the task page.
+            auto* title=window->titleBar();
+            if(title) {
+                title->setSearchText("station_1");
+                QMetaObject::invokeMethod(title->searchEdit(),"returnPressed",Qt::DirectConnection);
+                auto* table=window->findChild<AdvancedTable*>("RecordingAdvancedTable");
+                ok=table && table->pager()->totalRows()==50 && mainTabWidget->currentIndex()==8 && ok;
+                title->setSearchText(""); QMetaObject::invokeMethod(title->searchEdit(),"returnPressed",Qt::DirectConnection);
+                bool foundTask=false;
+                for(auto* action:title->findChildren<QAction*>())if(action->text()=="任务中心") { action->trigger(); foundTask=true; break; }
+                ok=foundTask && mainTabWidget->currentIndex()==6 && ok;
+            } else ok=false;
+
+            // Exercise the role-based workspace on one offscreen surface as an explicit preview.
+            auto* workspace=window->findChild<MultiScreenWorkspace*>("DemoMultiScreenWorkspace");
+            if(workspace) {
+                const QString id="smoke-secondary";
+                auto* auxiliary=workspace->openSecondary(id,window->screen(),"子屏 · 测向 / 数据监控");
+                ok=auxiliary && auxiliary->role()==ScreenWindow::Role::Secondary && auxiliary->parentWidget()==nullptr && ok;
+                if(auxiliary) {
+                    QApplication::processEvents();
+                    ok=auxiliary->titleBar()->profile()==CustomTitleBar::Profile::SecondaryWindow && auxiliary->statusBar() && ok;
+                    auto* shared=auxiliary->findChild<AdvancedTable*>();
+                    auto* source=window->findChild<AdvancedTable*>("RecordingAdvancedTable");
+                    ok=shared && source && shared->sourceModel()==source->sourceModel() && ok;
+                    if(!captureDir.isEmpty())ok=auxiliary->grab().save(QDir(captureDir).filePath("secondary-workspace.png")) && ok;
+                    ok=workspace->openSecondary(id,window->screen())==auxiliary && ok;
+                    workspace->closeSecondary(id); ok=!auxiliary->isVisible() && ok;
+                    workspace->openSecondary(id,window->screen()); ok=auxiliary->isVisible() && ok;
+                    workspace->closeSecondary(id);
+                }
             } else ok=false;
             for (QWidget* widget : QApplication::allWidgets()) ok = widget->styleSheet().isEmpty() && ok;
             app.exit(ok ? 0 : 1);

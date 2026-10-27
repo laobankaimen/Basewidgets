@@ -256,24 +256,26 @@ void NativeStyle::drawPrimitive(PrimitiveElement element, const QStyleOption* op
         const bool radio = element == PE_IndicatorRadioButton;
         const bool checked = option->state & State_On;
         const bool partial = option->state & State_NoChange;
-        const QRectF r = QRectF(option->rect).adjusted(1, 1, -1, -1);
-        const QColor fill = enabled && (checked || partial) ? pal.color(QPalette::Highlight)
-                                                           : pal.color(QPalette::Button);
-        rounded(p, r, fill, enabled && (checked || partial) ? fill : edge(option), radio ? r.height()/2 : 3);
-        p->save();
-        p->setRenderHint(QPainter::Antialiasing);
-        p->setPen(QPen(enabled ? pal.color(QPalette::HighlightedText) : pal.color(QPalette::Text),
-                       1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        if (partial && !radio) {
-            p->drawLine(QPointF(r.left()+3, r.center().y()), QPointF(r.right()-3, r.center().y()));
-        } else if (checked && radio) {
-            p->setBrush(p->pen().color()); p->setPen(Qt::NoPen);
-            p->drawEllipse(r.center(), 2.5, 2.5);
-        } else if (checked) {
-            QPolygonF tick;
-            tick << QPointF(r.left()+3, r.center().y()) << QPointF(r.center().x()-1, r.bottom()-3)
-                 << QPointF(r.right()-2, r.top()+3);
-            p->drawPolyline(tick);
+        // Shared normalized geometry for checkboxes, item checks and radio buttons.
+        // Proportions remain stable at fractional DPR and custom indicator sizes.
+        const qreal side=qMin(option->rect.width(),option->rect.height());
+        const QRectF box(option->rect.x()+(option->rect.width()-side)/2.,option->rect.y()+(option->rect.height()-side)/2.,side,side);
+        const QRectF r=box.adjusted(1,1,-1,-1);
+        const QColor fill=enabled&&(checked||partial)?pal.color(QPalette::Highlight):pal.color(QPalette::Base);
+        p->save(); p->setRenderHint(QPainter::Antialiasing);
+        p->setBrush(fill);
+        p->setPen(QPen(enabled&&(checked||partial)?fill:edge(option),1.0));
+        if(radio)p->drawEllipse(r.adjusted(.5,.5,-.5,-.5));
+        else p->drawRoundedRect(r.adjusted(.5,.5,-.5,-.5),2.5,2.5);
+        const QColor ink=enabled?pal.color(QPalette::HighlightedText):pal.color(QPalette::Text);
+        p->setPen(QPen(ink,qMax(1.25,side*.1),Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+        auto point=[&](qreal x,qreal y) { return QPointF(box.left()+side*x,box.top()+side*y); };
+        if(partial&&!radio) {
+            p->drawLine(point(.3,.5),point(.7,.5));
+        } else if(checked&&radio) {
+            p->setBrush(ink); p->setPen(Qt::NoPen); p->drawEllipse(box.center(),side*.14,side*.14);
+        } else if(checked) {
+            QPolygonF tick; tick<<point(.27,.5)<<point(.43,.66)<<point(.74,.34); p->drawPolyline(tick);
         }
         p->restore();
         return;
@@ -340,6 +342,30 @@ void NativeStyle::drawControl(ControlElement element, const QStyleOption* option
             QStyleOptionToolButton copy(*button);
             if ((option->state & State_Enabled) && filled(option, widget))
                 copy.palette.setColor(QPalette::ButtonText, pal.color(QPalette::HighlightedText));
+            if (!copy.icon.isNull() && (copy.toolButtonStyle==Qt::ToolButtonIconOnly || copy.toolButtonStyle==Qt::ToolButtonTextBesideIcon)) {
+                // Paint vector engines into the actual painter, including fractional-DPR
+                // offscreen targets, rather than rasterizing at the widget's old screen DPR.
+                const QSize iconSize=copy.iconSize.boundedTo(copy.rect.size());
+                const QIcon::Mode mode=!(copy.state&State_Enabled)?QIcon::Disabled:(copy.state&State_MouseOver)?QIcon::Active:QIcon::Normal;
+                const QIcon::State state=(copy.state&State_On)?QIcon::On:QIcon::Off;
+                if(copy.toolButtonStyle==Qt::ToolButtonIconOnly) {
+                    copy.icon.paint(p,alignedRect(copy.direction,Qt::AlignCenter,iconSize,copy.rect),Qt::AlignCenter,mode,state);
+                } else {
+                    const int gap=copy.text.isEmpty()?0:6;
+                    const int textWidth=copy.fontMetrics.size(Qt::TextShowMnemonic,copy.text).width();
+                    const int total=qMin(copy.rect.width(),iconSize.width()+gap+textWidth);
+                    const int left=copy.rect.left()+(copy.rect.width()-total)/2;
+                    const QRect logicalIcon(left,copy.rect.center().y()-iconSize.height()/2,iconSize.width(),iconSize.height());
+                    const QRect logicalText(left+iconSize.width()+gap,copy.rect.top(),qMax(0,total-iconSize.width()-gap),copy.rect.height());
+                    copy.icon.paint(p,visualRect(copy.direction,copy.rect,logicalIcon),Qt::AlignCenter,mode,state);
+                    p->save(); p->setFont(copy.font);
+                    const QString text=copy.fontMetrics.elidedText(copy.text,Qt::ElideRight,logicalText.width(),Qt::TextShowMnemonic);
+                    drawItemText(p,visualRect(copy.direction,copy.rect,logicalText),Qt::AlignVCenter|(copy.direction==Qt::RightToLeft?Qt::AlignRight:Qt::AlignLeft)|Qt::TextSingleLine|Qt::TextShowMnemonic,
+                                 copy.palette,copy.state&State_Enabled,text,QPalette::ButtonText);
+                    p->restore();
+                }
+                return;
+            }
             QProxyStyle::drawControl(element, &copy, p, widget);
             return;
         }

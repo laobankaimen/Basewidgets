@@ -1,6 +1,6 @@
 {
     "name" : "themes",
-    "icon" : "themes_icon.svg",
+    "icon" : "logo/logo.svg",
     "default_theme" : "dark",
 
     "variables" : {

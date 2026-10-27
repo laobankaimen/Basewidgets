@@ -15,6 +15,7 @@
 class QShowEvent;
 
 namespace basewidgets {
+class CustomTitleBar;
 
 /** 可组合对话框外壳；独立浮层底色和细边框，标准页脚按钮默认纯文字。
  * 内容区与可选 OK/Cancel 页脚分开；不强制改变消息正文中显式设置的图标。
@@ -28,6 +29,8 @@ public:
     explicit FramelessDialog(bool popDialog = true,QWidget* parent = nullptr);
     explicit FramelessDialog(QWidget* parent);
     ~FramelessDialog() override;
+    /** 借用标题栏，可独立配置展示标题、图标、对齐方式与扩展操作。 */
+    CustomTitleBar* titleBar() const;
 
     /** 同步系统窗口标题和自定义标题栏文字。 */
     void setTitle(const QString& title) override;
@@ -64,7 +67,6 @@ private:
     QPointer<QWidget> m_contentWidget;
     QVBoxLayout* mainLayout = nullptr;
     QDialogButtonBox* btnBox = nullptr;
-    int m_titlebarHeight = 40;
     bool isPopDialog = false;
     bool m_centeredOnce = false;
 };

@@ -1,109 +1,367 @@
-/*
- * Author: zhoutao@zkhx.com
- * Date: 2025-12-25
- */
 #include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
-#include <basewidgets/Styles/QtAdvancedStylesheet.h>
+#include <basewidgets/Core/ThemeTokens.h>
+#include <basewidgets/Core/BaseWidgetInterface.h>
 #include <basewidgets/Inputs/ToolButton.h>
+#include <basewidgets/Inputs/LineEdit.h>
 #include <basewidgets/Inputs/ElidedLabel.h>
-
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QApplication>
 #include <QScreen>
-#include <QIcon>
 #include <QStyle>
 #include <QPainter>
-#include <QPaintEvent>
-#include <QPropertyAnimation>
+#include <QPainterPath>
+#include <QStylePainter>
+#include <QStyleOptionToolButton>
 #include <QTimer>
 #include <QWindow>
-
-#include "basewidgets/Core/BaseWidgetInterface.h"
-
-using namespace acss;
-
+#include <QResizeEvent>
+#include <QVBoxLayout>
+#include <QFrame>
+#include <QMenu>
+#include <QAction>
+#include <QShortcut>
+#include <QSignalBlocker>
+#include <QTextBoundaryFinder>
+#include <QIconEngine>
+#include <cmath>
 namespace basewidgets {
-static int fixedHieght = 40;
-CustomTitleBar::CustomTitleBar(QWidget* parent)
-    : QWidget(parent)
+namespace {
+// Compact title actions use their glyph as the menu affordance (gear/avatar/ellipsis).
+// Keep QToolButton's native keyboard/menu behavior; suppress only the redundant arrow
+// for InstantPopup icon-only buttons so it cannot consume the whole icon area.
+class TitleToolButton : public ToolButton {
+public:
+    explicit TitleToolButton(QWidget* parent) : ToolButton(parent) {}
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QStylePainter painter(this); QStyleOptionToolButton option; initStyleOption(&option);
+        if(toolButtonStyle()==Qt::ToolButtonIconOnly && popupMode()==QToolButton::InstantPopup) {
+            option.features &= ~(QStyleOptionToolButton::HasMenu|QStyleOptionToolButton::MenuButtonPopup);
+            option.subControls &= ~QStyle::SC_ToolButtonMenu;
+        }
+        painter.drawComplexControl(QStyle::CC_ToolButton,option);
+    }
+};
+// Paint the QIcon directly into logical bounds. QIcon::pixmap(size) may already
+// return a high-DPI image; multiplying size and then relabeling its DPR can crop it.
+class TitleIconLabel : public QLabel {
+public:
+    explicit TitleIconLabel(QWidget* parent) : QLabel(parent) {}
+    QIcon value;
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        value.paint(&painter,rect(),Qt::AlignCenter,isEnabled()?QIcon::Normal:QIcon::Disabled);
+    }
+};
+QIcon titleIcon(const QString& name)
 {
-    setProperty("title", QVariant(true));
-    setAttribute(Qt::WA_StyledBackground, true);
-    setAutoFillBackground(true);
-    setMouseTracking(true);
-    // 统一标题栏高度，确保在 MainWindow 与 Dialog 中一致
-    setFixedHeight(fixedHieght);
-    initUI();
-    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::themeChanged, this, &CustomTitleBar::updateIcons);
+    return StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/titlebar/"+name+".svg");
+}
+// Retain the original avatar pixels/name, render only at the requested final size.
+class AvatarIconEngine : public QIconEngine {
+public:
+    AvatarIconEngine(const QString& name,const QPixmap& image,const QFont& font) : m_name(name),m_image(image),m_font(font) {}
+    QIconEngine* clone() const override { return new AvatarIconEngine(m_name,m_image,m_font); }
+    void paint(QPainter* painter,const QRect& rectangle,QIcon::Mode mode,QIcon::State) override {
+        painter->save(); painter->setRenderHint(QPainter::Antialiasing); painter->setRenderHint(QPainter::SmoothPixmapTransform);
+        const int side=qMin(rectangle.width(),rectangle.height());
+        const QRectF target(rectangle.center().x()-side/2.+.5,rectangle.center().y()-side/2.+.5,side,side);
+        QPainterPath clip; clip.addEllipse(target.adjusted(.6,.6,-.6,-.6)); painter->setClipPath(clip,Qt::IntersectClip);
+        auto* tokens=ThemeTokens::instance();
+        if(mode==QIcon::Disabled)painter->setOpacity(.45);
+        painter->fillRect(target,tokens->primary());
+        if(!m_image.isNull()) {
+            const int sourceSide=qMin(m_image.width(),m_image.height());
+            painter->drawPixmap(target,m_image,QRectF((m_image.width()-sourceSide)/2.,(m_image.height()-sourceSide)/2.,sourceSide,sourceSide));
+        } else {
+            QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,m_name); const int end=boundary.toNextBoundary();
+            QFont font=m_font; font.setPixelSize(qMax(8,qRound(side*.48))); font.setBold(false); painter->setFont(font);
+            painter->setPen(tokens->palette().color(QPalette::HighlightedText));
+            painter->drawText(target,Qt::AlignCenter,m_name.left(end>0?end:1));
+        }
+        painter->restore();
+    }
+    QPixmap pixmap(const QSize& size,QIcon::Mode mode,QIcon::State state) override {
+        QPixmap result(size); result.fill(Qt::transparent); QPainter painter(&result); paint(&painter,QRect(QPoint(),size),mode,state); return result;
+    }
+private:
+    QString m_name; QPixmap m_image; QFont m_font;
+};
+QIcon avatarIcon(const QString& name,const QPixmap& image,const QFont& font)
+{
+    return name.isEmpty()&&image.isNull()?titleIcon("user"):QIcon(new AvatarIconEngine(name,image,font));
+}
+}
+CustomTitleBar::CustomTitleBar(QWidget* parent) : QWidget(parent)
+{
+    setProperty("title",true); setAttribute(Qt::WA_StyledBackground,true); setAutoFillBackground(true); setMouseTracking(true);
+    initUI(); setMinimumWidth(220); updateHeight();
+    connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,this,&CustomTitleBar::updateIcons);
     updateIcons();
 }
-
-CustomTitleBar::~CustomTitleBar() = default;
-
+CustomTitleBar::~CustomTitleBar()
+{
+    if(m_window) { m_window->removeEventFilter(this); disconnect(m_window,nullptr,this,nullptr); }
+    for(const auto& item:m_actions)if(item.action)disconnect(item.action,nullptr,this,nullptr);
+}
 void CustomTitleBar::attachToWindow(QWidget* window)
 {
-    if (m_window) disconnect(m_window, nullptr, this, nullptr);
-    m_window = window;
-    if (!m_window) return;
-    // 跟随窗口标题变化
-    QObject::connect(m_window, &QWidget::windowTitleChanged, this, &CustomTitleBar::setTitle);
-    // 跟随窗口图标变化
-    QObject::connect(m_window, &QWidget::windowIconChanged, this, &CustomTitleBar::setIcon);
-
-    setTitle(m_window->windowTitle());
-    if (!m_window->windowIcon().isNull()) {
-        setIcon(m_window->windowIcon());
+    if(m_window) { m_window->removeEventFilter(this); disconnect(m_window,nullptr,this,nullptr); }
+    m_window=window;
+    if(window) {
+        connect(window,&QWidget::windowTitleChanged,this,[this] { syncIdentity(); });
+        connect(window,&QWidget::windowIconChanged,this,[this] { syncIdentity(); });
+        window->installEventFilter(this);
     }
-    updateForWindowState();
+    syncIdentity(); updateForWindowState();
 }
-
-void CustomTitleBar::setTitle(const QString& title)
+QString CustomTitleBar::title() const
 {
-    if (m_titleLabel) { m_titleLabel->setText(title); m_titleLabel->setToolTip(title); }
+    if(m_titleOverride)return m_explicitTitle;
+    if(m_window && !m_window->windowTitle().isEmpty())return m_window->windowTitle();
+    const auto display=QGuiApplication::applicationDisplayName();
+    return display.isEmpty()?QCoreApplication::applicationName():display;
 }
-
+QIcon CustomTitleBar::icon() const
+{
+    if(m_iconOverride)return m_explicitIcon;
+    if(m_profile!=Profile::MainWindow)return {};
+    if(m_window && !m_window->windowIcon().isNull())return m_window->windowIcon();
+    if(!QApplication::windowIcon().isNull())return QApplication::windowIcon();
+    return StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/logo/logo.svg");
+}
+void CustomTitleBar::setTitle(const QString& text) { m_titleOverride=true; m_explicitTitle=text; syncIdentity(); }
+void CustomTitleBar::setIcon(const QIcon& value) { m_iconOverride=true; m_explicitIcon=value; syncIdentity(); }
+void CustomTitleBar::resetTitle() { m_titleOverride=false; syncIdentity(); }
+void CustomTitleBar::resetIcon() { m_iconOverride=false; syncIdentity(); }
+void CustomTitleBar::setTitleVisible(bool visible) { m_titleVisible=visible; layoutChildren(); }
+void CustomTitleBar::setIconVisible(bool visible) { m_iconVisible=visible; layoutChildren(); }
+void CustomTitleBar::setTitleAlignment(TitleAlignment alignment) { m_alignment=alignment; layoutChildren(); }
+void CustomTitleBar::syncIdentity()
+{
+    const QString text=title(); m_titleLabel->setText(text); m_titleLabel->setToolTip(text);
+    static_cast<TitleIconLabel*>(m_iconLabel)->value=icon(); m_iconLabel->update(); layoutChildren();
+}
+void CustomTitleBar::setProfile(Profile profile)
+{
+    m_profile=profile;
+    m_showMinimize=m_showMaximize=profile!=Profile::Dialog; m_showClose=true;
+    m_doubleClickToggleEnabled=profile!=Profile::Dialog;
+    if(profile!=Profile::MainWindow) { m_searchPopup->hide(); m_moreMenu->hide(); }
+    updateHeight(); syncIdentity(); updateForWindowState();
+}
+void CustomTitleBar::updateHeight() { setFixedHeight(qMax(m_profile==Profile::MainWindow?48:40,fontMetrics().height()+20)); }
+void CustomTitleBar::setSearchVisible(bool visible) { m_searchVisible=visible; if(!visible)m_searchPopup->hide(); layoutChildren(); }
+void CustomTitleBar::setSettingsVisible(bool visible) { m_settingsVisible=visible; layoutChildren(); }
+void CustomTitleBar::setUserVisible(bool visible) { m_userVisible=visible; layoutChildren(); }
+void CustomTitleBar::setSearchShortcut(const QKeySequence& shortcut)
+{
+    m_searchShortcut->setKey(shortcut);
+    m_searchButton->setToolTip(shortcut.isEmpty()?tr("搜索"):tr("搜索 (%1)").arg(shortcut.toString(QKeySequence::NativeText)));
+    m_searchButton->setAccessibleName(m_searchButton->toolTip()); layoutChildren();
+}
+void CustomTitleBar::setSearchPlaceholderText(const QString& text) { m_searchEdit->setPlaceholderText(text); m_popupSearchEdit->setPlaceholderText(text); }
+void CustomTitleBar::setSearchText(const QString& text) { syncSearch(text); }
+QString CustomTitleBar::searchText() const { return m_searchEdit->text(); }
+void CustomTitleBar::syncSearch(const QString& text)
+{
+    const bool changed=m_searchEdit->text()!=text || m_popupSearchEdit->text()!=text;
+    { const QSignalBlocker a(m_searchEdit),b(m_popupSearchEdit); m_searchEdit->setText(text); m_popupSearchEdit->setText(text); }
+    if(changed)emit searchTextChanged(text);
+}
+void CustomTitleBar::setUserInfo(const QString& name,const QPixmap& avatar,const QString& detail)
+{
+    m_userName=name.trimmed(); m_avatar=avatar; m_userDetail=detail;
+    const QString tooltip=(m_userName.isEmpty()?tr("用户"):m_userName)+(detail.isEmpty()?QString():"\n"+detail);
+    m_user->setToolTip(tooltip); m_user->setAccessibleName(tooltip); m_user->setAccessibleDescription(detail); updateIcons();
+}
 void CustomTitleBar::updateIcons()
 {
-    // Window-control glyphs are drawn by NativeStyle, keeping contrast on red hover surfaces.
-
-    QIcon icon = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/material_icon.svg");
-    // 更新左上角图标（确保跟随主题颜色变化）
-    if(m_window && !m_window->windowIcon().isNull()) {
-        icon = m_window->windowIcon();
-    }
-    else if(!QApplication::windowIcon().isNull()) {
-        icon = QApplication::windowIcon();
-    }
-    setIcon(icon);
-
-    updateForWindowState();
+    m_settings->setIcon(titleIcon("settings")); m_searchButton->setIcon(titleIcon("search")); m_more->setIcon(titleIcon("more"));
+    m_user->setIcon(avatarIcon(m_userName,m_avatar,font()));
+    syncIdentity(); updateForWindowState(); update();
 }
-
-void CustomTitleBar::setIcon(const QIcon& icon)
-{
-    if (m_iconLabel) {
-        int iconSize = 20;
-        m_iconLabel->setPixmap(icon.pixmap(QSize(iconSize, iconSize)));
-    }
-}
-
 void CustomTitleBar::updateForWindowState()
 {
-    if (!m_window || !m_btnMax) return;
-    const bool maximized = (m_window->windowState() == Qt::WindowMaximized || isFullScreen());
-    m_btnMax->setProperty("bwWindowControl",maximized ? "restore" : "maximize");
-    m_btnMax->setToolTip(maximized ? tr("还原") : tr("最大化"));
-    m_btnMax->setAccessibleName(m_btnMax->toolTip());
-
-    m_btnMin->setVisible(m_showMinimize && !isFullScreen());
-    m_btnMax->setVisible(m_showMaximize && !isFullScreen());
-    m_btnClose->setVisible(m_showClose);
-
+    const bool maximized=m_window && (m_window->isMaximized() || isFullScreen());
+    m_btnMax->setProperty("bwWindowControl",maximized?"restore":"maximize");
+    m_btnMax->setToolTip(maximized?tr("还原"):tr("最大化")); m_btnMax->setAccessibleName(m_btnMax->toolTip());
+    layoutChildren();
 }
-
+void CustomTitleBar::initUI()
+{
+    m_iconLabel=new TitleIconLabel(this); m_iconLabel->setObjectName("TitleIcon"); m_iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_titleLabel=new ElidedLabel(this); m_titleLabel->setObjectName("TitleLabel"); m_titleLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_titleLabel->setProperty("title",true);
+    auto button=[this](const QString& name,const QString& tooltip) {
+        auto* result=new TitleToolButton(this); result->setObjectName(name); result->setToolTip(tooltip); result->setAccessibleName(tooltip);
+        result->setAutoRaise(true); result->setAppearance(ButtonAppearance::Subtle); result->setIconSize(QSize(18,18));
+        result->setToolButtonStyle(Qt::ToolButtonIconOnly); result->setFocusPolicy(Qt::StrongFocus); return result;
+    };
+    m_btnMin=button("TitleBarMinButton",tr("最小化")); m_btnMin->setProperty("bwWindowControl","minimize");
+    m_btnMax=button("TitleBarMaxButton",tr("最大化")); m_btnMax->setProperty("bwWindowControl","maximize");
+    m_btnClose=button("TitleBarCloseButton",tr("关闭")); m_btnClose->setProperty("bwWindowControl","close"); m_btnClose->setAppearance(ButtonAppearance::Danger);
+    m_settings=button("TitleBarSettingsButton",tr("设置")); m_settings->setPopupMode(QToolButton::InstantPopup);
+    m_user=button("TitleBarUserButton",tr("用户")); m_user->setPopupMode(QToolButton::InstantPopup); m_user->setIconSize(QSize(22,22));
+    m_searchButton=button("TitleBarSearchButton",tr("搜索 (Ctrl+K)"));
+    m_more=button("TitleBarMoreButton",tr("更多操作")); m_moreMenu=new QMenu(m_more); m_more->setMenu(m_moreMenu); m_more->setPopupMode(QToolButton::InstantPopup);
+    m_searchEdit=new LineEdit(this); m_searchEdit->setObjectName("TitleBarSearchEdit"); m_searchEdit->setClearButtonEnabled(true);
+    m_searchEdit->setAccessibleName(tr("全局搜索"));
+    m_searchPopup=new QFrame(this,Qt::Popup); m_searchPopup->setObjectName("TitleBarSearchPopup"); m_searchPopup->setFrameShape(QFrame::StyledPanel);
+    auto* layout=new QVBoxLayout(m_searchPopup); layout->setContentsMargins(10,10,10,10);
+    m_popupSearchEdit=new LineEdit(m_searchPopup); m_popupSearchEdit->setObjectName("TitleBarPopupSearchEdit"); m_popupSearchEdit->setClearButtonEnabled(true);
+    m_popupSearchEdit->setAccessibleName(tr("全局搜索")); layout->addWidget(m_popupSearchEdit);
+    setSearchPlaceholderText(tr("搜索数据 / 任务"));
+    m_settingsOverflow=new QAction(tr("设置"),this); m_userOverflow=new QAction(tr("用户"),this); m_searchOverflow=new QAction(tr("搜索"),this);
+    connect(m_settingsOverflow,&QAction::triggered,this,[this] { if(!m_settings->menu())emit settingsRequested(); });
+    connect(m_userOverflow,&QAction::triggered,this,[this] { if(!m_user->menu())emit userRequested(); });
+    connect(m_searchOverflow,&QAction::triggered,this,&CustomTitleBar::focusSearch);
+    m_searchShortcut=new QShortcut(QKeySequence("Ctrl+K"),this);
+    connect(m_searchShortcut,&QShortcut::activated,this,&CustomTitleBar::focusSearch);
+    connect(m_searchButton,&QToolButton::clicked,this,&CustomTitleBar::focusSearch);
+    connect(m_searchEdit,&QLineEdit::textChanged,this,&CustomTitleBar::syncSearch);
+    connect(m_popupSearchEdit,&QLineEdit::textChanged,this,&CustomTitleBar::syncSearch);
+    connect(m_searchEdit,&QLineEdit::returnPressed,this,[this] { emit searchSubmitted(searchText()); });
+    connect(m_popupSearchEdit,&QLineEdit::returnPressed,this,[this] { m_searchPopup->hide(); m_searchButton->setFocus(); emit searchSubmitted(searchText()); });
+    connect(m_settings,&QToolButton::clicked,this,&CustomTitleBar::settingsRequested);
+    connect(m_user,&QToolButton::clicked,this,&CustomTitleBar::userRequested);
+    connect(m_btnMin,&QToolButton::clicked,this,[this] {
+        if(auto* window=dynamic_cast<BaseWidgetInterface*>(m_window.data()))window->setFramelessWindowState(Minimized);
+        else if(m_window)m_window->showMinimized();
+    });
+    connect(m_btnMax,&QToolButton::clicked,this,[this] { toggleMaximizeRestore(); });
+    connect(m_btnClose,&QToolButton::clicked,this,[this] { if(m_window)m_window->close(); });
+}
+void CustomTitleBar::addTitleAction(QAction* action)
+{
+    if(!action)return;
+    for(const auto& item:m_actions)if(item.action==action)return;
+    auto* button=new TitleToolButton(this); button->setAutoRaise(true); button->setAppearance(ButtonAppearance::Subtle);
+    button->setFocusPolicy(Qt::StrongFocus); button->setDefaultAction(action); button->setIconSize(QSize(18,18));
+    button->setObjectName("TitleBarCustomAction"); m_actions.append({action,button});
+    connect(action,&QAction::changed,this,[this] { layoutChildren(); });
+    connect(action,&QObject::destroyed,this,[this] {
+        for(int i=m_actions.size()-1;i>=0;--i)if(!m_actions[i].action) {
+            if(m_actions[i].button) { m_actions[i].button->hide(); m_actions[i].button->deleteLater(); } m_actions.removeAt(i);
+        }
+        layoutChildren();
+    });
+    layoutChildren();
+}
+void CustomTitleBar::removeTitleAction(QAction* action)
+{
+    for(int i=0;i<m_actions.size();++i)if(m_actions[i].action==action) {
+        disconnect(action,nullptr,this,nullptr); m_moreMenu->removeAction(action);
+        if(m_actions[i].button) { m_actions[i].button->hide(); m_actions[i].button->deleteLater(); }
+        m_actions.removeAt(i); layoutChildren(); return;
+    }
+}
+void CustomTitleBar::layoutChildren()
+{
+    if(!m_btnClose || m_layoutActive)return;
+    m_layoutActive=true;
+    const bool extended=m_profile==Profile::MainWindow;
+    const int h=height(),buttonWidth=44,spacing=4,top=6,actionHeight=qMax(24,h-12);
+    int right=width();
+    auto placeRight=[&](QWidget* widget,int w,bool visible,bool caption=false) {
+        widget->setVisible(visible);
+        if(!visible)return;
+        right-=w; widget->setGeometry(right,caption?0:top,w,caption?h:actionHeight); if(!caption)right-=spacing;
+    };
+    placeRight(m_btnClose,buttonWidth,m_showClose,true);
+    placeRight(m_btnMax,buttonWidth,m_showMaximize&&!isFullScreen(),true);
+    placeRight(m_btnMin,buttonWidth,m_showMinimize&&!isFullScreen(),true);
+    right-=8;
+    const bool user=extended&&m_userVisible,settings=extended&&m_settingsVisible,search=extended&&m_searchVisible;
+    const bool centered=m_alignment==TitleAlignment::Center;
+    const bool compact=width()<900 || centered;
+    const bool overflowSettings=settings && (width()<500 || (centered&&width()<800));
+    const bool overflowUser=user && (width()<360 || (centered&&width()<700));
+    const bool overflowSearch=search && (width()<300 || (centered&&width()<500));
+    m_settingsOverflow->setMenu(m_settings->menu()); m_settingsOverflow->setEnabled(m_settings->isEnabled());
+    m_userOverflow->setMenu(m_user->menu()); m_userOverflow->setEnabled(m_user->isEnabled());
+    m_userOverflow->setText(m_userName.isEmpty()?tr("用户"):tr("用户：%1").arg(m_userName));
+    m_user->setText(m_userName); m_user->setToolButtonStyle(compact?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);
+    const int userWidth=compact?38:qMin(180,qMax(38,m_user->sizeHint().width()));
+    placeRight(m_user,userWidth,user&&!overflowUser);
+    placeRight(m_settings,36,settings&&!overflowSettings);
+    // Keep a usable identity/drag area. Optional actions move to the overflow menu first.
+    QVector<int> visibleActions; QList<QAction*> overflow;
+    int actionBudget=qMax(0,right-170-(search?40:0));
+    if(overflowSettings)overflow.append(m_settingsOverflow);
+    if(overflowUser)overflow.append(m_userOverflow);
+    if(overflowSearch)overflow.append(m_searchOverflow);
+    for(int i=0;i<m_actions.size();++i) {
+        auto& item=m_actions[i]; if(!item.action || !item.button)continue;
+        item.button->hide();
+        if(!extended || !item.action->isVisible())continue;
+        item.button->setPopupMode(item.action->menu()?QToolButton::InstantPopup:QToolButton::DelayedPopup);
+        const bool hasIcon=!item.action->icon().isNull();
+        item.button->setToolButtonStyle(hasIcon?Qt::ToolButtonIconOnly:Qt::ToolButtonTextOnly);
+        item.button->setToolTip(item.action->toolTip().isEmpty()?item.action->text():item.action->toolTip());
+        const int w=hasIcon?36:qMin(112,fontMetrics().horizontalAdvance(item.action->text())+20);
+        if(!compact && actionBudget>=w+40) { visibleActions.append(i); actionBudget-=w+spacing; item.button->setProperty("titleActionWidth",w); }
+        else overflow.append(item.action);
+    }
+    const auto oldActions=m_moreMenu->actions();
+    if(oldActions!=overflow) {
+        for(auto* action:oldActions)m_moreMenu->removeAction(action);
+        for(auto* action:overflow)m_moreMenu->addAction(action);
+    }
+    placeRight(m_more,36,!overflow.isEmpty());
+    for(auto it=visibleActions.crbegin();it!=visibleActions.crend();++it) {
+        auto* button=m_actions[*it].button.data(); placeRight(button,button->property("titleActionWidth").toInt(),true);
+    }
+    const bool inlineSearch=search&&!compact&&right>=430;
+    placeRight(m_searchEdit,qMin(220,qMax(160,right-330)),inlineSearch);
+    placeRight(m_searchButton,36,search&&!inlineSearch&&!overflowSearch);
+    if(!search)m_searchPopup->hide();
+    m_searchShortcut->setEnabled(search&&!m_searchShortcut->key().isEmpty());
+    const bool showIcon=m_iconVisible&&!icon().isNull();
+    m_iconLabel->setVisible(showIcon); m_iconLabel->setGeometry(14,(h-20)/2,20,20);
+    int left=showIcon?44:16; right=qMax(left,right-8);
+    if(m_alignment==TitleAlignment::Center) {
+        const int symmetric=qMax(left,width()-right);
+        if(width()-2*symmetric>=72) { left=symmetric; right=width()-symmetric; }
+        // Extremely narrow: preserve readable title space, documented graceful left fallback.
+    }
+    m_titleLabel->setAlignment((m_alignment==TitleAlignment::Center?Qt::AlignHCenter:Qt::AlignLeft)|Qt::AlignVCenter);
+    m_titleLabel->setVisible(m_titleVisible); m_titleLabel->setGeometry(left,0,qMax(0,right-left),h);
+    m_layoutActive=false;
+}
+void CustomTitleBar::focusSearch()
+{
+    if(!m_searchVisible || m_profile!=Profile::MainWindow || !isVisible() || !isEnabled())return;
+    if(!m_searchEdit->isHidden()) { m_searchEdit->setFocus(Qt::ShortcutFocusReason); m_searchEdit->selectAll(); return; }
+    QScreen* target=m_window?m_window->screen():screen();
+    const QRect available=target?target->availableGeometry():QRect(mapToGlobal(QPoint()),QSize(360,100));
+    m_searchPopup->resize(qMin(360,available.width()),m_popupSearchEdit->sizeHint().height()+20);
+    QWidget* anchor=m_searchButton->isHidden()?static_cast<QWidget*>(m_more):static_cast<QWidget*>(m_searchButton);
+    QPoint pos=anchor->mapToGlobal(QPoint(anchor->width()-m_searchPopup->width(),anchor->height()+4));
+    pos.setX(qBound(available.left(),pos.x(),qMax(available.left(),available.right()-m_searchPopup->width()+1)));
+    pos.setY(qBound(available.top(),pos.y(),qMax(available.top(),available.bottom()-m_searchPopup->height()+1)));
+    m_searchPopup->move(pos); m_searchPopup->show(); m_popupSearchEdit->setFocus(Qt::ShortcutFocusReason); m_popupSearchEdit->selectAll();
+}
+bool CustomTitleBar::isDraggableAt(const QPoint& position) const
+{
+    return rect().contains(position) && childAt(position)==nullptr;
+}
+void CustomTitleBar::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); layoutChildren(); }
+void CustomTitleBar::paintEvent(QPaintEvent*)
+{
+    QPainter painter(this); painter.setPen(ThemeTokens::instance()->borderLight()); painter.drawLine(0,height()-1,width(),height()-1);
+}
+bool CustomTitleBar::eventFilter(QObject* watched,QEvent* event)
+{
+    if(watched==m_window) {
+        if(event->type()==QEvent::WindowStateChange)updateForWindowState();
+        else if(event->type()==QEvent::ScreenChangeInternal)updateIcons();
+    }
+    return QWidget::eventFilter(watched,event);
+}
 bool CustomTitleBar::event(QEvent* event)
 {
     // Compositors can consume the release during native move. Do not leave the
@@ -113,13 +371,16 @@ bool CustomTitleBar::event(QEvent* event)
         m_dragging=false;
         if (event->type()!=QEvent::UngrabMouse && QWidget::mouseGrabber()==this) releaseMouse();
     }
-    return QWidget::event(event);
+    const bool result=QWidget::event(event);
+    if(event->type()==QEvent::FontChange && m_btnClose) { updateHeight(); updateIcons(); }
+    if(event->type()==QEvent::LayoutRequest && m_btnClose)layoutChildren();
+    return result;
 }
 
 #ifndef Q_OS_WIN
 void CustomTitleBar::mousePressEvent(QMouseEvent* e)
 {
-    if (!m_window) {
+    if (!m_window || !isDraggableAt(e->pos())) {
         QWidget::mousePressEvent(e);
         return;
     }
@@ -212,7 +473,7 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
         QWidget::mouseDoubleClickEvent(e);
         return;
     }
-    if (m_doubleClickToggleEnabled && e->button() == Qt::LeftButton) {
+    if (m_doubleClickToggleEnabled && isDraggableAt(e->pos()) && e->button() == Qt::LeftButton) {
         toggleMaximizeRestore(true);
         e->accept();
         return;
@@ -220,82 +481,6 @@ void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent* e)
     QWidget::mouseDoubleClickEvent(e);
 }
 #endif
-void CustomTitleBar::initUI()
-{
-    m_iconLabel = new QLabel(this);
-    // 调整图标大小为 20x20，避免占满整个标题栏高度 (40px)
-    int iconSize = 20;
-    m_iconLabel->setPixmap(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/material_icon.svg").pixmap(QSize(iconSize, iconSize)));
-    // 移除手动设置的边距，使用布局间距控制
-    m_iconLabel->setContentsMargins(0, 0, 0, 0);
-    m_iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
-
-    m_titleLabel = new ElidedLabel(this);
-    m_titleLabel->setObjectName("TitleLabel");
-    m_titleLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
-    m_titleLabel->setProperty("title", QVariant(true));
-    // 确保标题文字左对齐并垂直居中
-    m_titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-
-    QSize buttonSize = QSize(height()+5, height());
-    QSize btnIconSize = QSize(18, 18);
-
-    m_btnMin = new ToolButton(this);
-    m_btnMin->setObjectName("TitleBarMinButton");
-    m_btnMin->setToolTip(tr("最小化"));
-    m_btnMin->setAccessibleName(tr("最小化"));
-    m_btnMin->setProperty("bwWindowControl","minimize");
-    m_btnMin->setCursor(Qt::PointingHandCursor);
-    m_btnMin->setAutoRaise(true);
-    m_btnMin->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnMin->setFixedSize(buttonSize);
-    m_btnMin->setIconSize(btnIconSize);
-
-    m_btnMax = new ToolButton(this);
-    m_btnMax->setObjectName("TitleBarMaxButton");
-    m_btnMax->setToolTip(tr("最大化/还原"));
-    m_btnMax->setAccessibleName(tr("最大化/还原"));
-    m_btnMax->setProperty("bwWindowControl","maximize");
-    m_btnMax->setCursor(Qt::PointingHandCursor);
-    m_btnMax->setAutoRaise(true);
-    m_btnMax->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnMax->setFixedSize(buttonSize);
-    m_btnMax->setIconSize(btnIconSize);
-
-    m_btnClose = new ToolButton(this);
-    m_btnClose->setObjectName("TitleBarCloseButton");
-    m_btnClose->setToolTip(tr("关闭"));
-    m_btnClose->setAccessibleName(tr("关闭"));
-    m_btnClose->setProperty("bwWindowControl","close");
-    m_btnClose->setAppearance(ButtonAppearance::Danger);
-    m_btnClose->setCursor(Qt::PointingHandCursor);
-    m_btnClose->setAutoRaise(true);
-    m_btnClose->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_btnClose->setFixedSize(buttonSize);
-    m_btnClose->setIconSize(btnIconSize);
-
-    auto* h = new QHBoxLayout(this);
-    h->setContentsMargins(5, 0, 0, 0);
-    h->setSpacing(0); // Caption buttons share contiguous hit regions, as desktop users expect.
-    h->addWidget(m_iconLabel, 0);
-    h->addWidget(m_titleLabel, 1);
-    h->addWidget(m_btnMin, 0);
-    h->addWidget(m_btnMax, 0);
-    h->addWidget(m_btnClose, 0);
-    setLayout(h);
-
-    // 行为连接
-    connect(m_btnMin, &ToolButton::clicked, this, [this] {
-        auto *window = dynamic_cast<BaseWidgetInterface *>(m_window.data());
-        if (window) window->setFramelessWindowState(Minimized);
-        else if (m_window) m_window->showMinimized();
-    });
-    connect(m_btnMax, &ToolButton::clicked, this, [this]{ toggleMaximizeRestore(); });
-    connect(m_btnClose, &ToolButton::clicked, this, [this]{
-        if (m_window) m_window->close();
-    });
-}
-
 // 简化toggleMaximizeRestore，移除状态记录逻辑
 void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 {
@@ -329,9 +514,7 @@ void CustomTitleBar::setButtonsVisible(bool showMinimize, bool showMaximize, boo
     m_showMinimize = showMinimize;
     m_showMaximize = showMaximize;
     m_showClose = showClose;
-    if (m_btnMin) m_btnMin->setVisible(showMinimize && !isFullScreen());
-    if (m_btnMax) m_btnMax->setVisible(showMaximize && !isFullScreen());
-    if (m_btnClose) m_btnClose->setVisible(showClose);
+    layoutChildren();
 }
 
 void CustomTitleBar::setDoubleClickToToggleEnabled(bool enabled)

@@ -12,6 +12,8 @@ set(UI_PUBLIC_HEADERS
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/StyledWidget.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/FramelessDialog.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/CustomTitleBar.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/ScreenWindow.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/MultiScreenWorkspace.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/WindowPlacement.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/FramelessWidgetWindow.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/BaseWidgetInterface.h
@@ -88,6 +90,8 @@ set(UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/StyledWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/FramelessDialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/CustomTitleBar.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/ScreenWindow.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/MultiScreenWorkspace.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/WindowPlacement.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/FramelessWidgetWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/PushButton.cpp

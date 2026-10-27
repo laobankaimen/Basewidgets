@@ -125,11 +125,16 @@ public:
 	virtual void paint(QPainter *painter, const QRect &rect, QIcon::Mode mode,
 	    QIcon::State state) override
 	{
-		Q_UNUSED(mode);
 		Q_UNUSED(state);
-
 		QSvgRenderer renderer(m_SvgContent);
-		renderer.render(painter, rect);
+		if (!renderer.isValid() || rect.isEmpty()) return;
+		const QSizeF intrinsic = renderer.viewBoxF().size();
+		const QSizeF fitted = intrinsic.isEmpty() ? QSizeF(rect.size()) : intrinsic.scaled(rect.size(), Qt::KeepAspectRatio);
+		const QRectF target(QPointF(rect.x()+(rect.width()-fitted.width())/2., rect.y()+(rect.height()-fitted.height())/2.), fitted);
+		painter->save();
+		if (mode == QIcon::Disabled) painter->setOpacity(painter->opacity()*.45);
+		renderer.render(painter, target);
+		painter->restore();
 	}
 
 	virtual QIconEngine* clone() const override
@@ -898,7 +903,9 @@ const QIcon& QtAdvancedStylesheet::styleIcon() const
 {
 	if (d->Icon.isNull() && !d->IconFile.isEmpty())
 	{
-		d->Icon = QIcon(currentStylePath() + "/" + d->IconFile);
+        const QString path=currentStylePath()+"/"+d->IconFile;
+        d->Icon=path.endsWith(".svg",Qt::CaseInsensitive)
+            ? const_cast<QtAdvancedStylesheet*>(this)->loadThemeAwareSvgIcon(path) : QIcon(path);
 	}
 
 	return d->Icon;

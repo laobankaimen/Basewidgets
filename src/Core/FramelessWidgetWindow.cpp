@@ -79,6 +79,11 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
             *result = WVR_REDRAW;
             return true;
         }
+        case WM_NCLBUTTONDBLCLK:
+            if (msg->wParam==HTCAPTION && titleBar() && !titleBar()->doubleClickToToggleEnabled()) {
+                *result=0; return true;
+            }
+            return QMainWindow::nativeEvent(eventType,message,result);
         case WM_NCHITTEST:
         {
             *result = 0;
@@ -163,14 +168,9 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
                 const qreal dpr=devicePixelRatioF();
                 const QPoint titlePos=m_titleBar->mapFrom(this,QPoint(qRound(clientPoint.x/dpr),qRound(clientPoint.y/dpr)));
 
-                QWidget* child = m_titleBar->childAt(titlePos);
-                //鼠标标题栏的子控件，让子控件接收事件（过滤掉其他不需要鼠标交互的控件）
-                if (child && (child->objectName().contains("TitleBarCloseButton") ||
-                    child->objectName().contains("TitleBarMaxButton") ||
-                    child->objectName().contains("TitleBarMinButton"))) {
-                    *result = HTCLIENT;
-                    return true;
-                    }
+                if (titleBar() && !titleBar()->isDraggableAt(titlePos)) {
+                    *result=HTCLIENT; return true;
+                }
                 //不在子控件上，且在标题栏内
                 if (m_titleBar->rect().contains(titlePos)) {
                     *result = HTCAPTION;
@@ -425,7 +425,7 @@ void FramelessWidgetWindow::initUI()
     headerLayout->setSpacing(0);
     auto* title = new CustomTitleBar(header);
     title->attachToWindow(this);
-    title->setFixedHeight(m_titlebarHeight);
+    title->setProfile(CustomTitleBar::Profile::MainWindow);
     m_titleBar = title;
     headerLayout->addWidget(title);
     m_menuBarWidget = new QWidget(header);
@@ -451,6 +451,8 @@ void FramelessWidgetWindow::initUI()
         } else showFullScreen();
     });
 }
+
+CustomTitleBar* FramelessWidgetWindow::titleBar() const { return qobject_cast<CustomTitleBar*>(m_titleBar); }
 
 void FramelessWidgetWindow::setTitle(const QString& title)
 {

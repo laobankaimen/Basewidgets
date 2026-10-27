@@ -44,6 +44,13 @@ install(FILES "${CMAKE_SOURCE_DIR}/README.md"
     COMPONENT ${BASEWIDGETS_COMPONENT_DEVELOPMENT}
 )
 
+# Keep the installed README's relative docs/image links usable offline.
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/docs/"
+    DESTINATION "${CMAKE_INSTALL_DOCDIR}/docs"
+    COMPONENT ${BASEWIDGETS_COMPONENT_DEVELOPMENT}
+    FILES_MATCHING PATTERN "*.md" PATTERN "*.png"
+)
+
 set(BASEWIDGETS_CMAKE_CONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/BaseWidgets")
 
 configure_package_config_file(
@@ -134,7 +141,7 @@ if(UI_ENABLE_CPACK)
     set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "BaseWidgets Runtime")
     set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "Shared libraries and runtime binaries.")
     set(CPACK_COMPONENT_DEVELOPMENT_DISPLAY_NAME "BaseWidgets Development")
-    set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "Headers, CMake package config, export targets, and README.")
+    set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "Headers, CMake package config, export targets, and documentation.")
     set(CPACK_COMPONENT_ASSETS_DISPLAY_NAME "BaseWidgets Assets")
     set(CPACK_COMPONENT_ASSETS_DESCRIPTION "Theme resources such as themes.rcc.")
     set(CPACK_SOURCE_IGNORE_FILES

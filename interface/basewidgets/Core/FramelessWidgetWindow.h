@@ -23,7 +23,6 @@ class QtAdvancedStylesheet;
 class QMainWindow;
 
 namespace basewidgets {
-
 class CustomTitleBar;
 /** 无边框主窗口：标题/菜单在顶部，工具栏/状态栏由 QMainWindow 原生区域管理。
  * 使用 setContentWidget 设置业务内容；不要绕过它替换 centralWidget/menuWidget。
@@ -36,6 +35,8 @@ class ACSS_UI_EXPORT FramelessWidgetWindow : public QMainWindow , public BaseWid
 public:
     explicit FramelessWidgetWindow(QWidget* parent = nullptr);
     ~FramelessWidgetWindow() override;
+    /** 借用标题栏，可独立配置展示标题、图标、对齐方式与扩展操作。 */
+    CustomTitleBar* titleBar() const;
 
     /** 同步 QWidget::windowTitle 与自定义标题栏。 */
     void setTitle(const QString& title) override;
@@ -114,7 +115,6 @@ private:
     QMargins m_frames;
     bool m_bJustMaximized = false;
     bool m_bResizeable = false;
-    int m_titlebarHeight = 40;
 };
 
 } // namespace basewidgets

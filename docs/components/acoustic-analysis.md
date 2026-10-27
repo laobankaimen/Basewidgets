@@ -1,10 +1,10 @@
-# 水声处理与数据管理控件（2026-10-27）
+# 水声波形、频谱与录音时间线
 
-## 本轮范围
+[文档首页](../README.md)
 
-新增四种 QCustomPlot 业务图表、两种原生仪表和一个可在线程中使用的计算工具。
-底层仍为仓库内的 QCustomPlot 2.1.1，没有引入 WebView、QML、额外 FFT 依赖或 QSS。
-未接入真实采集卡/数据库/文件格式解析；demo 的信号和记录元数据全部为可复现的模拟输入。
+图表基于仓库内的 QCustomPlot 2.1.1；统计与频谱计算放在独立的 `Acoustics` 模块。控件不读取采集卡、数据库或录音文件，输入单位和时间基准由业务提供。共用导航、菜单和选区接口见[图表通用交互](chart-interaction.md)。
+
+## 控件与计算工具
 
 | 公开类 | 用途 | 主要 API |
 |---|---|---|
@@ -16,10 +16,11 @@
 | AcquisitionStatusPanel | 采集状态、样点丢失、存储余量、预计可录时长 | setStatus / lossPercent / remainingSeconds |
 | AcousticAnalysis | 单帧 FFT、统计、线性校准及 PSD 积分 | spectrum / statistics / scaleToMicroPascals / bandPowerDb |
 
-## 单位必须由业务明确提供
+## 单位与校准
 
 - `AcousticUnit::FullScale`：归一化采集值，参考幅值为 1。这里的 RMS dBFS 定义为 `20 log10(rms/1)`；满幅正弦为 -3.0103 dBFS，绝不将它自动标记为水声 SPL。
 - `AcousticUnit::Volt`：样本实际单位为 V。功率谱参考 1 V²，PSD 参考 1 V²/Hz。
+- `AcousticUnit::RelativeEnvelope`：归一化包络单位，用于 [DEMON](direction-and-demon.md)，不解释为原始声压或 dBFS。
 - `AcousticUnit::MicroPascal`：样本实际单位为 μPa。功率谱读数等价于该频点 RMS 相对 1 μPa；PSD 参考 1 μPa²/Hz。**声明单位不执行校准。**
 - `scaleToMicroPascals` 只应用调用方给定的正线性倍率（μPa/输入单位）；不猜测水听器灵敏度、前置增益、频响或 ADC 位宽。
 - 需要频率相关校准时，应在业务 DSP 层处理，再把正确单位的数据或频谱交给控件。
@@ -28,9 +29,9 @@
 参考定义与实现对照（未引入这些库为运行依赖）：
 
 - NOAA 海洋声学资料中的水下声压参考值：
-  https://www.fisheries.noaa.gov/new-england-mid-atlantic/science-data/understanding-sound-ocean
+  [Understanding Sound in the Ocean](https://www.fisheries.noaa.gov/new-england-mid-atlantic/science-data/understanding-sound-ocean)
 - SciPy 官方 `periodogram` 中 spectrum/density 与单边谱定义：
-  https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.periodogram.html
+  [periodogram](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.periodogram.html)
 
 ## 频谱与统计约定
 
@@ -72,20 +73,22 @@
 - 频率横轴为线性 Hz，纵轴为帧中心秒，最新帧在上方。色标固定，不按每一帧自动拉伸。
 - 默认关闭插值，避免对缺口和离散频点制造平滑的假象。空行与低电平有明确区分。
 
-### 记录与状态
+### 录音时间线
 
 - 时间线最多 10000 段/64 通道；记录 ID 唯一，区间严格递增。显示的空白就是没有记录。
 - 可选择相对秒或 UTC epoch 秒；UTC 只改变刻度格式，不转换输入数据本身。
 - 点击发出记录 ID，业务可据此关联文件、元数据列表或播放器；控件不会自动读文件或播放。
-- 状态面板的 receivedSamples 不含 lostSamples，丢样率为 lost/(received+lost)。分母为 0 时显示未知。
-- 存储容量为 0 表示未知；预计可录时间按 freeBytes/实际写入 B/s 估算，速率为 0 时不显示无穷或伪造的可录时间。
-- 这些都是调用方提供的快照；面板不访问磁盘、不控制采集设备，也不推测压缩码率。
+
+采集丢样率与存储余量的分母/未知状态规则见[数据管理仪表](monitoring.md#采集状态与剩余时长)。
 
 ## 接入示例
 
 以下为 API 示例，48000、FFT 长度等应改为真实数据元信息；`samples` 是业务提供的数据。
 
 ```cpp
+#include <basewidgets/Acoustics/AcousticAnalysis.h>
+#include <basewidgets/Charts/AcousticWaveformPlot.h>
+
 using namespace basewidgets;
 auto* wave = new AcousticWaveformPlot(parent);
 wave->configure(48000, 96000, AcousticUnit::FullScale);
@@ -98,7 +101,7 @@ QString error;
 if (AcousticAnalysis::spectrum(fftWindow, 48000, &frame,
         AcousticUnit::FullScale, SpectrumScaling::PowerSpectralDensity,
         AcousticWindow::Hann, true, -160, &error)) {
-    // 这两句必须在 GUI 线程执行。
+    // 以下所有图表更新必须在 GUI 线程执行。
     spectrumPlot->setFrame(frame);
     // 只在首次输入或处理参数/通道改变时 configure，不能每帧都清空历史。
     if (spectrogramPlot->historyCapacity() == 0) {
@@ -129,41 +132,8 @@ if (AcousticAnalysis::scaleToMicroPascals(rawSamples, microPaPerUnit, &pressure)
 }
 ```
 
-## 旧图表清理与迁移
+## 示例与验证
 
-删除 `QCPLineChart`、`QCPBarChart`、`QCPWaterfallChart` 三个薄封装：它们只是 plottable，
-没有采样时序/滚动/单位语义，却会重复安装菜单和争用画布主题。
+`examples/widgets_demo/pages/AcousticPage.cpp` 使用 24 kHz 两通道合成信号，包含 750 Hz 线谱、扫频、削波、PSD、缺帧与录音元数据。采样时间来自样点索引，定时器只控制演示速度；自动模拟默认关闭，隐藏时暂停。
 
-- 原始通用折线：使用 `StyledPlot::addGraph()`；柱状图可直接 `new QCPBars(plot->xAxis, plot->yAxis)`。
-- 水声时域/谱/时频场景使用上述业务图表，不能把旧 QCPColorMap 演示视作 STFT。
-- `StyledPlot` 统一处理标题、全部坐标轴、图例和色标的主题；重绘默认 queued 合并。
-- 鼠标信号直接继承 QCustomPlot，不再重复转发同名信号。底层 QCustomPlot 及许可证未修改。
-- 业务图表内部曲线/item 归控件持有；不要通过继承的 removeGraph/removeItem 替换其内部对象。
-  需要自定义通用场景时直接使用 StyledPlot。
-- 此次清理涉及公开头文件删除，下游需迁移后重新编译；安装使用干净前缀以避免残留旧头文件。
-
-## Demo 与验证
-
-`examples/widgets_demo/pages/AcousticPage.cpp` 集中演示：24 kHz 两通道、750 Hz 线谱、扫频、削波通道、
-固定 PSD 色标、每 23 帧跳过一帧、录音元数据与存储状态。采样时钟来自样点索引，定时器只控制演示速度。
-自动模拟默认关闭，页面隐藏时暂停，不会后台无限积累数据。
-
-验证覆盖：已知幅度正弦的 Power/PSD、Hann/rectangular、DC/Nyquist、不同 bin 宽度下积分一致性、
-线性校准的 dB 差、缺样/削波统计、缓存上限/缺口、时频环形滚动/缺帧 alpha、峰值保持、时间线 ID 与选择、
-采集丢样率及剩余时间，以及明暗主题图表截图。
-
-## 本轮验证结果
-
-Linux / Qt 5.15：50 项检查在 1.0 与 1.5 倍缩放下通过；七页 × 明暗 × 宽窄窗口的 28 组渲染成功。
-四类业务图表另导出明暗图集，已检查波形、PSD、扫频/缺帧声谱和带标签的录音时间线。
-干净安装后的外部 consumer 可直接包含并使用新 API，旧三个薄封装头文件不再安装。
-
-单独以 64 点非整周期混合信号，将 C++ radix-2 输出与独立 O(N²) 直接 DFT 对照，
-覆盖 rectangular/Hann × Power/PSD 四种组合，最大绝对功率误差为 3.47×10⁻¹⁷。
-本环境没有验证真实采集卡、真实录音格式或 Windows/Qt6；demo 不是实测水声数据。
-
-## 后续交互与测向扩展
-
-所有业务图表已统一升级菜单/框选/复位能力，时频缓存提取为 HistoryHeatmapPlot。
-新增测向历程、LOFAR/DEMON 和容量/速率监控，详见 [扩展说明](advanced-acoustic-and-monitoring-controls.md)。
-DEMON 输出新增 RelativeEnvelope 单位，不解释为 dBFS 或原始声压。
+检查覆盖窗函数归一化、Power/PSD、DC/Nyquist、频带积分、校准倍率、缺样/削波、有界缓存与记录选择。统计记录及平台边界见[验证指南](../development/validation.md)。旧薄封装的替代方式见[迁移指南](../development/migration.md#图表)。

@@ -11,6 +11,7 @@
 #include <basewidgets/Containers/ScrollArea.h>
 #include <basewidgets/Dialogs/DialogUtils.h>
 #include <basewidgets/Core/FramelessDialog.h>
+#include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Inputs/Label.h>
 #include <basewidgets/Inputs/ProgressBar.h>
 #include <basewidgets/Inputs/PushButton.h>
@@ -31,6 +32,19 @@ DialogsPage::DialogsPage(QWidget* parent)
     layout->setContentsMargins(6, 6, 6, 6);
     layout->setSpacing(6);
     layout->setAlignment(Qt::AlignTop);
+
+    auto* simpleTitle=new PushButton("简洁弹窗 · 居中标题",content);
+    layout->addWidget(simpleTitle);
+    connect(simpleTitle,&QPushButton::clicked,this,[this] {
+        auto* dialog=new FramelessDialog(this); dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->setTitle("录音详情");
+        // 弹窗默认 Dialog profile：无搜索/头像/设置，只有关闭；也支持独立图标和对齐。
+        dialog->titleBar()->setTitleAlignment(CustomTitleBar::TitleAlignment::Center);
+        dialog->setContentWidget(new Label("演示简洁弹窗标题栏。标题位置与主窗口分别配置。",dialog));
+        connect(dialog,&FramelessDialog::okButtonClicked,dialog,&QDialog::accept);
+        connect(dialog,&FramelessDialog::cancelButtonClicked,dialog,&QDialog::reject);
+        dialog->resize(520,260); dialog->open();
+    });
 
     auto* dialogsGroup = new GroupBox("文件、消息与输入对话框", content);
     auto* dialogsLayout = new QGridLayout(dialogsGroup);
