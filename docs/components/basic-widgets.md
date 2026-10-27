@@ -37,7 +37,8 @@ LineEdit、TextEdit、PlainTextEdit、ComboBox、SpinBox 等沿用 Qt 输入/编
 - NavigationList 的事件提供业务 ID、标题和当前行号；业务 ID 与行号分别使用，重复显式 ID/空标题被忽略。
 - ResponsiveGridLayout 根据逻辑宽度减少列数，支持 height-for-width、隐藏项和 RTL。极窄窗口可外包 ScrollArea，避免业务最小尺寸强撑主窗口。
 - ElidedLabel 在绘制时省略长文本，text() 保留全文；tooltip 由调用方配置。
-- TabWidget 默认不画鼠标 hover 效果，`setHoverEffectEnabled(true)` 可开启；选中和键盘焦点保持。
+- TabWidget 的标签和页面内容框默认都不画鼠标 hover 强调。`setHoverEffectEnabled(true)` 只启用标签；`setContentHoverEffectEnabled(true)` 单独启用页面外框。选中和键盘焦点保持，内容里的输入框仍有正常反馈。
+- GroupBox、Frame 等容器边框默认静态；需要鼠标强调时显式设置 `bwFrameHoverEnabled=true`，不把容器视为输入控件。
 
 ## 标准对话框入口
 

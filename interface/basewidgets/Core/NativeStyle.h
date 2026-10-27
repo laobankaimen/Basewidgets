@@ -10,6 +10,7 @@ namespace basewidgets {
  * 通常由 StyleManagerAdapter 安装，不要为每个控件创建实例。
  * 普通 Qt 按钮可设置 bwAppearance=int(ButtonAppearance)；库按钮优先用 setAppearance。
  * bwPrimary/primary/active 为兼容状态；bwWindowControl 为标题栏内部协议。
+ * bwFrameHoverEnabled 显式启用容器边框 hover；默认关闭，输入框与键盘焦点单独处理。
  * 尺寸使用逻辑像素，不要与 QSS padding/border 叠加使用。
  */
 class ACSS_UI_EXPORT NativeStyle : public QProxyStyle
@@ -31,6 +32,8 @@ public:
                          SubControl subControl, const QWidget* widget = nullptr) const override;
     SubControl hitTestComplexControl(ComplexControl control, const QStyleOptionComplex* option,
                                     const QPoint& point, const QWidget* widget = nullptr) const override;
+    QIcon standardIcon(StandardPixmap standardIcon, const QStyleOption* option = nullptr,
+                       const QWidget* widget = nullptr) const override;
     void drawPrimitive(PrimitiveElement element, const QStyleOption* option,
                        QPainter* painter, const QWidget* widget = nullptr) const override;
     void drawControl(ControlElement element, const QStyleOption* option,

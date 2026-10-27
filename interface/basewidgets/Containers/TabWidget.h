@@ -23,6 +23,9 @@ public:
     /** 标签 hover 底色默认关闭；仅影响鼠标外观，不影响选中、点击和键盘焦点。 */
     void setHoverEffectEnabled(bool enabled);
     bool hoverEffectEnabled() const;
+    /** 页面内容外框的 hover 强调默认关闭，与标签 hover 独立；不影响子输入框和键盘焦点。 */
+    void setContentHoverEffectEnabled(bool enabled);
+    bool contentHoverEffectEnabled() const;
 
     /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);

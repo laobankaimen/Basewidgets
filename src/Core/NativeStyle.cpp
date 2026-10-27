@@ -1,6 +1,7 @@
 #include <basewidgets/Core/NativeStyle.h>
 #include <basewidgets/Core/ButtonAppearance.h>
 #include <basewidgets/Core/ThemeTokens.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QAbstractButton>
 #include <QAbstractSlider>
 #include <QAbstractSpinBox>
@@ -119,7 +120,7 @@ bool NativeStyle::eventFilter(QObject* object, QEvent* event)
 {
     if (event->type() == QEvent::DynamicPropertyChange) {
         const QByteArray name = static_cast<QDynamicPropertyChangeEvent*>(event)->propertyName();
-        if (name == "bwPrimary" || name == "primary" || name == "active" || name == "bwAppearance" || name == "bwWindowControl")
+        if (name == "bwPrimary" || name == "primary" || name == "active" || name == "bwAppearance" || name == "bwWindowControl" || name == "bwFrameHoverEnabled")
             if (auto* widget = qobject_cast<QWidget*>(object)) widget->update();
     }
     return QProxyStyle::eventFilter(object, event);
@@ -137,8 +138,17 @@ int NativeStyle::pixelMetric(PixelMetric metric, const QStyleOption* option, con
     case PM_SliderThickness: return 26;
     case PM_ScrollBarExtent: return 14;
     case PM_ScrollBarSliderMin: return 24;
-    case PM_TabBarTabHSpace: return 24;
-    case PM_TabBarTabVSpace: return 12;
+    case PM_TabBarTabHSpace: return 28;
+    case PM_TabBarTabVSpace: return 16;
+    case PM_ToolBarItemSpacing: return 6;
+    case PM_ToolBarItemMargin: return 3;
+    case PM_ToolBarFrameWidth: return 0;
+    case PM_ToolBarSeparatorExtent: return 16;
+    case PM_ToolBarExtensionExtent: return 28;
+    case PM_MenuBarPanelWidth: return 0;
+    case PM_MenuBarItemSpacing: return 2;
+    case PM_MenuBarHMargin: return 8;
+    case PM_MenuBarVMargin: return 2;
     default: return QProxyStyle::pixelMetric(metric, option, widget);
     }
 }
@@ -157,6 +167,11 @@ QSize NativeStyle::sizeFromContents(ContentsType type, const QStyleOption* optio
     if (type == CT_PushButton || type == CT_ToolButton || type == CT_LineEdit
         || type == CT_ComboBox || type == CT_SpinBox)
         result.setHeight(qMax(result.height(), option->fontMetrics.height() + 12));
+    if(type==CT_MenuBarItem) {
+        if(const auto* item=qstyleoption_cast<const QStyleOptionMenuItem*>(option))
+            result.setWidth(qMax(result.width(),option->fontMetrics.size(Qt::TextShowMnemonic,item->text).width()+20));
+        result.setHeight(qMax(result.height(),option->fontMetrics.height()+8));
+    }
     if (type == CT_ToolButton) {
         const auto* tool=qstyleoption_cast<const QStyleOptionToolButton*>(option);
         // Reserve a full-height trailing arrow slot, including large fonts and icon-only buttons.
@@ -218,6 +233,13 @@ QStyle::SubControl NativeStyle::hitTestComplexControl(ComplexControl control,
         return SC_None;
     }
     return QProxyStyle::hitTestComplexControl(control, option, point, widget);
+}
+
+QIcon NativeStyle::standardIcon(StandardPixmap icon,const QStyleOption* option,const QWidget* widget) const
+{
+    if(icon==SP_ToolBarHorizontalExtensionButton || icon==SP_ToolBarVerticalExtensionButton)
+        return StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/titlebar/more.svg");
+    return QProxyStyle::standardIcon(icon,option,widget);
 }
 
 void NativeStyle::drawPrimitive(PrimitiveElement element, const QStyleOption* option,
@@ -290,9 +312,30 @@ void NativeStyle::drawPrimitive(PrimitiveElement element, const QStyleOption* op
                 frame && frame->lineWidth == 0 ? QColor(Qt::transparent) : edge(option));
         return;
     }
-    case PE_FrameLineEdit: case PE_Frame: case PE_FrameGroupBox: case PE_FrameTabWidget:
-        rounded(p, option->rect, Qt::transparent, edge(option));
+    case PE_FrameLineEdit:
+        rounded(p,option->rect,Qt::transparent,edge(option));
         return;
+    case PE_Frame: case PE_FrameGroupBox: case PE_FrameTabWidget: {
+        // Containers are not inputs. Hovering a page/card must not outline the entire
+        // content area. Explicit opt-in is independent of tab-label hover preference.
+        const bool hoverBorder=enabled && widget && widget->property("bwFrameHoverEnabled").toBool() && (option->state&State_MouseOver);
+        const bool keyboardFocus=enabled && (option->state&State_HasFocus) && (option->state&State_KeyboardFocusChange);
+        rounded(p,option->rect,Qt::transparent,(hoverBorder||keyboardFocus)?pal.color(QPalette::Highlight):ThemeTokens::instance()->borderLight());
+        return;
+    }
+    case PE_PanelMenuBar:
+        p->fillRect(option->rect,ThemeTokens::instance()->bg0());
+        return;
+    case PE_PanelToolBar:
+        p->fillRect(option->rect,ThemeTokens::instance()->bg1());
+        return;
+    case PE_IndicatorToolBarSeparator: {
+        p->save(); p->setPen(ThemeTokens::instance()->borderLight());
+        const QRect r=option->rect;
+        if(option->state&State_Horizontal)p->drawLine(r.center().x(),r.top()+8,r.center().x(),r.bottom()-8);
+        else p->drawLine(r.left()+8,r.center().y(),r.right()-8,r.center().y());
+        p->restore(); return;
+    }
     case PE_IndicatorArrowUp: case PE_IndicatorArrowDown:
     case PE_IndicatorArrowLeft: case PE_IndicatorArrowRight:
         arrow(p, option->rect, element, pal.color(QPalette::ButtonText));
@@ -370,19 +413,51 @@ void NativeStyle::drawControl(ControlElement element, const QStyleOption* option
             return;
         }
     }
+    if(element==CE_MenuBarEmptyArea) { p->fillRect(option->rect,ThemeTokens::instance()->bg0()); return; }
+    if(element==CE_MenuBarItem) {
+        if(const auto* item=qstyleoption_cast<const QStyleOptionMenuItem*>(option)) {
+            p->fillRect(item->rect,ThemeTokens::instance()->bg0());
+            if(item->state&(State_Selected|State_Sunken))rounded(p,item->rect.adjusted(1,1,-1,-1),pal.color(QPalette::Button),Qt::transparent,4);
+            if(!item->icon.isNull()) {
+                const QIcon::Mode mode=!(item->state&State_Enabled)?QIcon::Disabled:(item->state&State_Selected)?QIcon::Active:QIcon::Normal;
+                item->icon.paint(p,item->rect.adjusted(8,4,-8,-4),Qt::AlignCenter,mode); return;
+            }
+            p->save(); p->setFont(item->font);
+            drawItemText(p,item->rect.adjusted(10,3,-10,-3),Qt::AlignCenter|Qt::TextShowMnemonic,pal,item->state&State_Enabled,item->text,QPalette::WindowText);
+            p->restore(); return;
+        }
+    }
+    if(element==CE_ToolBar) {
+        p->fillRect(option->rect,ThemeTokens::instance()->bg1());
+        p->save(); p->setPen(ThemeTokens::instance()->borderLight());
+        if(option->state&State_Horizontal)p->drawLine(option->rect.bottomLeft(),option->rect.bottomRight());
+        else p->drawLine(option->rect.topRight(),option->rect.bottomRight());
+        p->restore(); return;
+    }
+    if(element==CE_TabBarTabLabel) {
+        if(const auto* tab=qstyleoption_cast<const QStyleOptionTab*>(option)) {
+            QStyleOptionTab label(*tab);
+            label.palette.setColor(QPalette::WindowText,!(tab->state&State_Enabled)?ThemeTokens::instance()->textDisabled():
+                                   (tab->state&State_Selected)?ThemeTokens::instance()->textPrimary():ThemeTokens::instance()->textSecondary());
+            QProxyStyle::drawControl(element,&label,p,widget); return;
+        }
+    }
     if (element == CE_TabBarTabShape) {
         if (const auto* tab = qstyleoption_cast<const QStyleOptionTab*>(option)) {
-            if (option->state & (State_Selected | State_MouseOver))
-                rounded(p, option->rect, pal.color(QPalette::Button), Qt::transparent);
-            if (option->state & State_Selected) {
-                QRect r = option->rect;
-                switch (tab->shape) {
-                case QTabBar::RoundedSouth: case QTabBar::TriangularSouth: r.setHeight(2); break;
-                case QTabBar::RoundedWest: case QTabBar::TriangularWest: r.setLeft(r.right()-1); break;
-                case QTabBar::RoundedEast: case QTabBar::TriangularEast: r.setWidth(2); break;
-                default: r.setTop(r.bottom()-1); break;
+            const bool active=option->state&State_Selected;
+            if(active || (option->state&State_MouseOver)) {
+                const QRect shape=option->rect.adjusted(3,2,-3,-2);
+                rounded(p,shape,active?ThemeTokens::instance()->bg1():ThemeTokens::instance()->bgHover(),Qt::transparent,5);
+            }
+            if(active) {
+                QRect r=option->rect;
+                switch(tab->shape) {
+                case QTabBar::RoundedSouth: case QTabBar::TriangularSouth: r.setHeight(3); r.adjust(10,0,-10,0); break;
+                case QTabBar::RoundedWest: case QTabBar::TriangularWest: r.setLeft(r.right()-2); r.adjust(0,8,0,-8); break;
+                case QTabBar::RoundedEast: case QTabBar::TriangularEast: r.setWidth(3); r.adjust(0,8,0,-8); break;
+                default: r.setTop(r.bottom()-2); r.adjust(10,0,-10,0); break;
                 }
-                p->fillRect(r, pal.highlight());
+                rounded(p,r,pal.color(QPalette::Highlight),Qt::transparent,1);
             }
             return;
         }

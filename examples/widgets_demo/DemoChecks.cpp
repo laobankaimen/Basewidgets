@@ -1115,6 +1115,33 @@ private slots:
         tabs.setHoverEffectEnabled(true); QVERIFY(tabs.hoverEffectEnabled()); QVERIFY(paint()!=idle);
         tabs.setHoverEffectEnabled(false); option.state|=QStyle::State_Selected; QVERIFY(paint()!=idle);
     }
+    void containerFramesDoNotHoverByDefault()
+    {
+        auto* manager=StyleManagerAdapter::instance();
+        TabWidget tabs; QGroupBox group; QFrame frame; QLineEdit input;
+        for(const QString theme:{QString("dark"),QString("light")}) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for(const auto pair:{qMakePair(static_cast<QWidget*>(&tabs),QStyle::PE_FrameTabWidget),
+                                 qMakePair(static_cast<QWidget*>(&group),QStyle::PE_FrameGroupBox),
+                                 qMakePair(static_cast<QWidget*>(&frame),QStyle::PE_Frame)}) {
+                QStyleOptionFrame option; option.initFrom(pair.first); option.rect=QRect(0,0,180,90); option.state=QStyle::State_Enabled;
+                auto paint=[&] {
+                    QImage image(option.rect.size(),QImage::Format_ARGB32_Premultiplied); image.fill(option.palette.window().color());
+                    QPainter painter(&image); qApp->style()->drawPrimitive(pair.second,&option,&painter,pair.first); return image;
+                };
+                pair.first->setProperty("bwFrameHoverEnabled",false);
+                const auto idle=paint(); option.state|=QStyle::State_MouseOver; QCOMPARE(paint(),idle);
+                pair.first->setProperty("bwFrameHoverEnabled",true); QVERIFY(paint()!=idle);
+                pair.first->setProperty("bwFrameHoverEnabled",false);
+                option.state=QStyle::State_Enabled|QStyle::State_HasFocus|QStyle::State_KeyboardFocusChange; QVERIFY(paint()!=idle);
+            }
+            QStyleOptionFrame option; option.initFrom(&input); option.rect=QRect(0,0,180,36); option.lineWidth=1; option.state=QStyle::State_Enabled;
+            auto inputPaint=[&] { QImage image(option.rect.size(),QImage::Format_ARGB32_Premultiplied); image.fill(Qt::transparent); QPainter painter(&image); qApp->style()->drawPrimitive(QStyle::PE_PanelLineEdit,&option,&painter,&input); return image; };
+            const auto idle=inputPaint(); option.state|=QStyle::State_MouseOver; QVERIFY(inputPaint()!=idle);
+        }
+        QVERIFY(!tabs.contentHoverEffectEnabled()); tabs.setContentHoverEffectEnabled(true); QVERIFY(tabs.contentHoverEffectEnabled());
+        QVERIFY(!tabs.hoverEffectEnabled()); tabs.setContentHoverEffectEnabled(false); QVERIFY(!tabs.contentHoverEffectEnabled());
+    }
     void dialogSurfaceAndTextButtons()
     {
         auto* manager=StyleManagerAdapter::instance();

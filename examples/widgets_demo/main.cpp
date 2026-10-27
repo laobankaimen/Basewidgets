@@ -3,7 +3,6 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QSettings>
-#include <QCryptographicHash>
 #include <QScreen>
 #include <QFont>
 #include <QDir>
@@ -13,6 +12,7 @@
 #include <QScrollArea>
 
 #include <basewidgets/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/ThemeTokens.h>
 #include <basewidgets/Core/FramelessWidgetWindow.h>
 #include <basewidgets/Core/WindowPlacement.h>
 #include <basewidgets/Core/ScreenWindow.h>
@@ -73,6 +73,8 @@
 // 示例数据模型
 #include <QStandardItemModel>
 #include <QHeaderView>
+#include <QFileInfo>
+#include <QTabBar>
 
 using namespace basewidgets;
 
@@ -121,63 +123,60 @@ int main(int argc, char *argv[])
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
-    auto* menuBar = new MenuBar(contentRoot);
-    auto* fileMenu = menuBar->addMenu("文件(&F)");
-    fileMenu->addAction("新建(&N)", [](){});
-    fileMenu->addAction("打开(&O)", [](){});
-    /*QAction *openAct = new QAction(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/user.svg"), "用户(&U)");
-    fileMenu->addAction(openAct);*/
+    // 应用菜单保持紧凑，命令栏提供常用操作；所有入口复用 QAction。
+    auto icon=[](const QString& name) { return StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/commands/"+name+".svg"); };
+    auto* menuBar=new MenuBar(contentRoot);
+    menuBar->setObjectName("WorkspaceMenuBar"); menuBar->setNativeMenuBar(false);
+    QFont menuFont=menuBar->font(); menuFont.setWeight(QFont::Normal); menuBar->setFont(menuFont);
+    auto* fileMenu=menuBar->addMenu("文件(&F)");
+    auto* openAction=new QAction(icon("open"),"打开录音",window);
+    openAction->setObjectName("WorkspaceOpenAction"); openAction->setShortcut(QKeySequence::Open);
+    openAction->setToolTip("选择录音文件 · Ctrl+O"); fileMenu->addAction(openAction);
+    auto* exportAction=new QAction(icon("export"),"导出 CSV",window);
+    exportAction->setObjectName("WorkspaceExportAction"); exportAction->setToolTip("导出当前筛选后的录音记录"); fileMenu->addAction(exportAction);
     fileMenu->addSeparator();
-    auto* recentMenu = fileMenu->addMenu("最近文件(&R)");
-    recentMenu->addAction("文件1.txt");
-    recentMenu->addAction("文件2.txt");
-    fileMenu->addSeparator();
-    fileMenu->addAction("退出(&X)", [&app](){ app.quit(); });
-
-    auto* helpMenu = menuBar->addMenu("帮助(&H)");
-    helpMenu->addAction("关于 basewidgets(&A)", [](){});
+    fileMenu->addAction("退出(&X)",window,&QWidget::close);
+    auto* helpMenu=menuBar->addMenu("帮助(&H)");
+    helpMenu->addAction("关于组件示例",window,[window] {
+        DialogUtils::messageInfo(window,"BaseWidgets","水声分析与数据管理组件示例。\n界面中的采集、速率和仪表数据均为合成演示。");
+    });
     window->setMenuBar(menuBar);
 
-    // 创建工具栏
-    auto* toolBar = new ToolBar(window);
-    toolBar->setWindowTitle("主工具栏");
-    toolBar->setObjectName("DemoToolBar");
-    toolBar->setMovable(false);
-    toolBar->addAction("新建", [](){});
-    toolBar->addAction("打开", [](){});
-    toolBar->addAction("保存", [](){});
-    toolBar->addSeparator();
-    
-    // 添加视图模式切换
-    auto* actionGroup = new QActionGroup(toolBar);
-    auto* listAction = toolBar->addAction("列表视图");
-    listAction->setCheckable(true);
-    listAction->setChecked(true);
-    actionGroup->addAction(listAction);
-    
-    auto* iconAction = toolBar->addAction("图标视图");
-    iconAction->setCheckable(true);
-    actionGroup->addAction(iconAction);
-    
-    toolBar->addSeparator();
-    
-    // 添加带下拉菜单的工具按钮
-    auto* moreButton = new ToolButton(toolBar);
-    moreButton->setText("更多选项");
-    moreButton->setPopupMode(QToolButton::InstantPopup);
-    auto* moreMenu = new QMenu(moreButton);
-    moreMenu->addAction("导出数据");
-    moreMenu->addAction("导入配置");
-    moreMenu->addSeparator();
-    moreMenu->addAction("设置");
-    moreButton->setMenu(moreMenu);
-    toolBar->addWidget(moreButton);
-
-    auto* themeCombo = new ComboBox(toolBar);
-    themeCombo->addItem("深色主题");
-    themeCombo->addItem("浅色主题");
-    toolBar->addWidget(themeCombo);
-    
+    auto* toolBar=new ToolBar(window);
+    toolBar->setWindowTitle("工作区命令"); toolBar->setObjectName("DemoToolBar");
+    toolBar->setMovable(false); toolBar->setFloatable(false);
+    toolBar->setIconSize(QSize(18,18)); toolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    auto* workspaceLabel=new Label("工作区",toolBar);
+    workspaceLabel->setContentsMargins(10,0,6,0);
+    auto updateWorkspaceLabel=[workspaceLabel] {
+        auto pal=workspaceLabel->palette(); pal.setColor(QPalette::WindowText,ThemeTokens::instance()->textSecondary()); workspaceLabel->setPalette(pal);
+    };
+    updateWorkspaceLabel();
+    QObject::connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,workspaceLabel,updateWorkspaceLabel);
+    toolBar->addWidget(workspaceLabel);
+    toolBar->addAction(openAction); toolBar->addAction(exportAction); toolBar->addSeparator();
+    auto* actionGroup=new QActionGroup(toolBar);
+    // The selected command follows the page, including pages outside this group.
+    actionGroup->setExclusive(false);
+    auto* recordsAction=toolBar->addAction(icon("records"),"录音"); recordsAction->setData(8);
+    auto* monitorAction=toolBar->addAction(icon("monitor"),"监控"); monitorAction->setData(6);
+    auto* bearingAction=toolBar->addAction(icon("bearing"),"测向"); bearingAction->setData(5);
+    for(auto* action:{recordsAction,monitorAction,bearingAction}) {
+        action->setCheckable(true); actionGroup->addAction(action);
+        action->setToolTip("打开"+action->text()+"工作区");
+    }
+    auto* spacer=new QWidget(toolBar); spacer->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred); toolBar->addWidget(spacer);
+    auto* themeAction=new QAction(icon("theme"),"浅色主题",window);
+    themeAction->setObjectName("WorkspaceThemeAction"); themeAction->setToolTip("切换明暗主题");
+    auto* moreMenu=new QMenu(toolBar);
+    auto* saveLayout=moreMenu->addAction(icon("layout"),"保存窗口布局");
+    moreMenu->addAction(themeAction);
+    auto* moreAction=new QAction("更多",toolBar); moreAction->setObjectName("WorkspaceMoreAction"); moreAction->setMenu(moreMenu);
+    toolBar->addAction(moreAction);
+    if(auto* button=qobject_cast<QToolButton*>(toolBar->widgetForAction(moreAction))) {
+        button->setPopupMode(QToolButton::InstantPopup); button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    }
+    toolBar->addAction(themeAction);
     window->setToolBar(toolBar);
 
     // 一个主控窗口 + 多个子屏业务窗口。主屏可任选，不要求等于系统 primaryScreen。
@@ -231,21 +230,63 @@ int main(int argc, char *argv[])
     auto* mainTabWidget = new TabWidget(centralWidget);
     mainTabWidget->setTabPosition(QTabWidget::North);
     mainTabWidget->setTabsClosable(false);
+    mainTabWidget->setObjectName("WorkspaceTabs");
+    mainTabWidget->setDocumentMode(true);
+    mainTabWidget->setHoverEffectEnabled(false);
+    mainTabWidget->setContentHoverEffectEnabled(false);
+    mainTabWidget->tabBar()->setDrawBase(false);
+    mainTabWidget->tabBar()->setExpanding(false);
+    mainTabWidget->tabBar()->setElideMode(Qt::ElideNone);
 
     // 添加主要展示页面
     // 顶部标签取消 Emoji 图标，避免跨平台字体缺失
     mainTabWidget->addTab(new InputsPage(mainTabWidget), "输入控件");
     mainTabWidget->addTab(new DialogsPage(mainTabWidget), "对话框");
     mainTabWidget->addTab(new ViewsPage(mainTabWidget), "视图控件");
-    mainTabWidget->addTab(new TextPage(mainTabWidget), "文本&容器");
+    mainTabWidget->addTab(new TextPage(mainTabWidget), "文本布局");
     // 图表控件页
     mainTabWidget->addTab(new AcousticPage(mainTabWidget), "水声分析");
-    mainTabWidget->addTab(new DirectionAnalysisPage(mainTabWidget), "测向 / 解调");
+    mainTabWidget->addTab(new DirectionAnalysisPage(mainTabWidget), "测向解调");
     mainTabWidget->addTab(new DataManagementPage(mainTabWidget), "数据监控");
     // 仪表盘控件页（独立）
-    mainTabWidget->addTab(new GaugesPage(mainTabWidget), "仪表盘控件");
+    mainTabWidget->addTab(new GaugesPage(mainTabWidget), "仪表盘");
     // 高级表格（分页/筛选/排序/导出）
     mainTabWidget->addTab(new PagedTablePage(mainTabWidget), "高级表格");
+
+    // 导航状态只表达当前页面，不保留无实际作用的“列表/图标视图”开关。
+    auto syncCommands=[actionGroup](int index) {
+        for(auto* action:actionGroup->actions())action->setChecked(action->data().toInt()==index);
+    };
+    QObject::connect(actionGroup,&QActionGroup::triggered,mainTabWidget,[mainTabWidget,syncCommands](QAction* action) {
+        mainTabWidget->setCurrentIndex(action->data().toInt());
+        syncCommands(mainTabWidget->currentIndex()); // clicking the current page must not uncheck it
+    });
+    QObject::connect(mainTabWidget,&QTabWidget::currentChanged,toolBar,[syncCommands,statusBar,mainTabWidget](int index) {
+        syncCommands(index); statusBar->showMessage("工作区 · "+mainTabWidget->tabText(index));
+    });
+    QObject::connect(openAction,&QAction::triggered,window,[window,statusBar,mainTabWidget] {
+        const QString path=DialogUtils::openFile(window,"选择录音文件",QString(),"录音 (*.wav *.flac *.raw);;所有文件 (*)");
+        if(path.isEmpty())return;
+        mainTabWidget->setCurrentIndex(8);
+        statusBar->showMessage("已选择 "+QFileInfo(path).fileName()+" · 示例接入点，未执行文件解析",8000);
+    });
+    QObject::connect(exportAction,&QAction::triggered,window,[window,statusBar] {
+        const auto* table=window->findChild<AdvancedTable*>("RecordingAdvancedTable"); if(!table)return;
+        const QString path=DialogUtils::saveFile(window,"导出录音列表",QString(),"CSV (*.csv)"); if(path.isEmpty())return;
+        QString error; AdvancedTable::CsvExportOptions options; options.filePath=path;
+        const bool ok=table->exportCsv(options,&error);
+        statusBar->showMessage(ok?"已导出录音列表："+QFileInfo(path).fileName():"导出失败："+error,8000);
+    });
+    QObject::connect(saveLayout,&QAction::triggered,window,[window,statusBar] {
+        QSettings settings; settings.setValue("mainWindow/placement",WindowPlacement::save(window)); statusBar->showMessage("当前窗口布局已保存",4000);
+    });
+    QObject::connect(themeAction,&QAction::triggered,window,[] {
+        auto* manager=StyleManagerAdapter::instance(); manager->setCurrentTheme(manager->currentTheme()=="dark"?"light":"dark"); manager->updateTheme();
+    });
+    auto refreshThemeAction=[themeAction] {
+        themeAction->setText(StyleManagerAdapter::instance()->currentTheme()=="dark"?"浅色主题":"深色主题");
+    };
+    refreshThemeAction(); QObject::connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,themeAction,refreshThemeAction);
 
     centralLayout->addWidget(mainTabWidget);
 
@@ -308,8 +349,7 @@ int main(int argc, char *argv[])
     QObject::connect(showIcon,&QAction::toggled,titleBar,&CustomTitleBar::setIconVisible);
     auto* searchToggle=titleSettings->addAction("显示全局搜索"); searchToggle->setCheckable(true); searchToggle->setChecked(true);
     QObject::connect(searchToggle,&QAction::toggled,titleBar,&CustomTitleBar::setSearchVisible);
-    auto* themeAction=titleSettings->addAction("切换明暗主题");
-    QObject::connect(themeAction,&QAction::triggered,themeCombo,[themeCombo] { themeCombo->setCurrentIndex(1-themeCombo->currentIndex()); });
+    titleSettings->addAction(themeAction);
     // 可复用 QAction；窄窗口会自动出现在“更多操作”菜单，动作仍是同一个对象。
     auto* taskAction=new QAction("任务中心",titleBar); titleBar->addTitleAction(taskAction);
     QObject::connect(taskAction,&QAction::triggered,mainTabWidget,[mainTabWidget] { mainTabWidget->setCurrentIndex(6); });
@@ -318,18 +358,6 @@ int main(int argc, char *argv[])
         if(!table)return;
         table->setFilterText(text); mainTabWidget->setCurrentIndex(8);
         statusBar->showMessage(text.isEmpty()?"已清空录音筛选":QString("录音搜索：%1 · %2 条结果").arg(text).arg(table->pager()->totalRows()),6000);
-    });
-
-    // 切换主题色和 SVG 资源；StyleManagerAdapter 刷新自绘样式，不生成或应用 QSS。
-    QObject::connect(themeCombo, QOverload<int>::of(&ComboBox::currentIndexChanged), 
-                     [](int index) {
-        auto* mgr = StyleManagerAdapter::instance();
-        if (index == 0) {
-            mgr->setCurrentTheme("dark");
-        } else {
-            mgr->setCurrentTheme("light");
-        }
-        mgr->updateTheme();
     });
 
     // 几何持久化属于应用；库不写入全局设置，多个窗口可选择不同 key。
@@ -359,6 +387,7 @@ int main(int argc, char *argv[])
             const QString captureDir = qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
             if (!captureDir.isEmpty()) QDir().mkpath(captureDir);
             bool ok = qApp->styleSheet().isEmpty();
+            auto require=[&ok](bool passed,const char* label) { if(!passed)qWarning()<<"Demo smoke failed:"<<label; ok=passed&&ok; };
             for (int width : {1100,640}) {
                 window->resize(width,760);
                 QApplication::processEvents();
@@ -376,6 +405,24 @@ int main(int argc, char *argv[])
                     }
                 }
             }
+            // Real command-bar actions navigate to business pages; a page outside this
+            // group clears every check state. No file chooser or settings write in smoke.
+            if(auto* toolbar=window->findChild<QToolBar*>("DemoToolBar")) {
+                for(const auto& command:QList<QPair<QString,int>>{{"录音",8},{"监控",6},{"测向",5}}) {
+                    QAction* found=nullptr;
+                    for(auto* action:toolbar->actions())if(action->text()==command.first) { found=action; break; }
+                    require(found!=nullptr,"command action exists");
+                    if(found) { found->trigger(); require(mainTabWidget->currentIndex()==command.second,"command opens expected page"); require(found->isChecked(),"command remains selected"); }
+                }
+                mainTabWidget->setCurrentIndex(0);
+                for(auto* action:toolbar->actions())if(action->isCheckable())require(!action->isChecked(),"unrelated page clears command selection");
+                if(auto* theme=window->findChild<QAction*>("WorkspaceThemeAction")) {
+                    const QString before=StyleManagerAdapter::instance()->currentTheme(); theme->trigger();
+                    require(StyleManagerAdapter::instance()->currentTheme()!=before,"theme command switches theme"); theme->trigger();
+                } else ok=false;
+            } else ok=false;
+            require(!mainTabWidget->hoverEffectEnabled() && !mainTabWidget->contentHoverEffectEnabled(),"page and tab hover default off");
+
             // Verify the title-bar business integration: submit a query and open the task page.
             auto* title=window->titleBar();
             if(title) {

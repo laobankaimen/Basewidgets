@@ -5,6 +5,7 @@
 - `themes.json`：样式元数据、语义色变量及 SVG 替色规则。
 - `themes/*.xml`：明暗主题颜色。
 - `resources/`：构建时生成各状态/主题 SVG 变体的模板。
+- `common/icons/commands/`：工作区命令栏的文件、导出、录音、监控、测向、主题与布局 SVG。
 - `common/icons/titlebar/`：统一的设置、搜索、更多、用户 SVG，按实际绘制目标缩放。
 - `logo/logo.svg`：应用与主题共用的声学波形标识。
 - `common/`、`logo/`：运行时可按主题替色的 SVG；`fonts/` 为字体。

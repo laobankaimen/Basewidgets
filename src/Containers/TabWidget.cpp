@@ -35,6 +35,12 @@ bool TabWidget::hoverEffectEnabled() const
     return tabBar()->property("bwTabHoverEnabled").toBool();
 }
 
+void TabWidget::setContentHoverEffectEnabled(bool enabled)
+{
+    setProperty("bwFrameHoverEnabled",enabled); update();
+}
+bool TabWidget::contentHoverEffectEnabled() const { return property("bwFrameHoverEnabled").toBool(); }
+
 void TabWidget::setStyleManager(acss::QtAdvancedStylesheet* manager)
 {
     if (m_manager == manager) return;
