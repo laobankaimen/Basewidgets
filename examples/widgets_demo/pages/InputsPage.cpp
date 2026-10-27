@@ -1,19 +1,19 @@
+// 输入控件示例：只演示公开 API，不注入样式表。
+// 主程序先 initialize()；以下控件自动使用已安装的 NativeStyle 和明暗调色板。
 #include "InputsPage.h"
-
-#include <QFrame>
+#include <QFormLayout>
 #include <QGridLayout>
-#include <QHBoxLayout>
 #include <QVBoxLayout>
-
 #include <basewidgets/Containers/GroupBox.h>
+#include <basewidgets/Containers/ResponsiveGridLayout.h>
 #include <basewidgets/Containers/ScrollArea.h>
-#include <basewidgets/Dialogs/DialogUtils.h>
 #include <basewidgets/Inputs/BusyIndicator.h>
 #include <basewidgets/Inputs/CheckBox.h>
 #include <basewidgets/Inputs/ComboBox.h>
 #include <basewidgets/Inputs/DatePicker.h>
 #include <basewidgets/Inputs/DateRangePicker.h>
 #include <basewidgets/Inputs/DateTimePicker.h>
+#include <basewidgets/Inputs/ElidedLabel.h>
 #include <basewidgets/Inputs/Label.h>
 #include <basewidgets/Inputs/LineEdit.h>
 #include <basewidgets/Inputs/ProgressBar.h>
@@ -24,324 +24,100 @@
 #include <basewidgets/Inputs/TimePicker.h>
 #include <basewidgets/Inputs/ToggleSwitch.h>
 #include <basewidgets/Inputs/ToolButton.h>
-
 using namespace basewidgets;
 
-InputsPage::InputsPage(QWidget* parent)
-    : StyledWidget(parent)
+InputsPage::InputsPage(QWidget* parent) : StyledWidget(parent)
 {
-    auto* scrollArea = new ScrollArea(this);
-    scrollArea->setContentsMargins(0, 0, 0, 0);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setAlignment(Qt::AlignTop);
-
-    auto* content = new StyledWidget(scrollArea);
-    content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    auto* contentLayout = new QGridLayout(content);
-    contentLayout->setContentsMargins(6, 6, 6, 6);
-    contentLayout->setSpacing(12);
-    contentLayout->setColumnStretch(0, 1);
-    contentLayout->setColumnStretch(1, 1);
-    contentLayout->setRowStretch(0, 1);
-
-    auto* leftPanel = new StyledWidget(content);
-    leftPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    auto* leftLayout = new QVBoxLayout(leftPanel);
-    leftLayout->setContentsMargins(0, 0, 0, 0);
-    leftLayout->setSpacing(6);
-    leftLayout->setAlignment(Qt::AlignTop);
-
-    auto* buttonGroup = new GroupBox("", content);
-    {
-        auto* layout = new QGridLayout(buttonGroup);
-        layout->setContentsMargins(4, 4, 4, 4);
-        layout->setHorizontalSpacing(8);
-        layout->setVerticalSpacing(4);
-        layout->setColumnStretch(0, 1);
-        layout->setColumnStretch(1, 1);
-
-        auto* pushBtn = new PushButton("普通按钮", buttonGroup);
-        auto* checkableBtn = new PushButton("可选按钮", buttonGroup);
-        checkableBtn->setCheckable(true);
-        auto* disabledBtn = new PushButton("禁用按钮", buttonGroup);
-        disabledBtn->setEnabled(false);
-        auto* toolBtn = new ToolButton(buttonGroup);
-        toolBtn->setText("工具按钮");
-
-        pushBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        checkableBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        disabledBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        toolBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-        layout->addWidget(pushBtn, 0, 0);
-        layout->addWidget(checkableBtn, 0, 1);
-        layout->addWidget(disabledBtn, 1, 0);
-        layout->addWidget(toolBtn, 1, 1);
+    auto* scroll = new ScrollArea(this);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidgetResizable(true);
+    auto* content = new StyledWidget;
+    // 320 是卡片的期望最小逻辑宽度，空间不足时自动换成单列；无需监听 resizeEvent。
+    auto* cards = new ResponsiveGridLayout(content,320,2);
+    auto makeCard = [&](const QString& title) {
+        auto* card = new GroupBox(title,content);
+        card->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
+        cards->addWidget(card);
+        return card;
+    };
+    auto* buttons = makeCard("按钮与操作");
+    auto* buttonLayout = new QGridLayout(buttons);
+    buttonLayout->setColumnStretch(0,1);
+    buttonLayout->setColumnStretch(1,1);
+    auto* normal = new PushButton("普通按钮",buttons);
+    auto* selected = new PushButton("选中按钮",buttons); selected->setCheckable(true); selected->setChecked(true);
+    auto* primary = new PushButton("主要操作",buttons); primary->setAppearance(ButtonAppearance::Primary);
+    auto* disabled = new PushButton("禁用按钮",buttons); disabled->setEnabled(false);
+    // 外观层级与选中语义分别配置：Primary 是动作优先级，setChecked 是持续状态。
+    auto* subtle = new PushButton("了解更多",buttons); subtle->setAppearance(ButtonAppearance::Subtle);
+    auto* outline = new PushButton("显式描边",buttons); outline->setAppearance(ButtonAppearance::Outline);
+    auto* danger = new PushButton("删除示例",buttons); danger->setAppearance(ButtonAppearance::Danger);
+    danger->setToolTip("仅演示危险按钮外观，不执行删除操作");
+    auto* tool = new ToolButton(buttons); tool->setText("工具按钮"); tool->setAppearance(ButtonAppearance::Subtle);
+    // 图集采用等宽示例，避免 QToolButton 的默认 Fixed 策略压缩右列。
+    // 实际业务页可按内容选择尺寸；视觉层级由 appearance 表达，不依赖按钮宽度。
+    QAbstractButton* examples[] = {normal, selected, primary, disabled, subtle, outline, danger, tool};
+    for (QAbstractButton* button : examples) {
+        button->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     }
-    buttonGroup->setMinimumWidth(360);
-    buttonGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    leftLayout->addWidget(buttonGroup);
+    buttonLayout->addWidget(normal,0,0); buttonLayout->addWidget(selected,0,1);
+    buttonLayout->addWidget(primary,1,0); buttonLayout->addWidget(disabled,1,1);
+    buttonLayout->addWidget(subtle,2,0); buttonLayout->addWidget(outline,2,1);
+    buttonLayout->addWidget(danger,3,0); buttonLayout->addWidget(tool,3,1);
 
-    auto* inputGroup = new GroupBox("", content);
-    {
-        auto* layout = new QGridLayout(inputGroup);
-        layout->setContentsMargins(4, 4, 4, 4);
-        layout->setHorizontalSpacing(8);
-        layout->setVerticalSpacing(4);
-        layout->setColumnStretch(1, 1);
+    auto* editors = makeCard("编辑与数值");
+    auto* form = new QFormLayout(editors); form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    auto* line = new LineEdit(editors); line->setPlaceholderText("输入文本…");
+    auto* spin = new SpinBox(editors); spin->setRange(0,100); spin->setValue(50);
+    auto* slider = new Slider(Qt::Horizontal,editors); slider->setRange(0,100); slider->setValue(50);
+    slider->setTickPosition(QSlider::TicksBelow); slider->setTickInterval(20);
+    // Qt setter 在数值未变化时不会重复发信号，双向绑定不会造成递归更新。
+    connect(slider,&QSlider::valueChanged,spin,&QSpinBox::setValue);
+    connect(spin,QOverload<int>::of(&QSpinBox::valueChanged),slider,&QSlider::setValue);
+    form->addRow("输入框",line); form->addRow("数值",spin); form->addRow("滑块",slider);
 
-        auto* lineEdit = new LineEdit(inputGroup);
-        lineEdit->setPlaceholderText("请输入文本...");
-        auto* spinBox = new SpinBox(inputGroup);
-        spinBox->setRange(0, 100);
-        spinBox->setValue(50);
-        auto* slider = new Slider(Qt::Horizontal, inputGroup);
-        slider->setRange(0, 100);
-        slider->setValue(30);
+    auto* choices = makeCard("选择与开关");
+    auto* choiceLayout = new QGridLayout(choices);
+    auto* checked = new CheckBox("选中",choices); checked->setChecked(true);
+    // 半选不是 checked 的另一种颜色，必须使用三态 API。
+    auto* partial = new CheckBox("半选",choices); partial->setCheckState(Qt::PartiallyChecked);
+    auto* radioA = new RadioButton("选项 A",choices); radioA->setChecked(true);
+    auto* radioB = new RadioButton("选项 B",choices);
+    auto* toggle = new ToggleSwitch(choices);
+    auto* combo = new ComboBox(choices); combo->addItems({"选项 A","选项 B","选项 C"});
+    choiceLayout->addWidget(checked,0,0); choiceLayout->addWidget(partial,0,1);
+    choiceLayout->addWidget(radioA,1,0); choiceLayout->addWidget(radioB,1,1);
+    choiceLayout->addWidget(new Label("开关",choices),2,0); choiceLayout->addWidget(toggle,2,1);
+    choiceLayout->addWidget(new Label("下拉选项",choices),3,0); choiceLayout->addWidget(combo,3,1);
 
-        layout->addWidget(new Label("输入框:", inputGroup), 0, 0);
-        layout->addWidget(lineEdit, 0, 1);
-        layout->addWidget(new Label("数值框:", inputGroup), 1, 0);
-        layout->addWidget(spinBox, 1, 1);
-        layout->addWidget(new Label("滑块:", inputGroup), 2, 0);
-        layout->addWidget(slider, 2, 1);
-    }
-    inputGroup->setMinimumWidth(360);
-    inputGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    leftLayout->addWidget(inputGroup);
+    auto* dates = makeCard("日期与时间");
+    auto* dateLayout = new QFormLayout(dates);
+    dateLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    dateLayout->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    dateLayout->addRow("日期",new DatePicker(dates));
+    dateLayout->addRow("时间",new TimePicker(dates));
+    dateLayout->addRow("日期时间",new DateTimePicker(dates));
+    dateLayout->addRow("日期范围",new DateRangePicker(dates));
 
-    auto* selectGroup = new GroupBox("", content);
-    {
-        auto* layout = new QGridLayout(selectGroup);
-        layout->setContentsMargins(4, 4, 4, 4);
-        layout->setHorizontalSpacing(8);
-        layout->setVerticalSpacing(4);
-        layout->setColumnStretch(1, 1);
-        layout->setColumnStretch(2, 1);
+    auto* progress = makeCard("进度与状态");
+    auto* progressLayout = new QVBoxLayout(progress);
+    auto* value = new ProgressBar(progress); value->setValue(50);
+    connect(slider,&QSlider::valueChanged,value,&QProgressBar::setValue);
+    // range(0,0) 启动 Qt 管理的 busy 动画；BusyIndicator 在页面隐藏时自动暂停计时。
+    auto* busy = new ProgressBar(progress); busy->setRange(0,0);
+    auto* spinner = new BusyIndicator(progress); spinner->setFixedSize(28,28);
+    progressLayout->addWidget(new Label("跟随数值 / 滑块",progress)); progressLayout->addWidget(value);
+    progressLayout->addWidget(new Label("不确定进度",progress)); progressLayout->addWidget(busy);
+    progressLayout->addWidget(spinner);
 
-        auto* checkBox1 = new CheckBox("复选框 1", selectGroup);
-        auto* checkBox2 = new CheckBox("复选框 2", selectGroup);
-        auto* radioBtn1 = new RadioButton("单选按钮 1", selectGroup);
-        auto* radioBtn2 = new RadioButton("单选按钮 2", selectGroup);
-        auto* toggleSwitch = new ToggleSwitch(selectGroup);
-        auto* combo = new ComboBox(selectGroup);
-        combo->addItems({"选项 A", "选项 B", "选项 C"});
+    auto* labels = makeCard("长文本与自适应布局");
+    auto* labelLayout = new QVBoxLayout(labels);
+    auto* title = new ElidedLabel("这是一段较长的单行标题：缩小窗口时自动省略，完整文字保留在提示中。",labels);
+    title->setToolTip(title->text());
+    auto* description = new Label("拖动窗口边缘：卡片会从两列切换为一列。字体增大时，按钮和输入框随字体尺寸调整。",labels);
+    description->setWordWrap(true);
+    labelLayout->addWidget(title); labelLayout->addWidget(description); labelLayout->addStretch();
 
-        layout->addWidget(new Label("复选框:", selectGroup), 0, 0);
-        layout->addWidget(checkBox1, 0, 1);
-        layout->addWidget(checkBox2, 0, 2);
-        layout->addWidget(new Label("单选按钮:", selectGroup), 1, 0);
-        layout->addWidget(radioBtn1, 1, 1);
-        layout->addWidget(radioBtn2, 1, 2);
-        layout->addWidget(new Label("开关控件:", selectGroup), 2, 0);
-        layout->addWidget(toggleSwitch, 2, 1);
-        layout->addWidget(new Label("下拉框:", selectGroup), 3, 0);
-        layout->addWidget(combo, 3, 1, 1, 2);
-    }
-    selectGroup->setMinimumWidth(360);
-    selectGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    leftLayout->addWidget(selectGroup);
-
-    auto* datetimeGroup = new GroupBox("", content);
-    {
-        auto* layout = new QGridLayout(datetimeGroup);
-        layout->setContentsMargins(4, 4, 4, 4);
-        layout->setHorizontalSpacing(8);
-        layout->setVerticalSpacing(4);
-        layout->setColumnStretch(1, 1);
-
-        auto* datePicker = new DatePicker(datetimeGroup);
-        auto* timePicker = new TimePicker(datetimeGroup);
-        auto* dateTimePicker = new DateTimePicker(datetimeGroup);
-        auto* rangePicker = new DateRangePicker(datetimeGroup);
-
-        layout->addWidget(new Label("日期选择:", datetimeGroup), 0, 0);
-        layout->addWidget(datePicker, 0, 1);
-        layout->addWidget(new Label("时间选择:", datetimeGroup), 1, 0);
-        layout->addWidget(timePicker, 1, 1);
-        layout->addWidget(new Label("日期时间:", datetimeGroup), 2, 0);
-        layout->addWidget(dateTimePicker, 2, 1);
-        layout->addWidget(new Label("日期范围:", datetimeGroup), 3, 0);
-        layout->addWidget(rangePicker, 3, 1);
-    }
-    datetimeGroup->setMinimumWidth(360);
-    datetimeGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    leftLayout->addWidget(datetimeGroup);
-
-    auto* progressGroup = new GroupBox("", content);
-    {
-        auto* layout = new QVBoxLayout(progressGroup);
-        layout->setContentsMargins(4, 4, 4, 4);
-        layout->setSpacing(6);
-
-        auto* progressBar1 = new ProgressBar(progressGroup);
-        progressBar1->setValue(25);
-        auto* progressBar2 = new ProgressBar(progressGroup);
-        progressBar2->setValue(50);
-        auto* progressBar3 = new ProgressBar(progressGroup);
-        progressBar3->setValue(75);
-        auto* busyIndicator = new BusyIndicator(progressGroup);
-        busyIndicator->start();
-
-        layout->addWidget(new Label("进度条:", progressGroup));
-        layout->addWidget(progressBar1);
-        layout->addWidget(progressBar2);
-        layout->addWidget(progressBar3);
-        layout->addWidget(new Label("忙碌指示器:", progressGroup));
-        layout->addWidget(busyIndicator);
-    }
-    progressGroup->setMinimumWidth(360);
-    progressGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    leftLayout->addWidget(progressGroup);
-    leftLayout->addStretch();
-
-    auto* dialogsGroup = new GroupBox("", content);
-    {
-        auto* layout = new QGridLayout(dialogsGroup);
-        layout->setHorizontalSpacing(10);
-        layout->setVerticalSpacing(12);
-        layout->setContentsMargins(6, 6, 6, 6);
-        layout->setColumnStretch(0, 1);
-        layout->setColumnStretch(1, 1);
-
-        auto* fileResult = new Label("文件结果: ", dialogsGroup);
-        auto* dirResult = new Label("目录结果: ", dialogsGroup);
-        auto* colorResult = new Label("颜色结果: ", dialogsGroup);
-        auto* fontResult = new Label("字体结果: 使用默认字体", dialogsGroup);
-        auto* inputResult = new Label("输入结果: ", dialogsGroup);
-
-        auto* openFileBtn = new PushButton("打开文件", dialogsGroup);
-        auto* openFilesBtn = new PushButton("多个文件", dialogsGroup);
-        auto* saveFileBtn = new PushButton("保存文件", dialogsGroup);
-        auto* openDirBtn = new PushButton("打开目录", dialogsGroup);
-        auto* pickColorBtn = new PushButton("选择颜色", dialogsGroup);
-        auto* pickFontBtn = new PushButton("选择字体", dialogsGroup);
-        auto* msgInfoBtn = new PushButton("信息消息", dialogsGroup);
-        auto* msgWarnBtn = new PushButton("警告消息", dialogsGroup);
-        auto* msgErrorBtn = new PushButton("错误消息", dialogsGroup);
-        auto* msgSuccessBtn = new PushButton("成功消息", dialogsGroup);
-        auto* askQuestionBtn = new PushButton("询问消息", dialogsGroup);
-        auto* inputTextBtn = new PushButton("输入文本", dialogsGroup);
-        auto* inputIntBtn = new PushButton("输入整数", dialogsGroup);
-        auto* inputDoubleBtn = new PushButton("输入小数", dialogsGroup);
-
-        const int dlgBtnH = 32;
-        const int dlgBtnW = 96;
-        for (auto* b : {openFileBtn, openFilesBtn, saveFileBtn, openDirBtn,
-                        pickColorBtn, pickFontBtn,
-                        msgInfoBtn, msgWarnBtn, msgErrorBtn, msgSuccessBtn, askQuestionBtn,
-                        inputTextBtn, inputIntBtn, inputDoubleBtn}) {
-            b->setFixedSize(dlgBtnW, dlgBtnH);
-            b->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        }
-
-        layout->addWidget(openFileBtn,    0, 0);
-        layout->addWidget(msgWarnBtn,     0, 1);
-        layout->addWidget(openFilesBtn,   1, 0);
-        layout->addWidget(msgErrorBtn,    1, 1);
-        layout->addWidget(saveFileBtn,    2, 0);
-        layout->addWidget(msgSuccessBtn,  2, 1);
-        layout->addWidget(openDirBtn,     3, 0);
-        layout->addWidget(askQuestionBtn, 3, 1);
-        layout->addWidget(pickColorBtn,   4, 0);
-        layout->addWidget(inputTextBtn,   4, 1);
-        layout->addWidget(pickFontBtn,    5, 0);
-        layout->addWidget(inputIntBtn,    5, 1);
-        layout->addWidget(msgInfoBtn,     6, 0);
-        layout->addWidget(inputDoubleBtn, 6, 1);
-
-        fileResult->setWordWrap(true);
-        dirResult->setWordWrap(true);
-        colorResult->setWordWrap(true);
-        fontResult->setWordWrap(true);
-        inputResult->setWordWrap(true);
-        layout->addWidget(fileResult,  7, 0, 1, 2);
-        layout->addWidget(dirResult,   8, 0, 1, 2);
-        layout->addWidget(colorResult, 9, 0, 1, 2);
-        layout->addWidget(fontResult, 10, 0, 1, 2);
-        layout->addWidget(inputResult, 11, 0, 1, 2);
-
-        QObject::connect(openFileBtn, &PushButton::clicked, [this, fileResult]() {
-            const auto path = DialogUtils::openFile(this, "选择文件");
-            fileResult->setText("文件结果: " + (path.isEmpty() ? QString("<空>") : path));
-        });
-        QObject::connect(openFilesBtn, &PushButton::clicked, [this, fileResult]() {
-            const auto paths = DialogUtils::openFiles(this, "选择多个文件");
-            fileResult->setText("文件结果: " + (paths.isEmpty() ? QString("<空>") : paths.join("; ")));
-        });
-        QObject::connect(saveFileBtn, &PushButton::clicked, [this, fileResult]() {
-            const auto path = DialogUtils::saveFile(this, "保存文件");
-            fileResult->setText("文件结果: " + (path.isEmpty() ? QString("<空>") : path));
-        });
-        QObject::connect(openDirBtn, &PushButton::clicked, [this, dirResult]() {
-            const auto path = DialogUtils::openDirectory(this, "选择目录");
-            dirResult->setText("目录结果: " + (path.isEmpty() ? QString("<空>") : path));
-        });
-        QObject::connect(pickColorBtn, &PushButton::clicked, [this, colorResult]() {
-            const auto c = DialogUtils::pickColor(this, QColor(), "选择颜色");
-            colorResult->setText(QString("颜色结果: %1").arg(c.name()));
-            colorResult->setStyleSheet(QString("background:%1; padding:6px;").arg(c.name()));
-        });
-        QObject::connect(pickFontBtn, &PushButton::clicked, [this, fontResult]() {
-            bool ok = false;
-            const auto f = DialogUtils::pickFont(this, fontResult->font(), &ok, "选择字体");
-            if (ok) {
-                fontResult->setText(QString("字体结果: %1, %2pt").arg(f.family()).arg(f.pointSize()));
-                fontResult->setFont(f);
-            }
-        });
-        QObject::connect(msgInfoBtn, &PushButton::clicked, [this]() {
-            DialogUtils::messageInfo(this, "信息", "这是一个信息提示");
-        });
-        QObject::connect(msgWarnBtn, &PushButton::clicked, [this]() {
-            DialogUtils::messageWarning(this, "警告", "这是一个警告提示");
-        });
-        QObject::connect(msgErrorBtn, &PushButton::clicked, [this]() {
-            DialogUtils::messageError(this, "错误", "这是一个错误提示");
-        });
-        QObject::connect(msgSuccessBtn, &PushButton::clicked, [this]() {
-            DialogUtils::messageSuccess(this, "成功", "这是一个成功提示");
-        });
-        QObject::connect(askQuestionBtn, &PushButton::clicked, [this, inputResult]() {
-            const bool yes = DialogUtils::askQuestion(this, "询问", "是否继续操作？");
-            inputResult->setText(QString("输入结果: 询问 = %1").arg(yes ? "是" : "否"));
-        });
-        QObject::connect(inputTextBtn, &PushButton::clicked, [this, inputResult]() {
-            const auto t = DialogUtils::inputText(this, "输入文本", "请输入内容:");
-            inputResult->setText("输入结果: 文本 = " + t);
-        });
-        QObject::connect(inputIntBtn, &PushButton::clicked, [this, inputResult]() {
-            const int v = DialogUtils::inputInt(this, "输入整数", "请输入整数:", 5, 0, 100, 1);
-            inputResult->setText(QString("输入结果: 整数 = %1").arg(v));
-        });
-        QObject::connect(inputDoubleBtn, &PushButton::clicked, [this, inputResult]() {
-            const double v = DialogUtils::inputDouble(this, "输入小数", "请输入小数:", 1.2, 0.0, 10.0, 2);
-            inputResult->setText(QString("输入结果: 小数 = %1").arg(v));
-        });
-    }
-    dialogsGroup->setMinimumWidth(360);
-    dialogsGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
-    auto* rightPanel = new StyledWidget(content);
-    rightPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    auto* rightLayout = new QVBoxLayout(rightPanel);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
-    rightLayout->setSpacing(6);
-    rightLayout->setAlignment(Qt::AlignTop);
-    rightLayout->addWidget(dialogsGroup);
-    rightLayout->addStretch();
-
-    leftPanel->setLayout(leftLayout);
-    rightPanel->setLayout(rightLayout);
-    contentLayout->addWidget(leftPanel, 0, 0, Qt::AlignTop);
-    contentLayout->addWidget(rightPanel, 0, 1, Qt::AlignTop);
-
-    content->setLayout(contentLayout);
-    scrollArea->setWidget(content);
-
-    auto* pageLayout = new QVBoxLayout(this);
-    pageLayout->setContentsMargins(0, 0, 0, 0);
-    pageLayout->addWidget(scrollArea);
-    setLayout(pageLayout);
+    scroll->setWidget(content);
+    auto* layout = new QVBoxLayout(this); layout->setContentsMargins(0,0,0,0); layout->addWidget(scroll);
 }

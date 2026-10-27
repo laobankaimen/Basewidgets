@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 折叠页面容器；页面管理及 currentChanged 信号沿用 QToolBox。 */
 class ACSS_UI_EXPORT ToolBox : public QToolBox
 {
     Q_OBJECT
@@ -19,6 +20,7 @@ public:
     explicit ToolBox(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~ToolBox() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 

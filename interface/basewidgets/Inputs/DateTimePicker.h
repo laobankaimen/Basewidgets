@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 日期时间编辑器；默认 yyyy-MM-dd HH:mm:ss；业务默认值由调用方设置。 */
 class ACSS_UI_EXPORT DateTimePicker : public QDateTimeEdit
 {
     Q_OBJECT
@@ -19,6 +20,7 @@ public:
     explicit DateTimePicker(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~DateTimePicker() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 

@@ -8,6 +8,11 @@
 #include <QWidget>
 
 namespace basewidgets {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+using NativeEventResult = qintptr;
+#else
+using NativeEventResult = long;
+#endif
 enum FramelessWindowState {Maximized,Minimized,FullScreen,Normal};
 class BaseWidgetInterface {
 public:

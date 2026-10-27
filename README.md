@@ -11,7 +11,7 @@
 
 - **核心组件库**：位于 `src/` 目录下，集成了样式引擎 (`QtAdvancedStylesheet`) 与各类高级 UI 控件。
 - **示例程序**：位于 `examples/widgets_demo/`，全方位展示控件的外观、交互与主题切换效果。
-- **主题工具**：位于 `tools/theme_builder/`，用于管理、编辑与生成项目所需的主题资源文件 (`themes.rcc`)。
+- **主题构建**：编辑 `assets/styles/` 下的 JSON/XML/SVG，构建 UI 库时自动生成并嵌入主题，无需独立 tools 工程。
 
 ## 主要特性
 
@@ -24,7 +24,7 @@
   - 其他常用对话框（字体选择等）。
 - **Containers**：分组框、工具栏、状态栏、侧边栏容器等布局组件。
 - **Gauges**：独立的仪表盘组件库，包含圆形仪表 (`CircularGauge`)、速度表 (`SpeedGauge`)、姿态仪 (`AttitudeMeter`) 等，支持高度可配置的外观与动画。
-- **Styles**：内置高级样式引擎，支持动态主题切换（明亮/暗黑）、SVG 图标着色与 DPI 适配。
+- **Styles**：运行时使用 `NativeStyle`（QProxyStyle + QPainter）和主题调色板替代 QSS，支持明暗切换、SVG 图标着色与 DPI 适配；资源随库自动生成和嵌入，旧 QSS 解析和导出已删除。
 
 ## 目录结构
 
@@ -43,18 +43,16 @@ QtAdvancedUI/
 │   ├── Inputs/
 │   ├── Styles/                 # 样式引擎接口
 │   └── Views/
-├── assets/                     # 主题资源 (themes.rcc)
+├── assets/styles/              # 可编辑主题源文件 (JSON/XML/字体/SVG)
 ├── examples/
 │   └── widgets_demo/           # 演示程序源码
-└── tools/
-    └── theme_builder/          # 主题构建工具与原始资源
-        └── styles/themes/      # 主题定义文件 (XML/CSS/SVG)
+└── cmake/resources/            # 主构建内部资源生成器（不依赖 UI 库）
 ```
 
 ## 构建环境
 
 - **操作系统**：Windows 10/11（推荐 MSVC 2019/2022）
-- **依赖**：CMake ≥ 3.20、Qt 5.15.x 或 Qt 6.x
+- **依赖**：CMake ≥ 3.20；Windows 使用 Qt 5.15.x 或 Qt 6.x。Linux 当前使用 Qt 5.15.x（窗口实现依赖 `QX11Info` / `X11Extras`），需安装 Core、Gui、Widgets、PrintSupport、Svg、X11Extras 和 X11 开发包。
 - **配置**：若 CMake 无法自动找到 Qt，请设置 `CMAKE_PREFIX_PATH` 环境变量指向 Qt 安装目录。
   - 例如：`C:\Qt\6.5.3\msvc2019_64`
 
@@ -159,23 +157,26 @@ cmake --build build/package_consumer -j 8
   ```
 
 ### 主题与样式
-项目使用自定义的样式引擎加载 `themes.rcc` 资源包。
-- 若需修改主题（颜色、图标），请在 `tools/theme_builder/styles/themes/` 中修改对应文件。
-- 修改后需通过 `theme_builder` 工具或相关构建流程重新生成资源文件。
-- 运行时默认会从应用目录下查找 `themes.rcc`，CMake 打包链的规范资源目录为 `assets/`。
-- Node 打包链也以 `assets/` 为唯一资源输入目录。
-- `StyleManagerAdapter::initialize()` 的第一个参数表示样式目录 `stylesDir`；若留空则默认使用应用目录下的 `styles/`，并回退查找应用目录中的 `themes.rcc`。
+
+- 主题源文件位于 `assets/styles/themes/`；修改后重新构建 `BaseWidgets` 即可。
+- 内部依赖链为：资源生成器 → JSON/XML/SVG/字体生成 → C++ 资源 → UI 库，没有循环依赖。
+- `StyleManagerAdapter::initialize()` 默认使用库内嵌的 `:/styles`，不受工作目录或旧 `themes.rcc` 影响。
+- 需要显式覆盖时，第一个参数可传 styles 目录或外部 RCC 路径。
+- 独立 RCC 生成到 `<build>/generated/assets/themes.rcc`，CPack 安装到 `assets/`；它不是默认运行所必需的文件。
+- 构建产物留在构建目录，不再提交二进制主题包。交叉编译时需提供 `BASEWIDGETS_HOST_RESOURCE_BUILDER` 宿主工具。
+- 按钮使用 `setAppearance(ButtonAppearance::Primary/Subtle/Outline/Danger)` 表达层级；普通按钮默认无描边。
+- 接入代码、所有权约定和各页面入口见 [widgets_demo 说明](examples/widgets_demo/README.md)。
 
 ## 硬规则（长期架构约束）
 
-- 样式单源：除必须自绘的极少数控件外，所有视觉状态必须由“动态属性 + 全局 QSS”驱动；禁止在控件内拼接/注入样式字符串。
+- 样式单源：运行时由 `NativeStyle`（QProxyStyle + QPainter）与 `ThemeTokens` 统一驱动；保留 Qt 控件交互，禁止在控件或应用中拼接/注入 QSS。复杂原生绘制使用统一 QPalette。
 - 控件分层：基础控件（Inputs/Views/Containers）不得依赖业务模块；复合控件（Dialogs/页面容器）只做组合与编排；平台适配仅允许出现在 Core（或独立 Platform 模块）中，禁止散落到各控件实现里。
 - Token 化：主题变量（themes.json / *.xml）作为设计 token 的唯一来源；自绘场景通过样式管理器提供的 token 查询能力拿值，禁止把颜色/圆角/间距等视觉常量散落在代码中。
-- 动态属性契约：所有供 QSS 使用的动态属性统一使用 `bw*` 前缀，并提供向后兼容；新增控件必须遵循该命名规则（例如 `bwPrimary/bwMsgContainer/bwMsgContent`）。
+- 动态属性契约：新增样式状态属性使用 `bw*` 前缀，由 NativeStyle 显式处理；兼容已有 `primary/active` 状态。新增属性应同时实现绘制与重绘通知，不能只声明旧 QSS 选择器。
 
 ## 变更记录（近期）
 
-- **架构调整**：整理项目结构，将样式引擎整合至 `widgets` 库中，新增 `tools` 目录。
+- **架构调整**：主题源归入 `assets/styles`，资源生成整合进主 CMake 构建，并直接嵌入 UI 库。
 - **File Browser**：全新仿 Ubuntu 风格文件浏览器，集成侧边栏与多视图支持。
 - **Color Picker**：优化颜色记忆机制，实现跨会话的库级状态持久化。
 - **Gauges**：新增多种仪表盘控件，统一视觉风格（阴影、高光、动态线宽）。

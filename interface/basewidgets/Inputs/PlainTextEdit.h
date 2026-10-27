@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 纯文本编辑器包装；使用 setPlainText/appendPlainText 管理纯文本内容。 */
 class ACSS_UI_EXPORT PlainTextEdit : public QPlainTextEdit
 {
     Q_OBJECT
@@ -19,6 +20,7 @@ public:
     explicit PlainTextEdit(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~PlainTextEdit() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 

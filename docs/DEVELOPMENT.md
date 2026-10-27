@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 auto* styleManager = basewidgets::StyleManagerAdapter::instance();
 styleManager->setCurrentTheme("light");
 
-connect(styleManager, &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this]() {
+connect(styleManager, &acss::QtAdvancedStylesheet::themeChanged, this, [this]() {
     update();
 });
 ```
@@ -245,17 +245,17 @@ chart->installThemeSync(customPlotWidget);
     *   `Views/`: 数据视图（表格、树）。
     *   `Charts/`: 图表控件。
 *   **`src/`**: 核心库的具体 `.cpp` 实现文件与目标定义（`src/CMakeLists.txt`）。
-*   **`assets/`**: 统一的资源目录，包含编译好的 `themes.rcc`；CMake/CPack 与 Node 打包链都只以该目录为输入。
+*   **`assets/`**: 统一的资源目录，保存可编辑的 `styles/` 主题源；主构建自动生成内嵌资源，CPack 使用构建目录的 RCC。旧 Node 链仅复制源资产，不再作为默认发布入口。
 *   **`examples/`**: 示例代码，初学者可以参考 `widgets_demo` 中的用法。
-*   **`tools/theme_builder/`**: 主题生成工具，如果你需要自定义颜色或图标，可以使用此工具重新生成 `themes.rcc`。
+*   **`cmake/resources/`**: 主工程内部资源构建实现；正常构建 UI 库会自动执行，无需用户单独运行。
 
 ## 6. 常见问题 (FAQ)
 
 **Q: 为什么运行示例程序时没有图标？**
-A: 请确保 `themes.rcc` 文件位于可执行程序的运行目录下。样式引擎依赖该资源文件加载图标和样式。
+A: 默认主题已内嵌 UI 库，无需外部 `themes.rcc`。请确认应用加载了最新构建的库；显式覆盖主题时检查传入路径。
 
 **Q: 如何自定义主题颜色？**
-A: 你需要使用 `tools/theme_builder` 工具，修改 `styles/themes/` 下的 XML 配置文件，然后重新运行生成脚本得到新的 `themes.rcc`。
+A: 修改 `assets/styles/themes/` 下的 JSON/XML/SVG，再重新构建 `BaseWidgets`；资源会自动生成并嵌入库。
 
 **Q: 编译时提示找不到头文件？**
 A: 请确保在 CMake 中正确链接了 `BaseWidgets` 或 `BaseWidgets::BaseWidgets` 目标，并把安装树加入 `CMAKE_PREFIX_PATH`。
@@ -284,7 +284,7 @@ cmake --install build --prefix build/package/install
 
 *   `lib/`：动态库或静态库。
 *   `interface/`：公开头文件根目录，供 `#include <basewidgets/...>` 使用。
-*   `assets/`：主题资源，如 `themes.rcc`。
+*   `assets/styles/`：可编辑主题源；构建生成的 RCC 位于构建目录 `generated/assets/`。
 *   `lib/cmake/BaseWidgets/`：`BaseWidgetsConfig.cmake`、版本文件和导出的 targets 文件。
 
 当前安装规则按组件拆分为：

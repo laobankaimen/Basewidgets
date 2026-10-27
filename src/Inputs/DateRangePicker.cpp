@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -9,6 +9,7 @@
 #include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QGridLayout>
 #include <QCalendarWidget>
+#include <QSignalBlocker>
 
 using namespace acss;
 
@@ -26,13 +27,10 @@ DateRangePicker::DateRangePicker(QWidget* parent)
     m_startTime = new TimePicker(this);
     m_endTime = new TimePicker(this);
 
-    m_layout->addWidget(m_start, 0, 0);
-    m_layout->addWidget(m_end, 0, 1);
-    m_layout->addWidget(m_startTime, 0, 2);
-    m_layout->addWidget(m_endTime, 0, 3);
-    m_layout->addWidget(m_presets, 1, 0, 1, 2);
-    m_layout->addWidget(m_zoneCombo, 1, 2, 1, 2);
-    setLayout(m_layout);
+    m_layout->setContentsMargins(0,0,0,0);
+    m_layout->addWidget(m_start,0,0); m_layout->addWidget(m_end,0,1);
+    m_layout->addWidget(m_startTime,1,0); m_layout->addWidget(m_endTime,1,1);
+    m_layout->addWidget(m_presets,2,0); m_layout->addWidget(m_zoneCombo,2,1);
 
     rebuildPresets();
     // 默认时区列表（常用 + 示例）
@@ -40,45 +38,22 @@ DateRangePicker::DateRangePicker(QWidget* parent)
     connect(m_presets, QOverload<int>::of(&ComboBox::currentIndexChanged), [this](int){
         applyPreset(m_presets->currentText());
     });
-    connect(m_start, &QDateEdit::dateChanged, [this](const QDate&){ emit rangeChanged(m_start->dateTime(), m_end->dateTime()); });
-    connect(m_end, &QDateEdit::dateChanged, [this](const QDate&){ emit rangeChanged(m_start->dateTime(), m_end->dateTime()); });
-    connect(m_startTime, &QTimeEdit::timeChanged, [this](const QTime&){ if (m_includeTime) emit rangeChanged(range().first, range().second); });
-    connect(m_endTime, &QTimeEdit::timeChanged, [this](const QTime&){ if (m_includeTime) emit rangeChanged(range().first, range().second); });
+    connect(m_start,&QDateEdit::dateChanged,this,[this] { notifyRangeChanged(true); });
+    connect(m_end,&QDateEdit::dateChanged,this,[this] { notifyRangeChanged(false); });
+    connect(m_startTime,&QTimeEdit::timeChanged,this,[this] { if (m_includeTime) notifyRangeChanged(true); });
+    connect(m_endTime,&QTimeEdit::timeChanged,this,[this] { if (m_includeTime) notifyRangeChanged(false); });
+    connect(m_zoneCombo,QOverload<int>::of(&QComboBox::currentIndexChanged),this,[this](int index) {
+        setTimeZone(QTimeZone(m_zoneCombo->itemData(index).toByteArray()));
+    });
     setIncludeTime(false);
     setFirstDayOfWeek(m_firstDay);
+    applyPreset("今天");
 }
 
 DateRangePicker::DateRangePicker(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : StyledWidget(parent)
+    : DateRangePicker(parent)
 {
     setStyleManager(manager ? manager : StyleManagerAdapter::instance());
-    m_layout = new QGridLayout(this);
-    m_start = new DatePicker(this);
-    m_start->calendarWidget()->setGridVisible(true);
-    m_end = new DatePicker(this);
-    m_end->calendarWidget()->setGridVisible(true);
-    m_presets = new ComboBox(this);
-    m_zoneCombo = new ComboBox(this);
-    m_startTime = new TimePicker(this);
-    m_endTime = new TimePicker(this);
-    m_layout->addWidget(m_start, 0, 0);
-    m_layout->addWidget(m_end, 0, 1);
-    m_layout->addWidget(m_startTime, 0, 2);
-    m_layout->addWidget(m_endTime, 0, 3);
-    m_layout->addWidget(m_presets, 1, 0, 1, 2);
-    m_layout->addWidget(m_zoneCombo, 1, 2, 1, 2);
-    setLayout(m_layout);
-    rebuildPresets();
-    updateTimeZoneCombo({"本地时区", "UTC", "Asia/Shanghai", "Asia/Tokyo", "Europe/London", "Europe/Berlin", "America/Los_Angeles", "America/New_York"});
-    connect(m_presets, QOverload<int>::of(&ComboBox::currentIndexChanged), [this](int){
-        applyPreset(m_presets->currentText());
-    });
-    connect(m_start, &QDateEdit::dateChanged, [this](const QDate&){ emit rangeChanged(m_start->dateTime(), m_end->dateTime()); });
-    connect(m_end, &QDateEdit::dateChanged, [this](const QDate&){ emit rangeChanged(m_start->dateTime(), m_end->dateTime()); });
-    connect(m_startTime, &QTimeEdit::timeChanged, [this](const QTime&){ if (m_includeTime) emit rangeChanged(range().first, range().second); });
-    connect(m_endTime, &QTimeEdit::timeChanged, [this](const QTime&){ if (m_includeTime) emit rangeChanged(range().first, range().second); });
-    setIncludeTime(false);
-    setFirstDayOfWeek(m_firstDay);
 }
 
 DateRangePicker::~DateRangePicker() = default;
@@ -115,37 +90,56 @@ void DateRangePicker::setPresetRangesEnabled(bool enabled)
 
 void DateRangePicker::setTimeZone(const QTimeZone& zone)
 {
+    if (!zone.isValid() || m_zone==zone) return;
     m_zone = zone;
+    const QSignalBlocker block(m_zoneCombo);
+    int index = m_zoneCombo->findData(zone.id());
+    if (index<0) { m_zoneCombo->addItem(QString::fromUtf8(zone.id()),zone.id()); index=m_zoneCombo->count()-1; }
+    m_zoneCombo->setCurrentIndex(index);
+    const auto selected = range();
+    emit rangeChanged(selected.first,selected.second);
 }
 
-QPair<QDateTime, QDateTime> DateRangePicker::range() const
+QPair<QDateTime,QDateTime> DateRangePicker::range() const
 {
-    if (!m_includeTime) {
-        return { m_start->dateTime(), m_end->dateTime() };
-    }
-    const QDate sDate = m_start->date();
-    const QDate eDate = m_end->date();
-    const QTime sTime = m_startTime->time();
-    const QTime eTime = m_endTime->time();
-    return { QDateTime(sDate, sTime), QDateTime(eDate, eTime) };
+    return {QDateTime(m_start->date(),m_includeTime ? m_startTime->time() : QTime(0,0),m_zone),
+            QDateTime(m_end->date(),m_includeTime ? m_endTime->time() : QTime(0,0),m_zone)};
 }
 
 void DateRangePicker::setRange(const QDateTime& start, const QDateTime& end)
 {
-    m_start->setDateTime(start);
-    m_end->setDateTime(end);
-    emit rangeChanged(m_start->dateTime(), m_end->dateTime());
+    if (!start.isValid() || !end.isValid()) return;
+    QDateTime first = start.toTimeZone(m_zone), last = end.toTimeZone(m_zone);
+    if (last<first) qSwap(first,last);
+    const QSignalBlocker a(m_start), b(m_end), c(m_startTime), d(m_endTime), preset(m_presets);
+    m_start->setDate(first.date()); m_end->setDate(last.date());
+    m_startTime->setTime(first.time()); m_endTime->setTime(last.time());
+    m_presets->setCurrentText("自定义");
+    const auto selected = range(); emit rangeChanged(selected.first,selected.second);
+}
+
+void DateRangePicker::notifyRangeChanged(bool startEdited)
+{
+    const auto selected = range();
+    if (selected.second<selected.first) {
+        const auto endpoint = startEdited ? selected.first : selected.second;
+        setRange(endpoint,endpoint);
+    } else {
+        const QSignalBlocker preset(m_presets); m_presets->setCurrentText("自定义");
+        emit rangeChanged(selected.first,selected.second);
+    }
 }
 
 void DateRangePicker::rebuildPresets()
 {
     m_presets->clear();
-    m_presets->addItems({"今天", "昨天", "近7天", "近30天", "本周", "本月", "上月", "本季度"});
+    m_presets->addItems({"今天", "昨天", "近7天", "近30天", "本周", "本月", "上月", "本季度", "自定义"});
 }
 
 void DateRangePicker::applyPreset(const QString& presetKey)
 {
-    const QDate today = QDate::currentDate();
+    if (presetKey=="自定义") return;
+    const QDate today = QDateTime::currentDateTimeUtc().toTimeZone(m_zone).date();
     QDate startDate = today;
     QDate endDate = today;
     if (presetKey == "今天") {
@@ -176,16 +170,17 @@ void DateRangePicker::applyPreset(const QString& presetKey)
         startDate = QDate(today.year(), startMonth, 1);
         endDate = QDate(today.year(), startMonth + 2, 1).addMonths(1).addDays(-1);
     }
-    m_start->setDate(startDate);
-    m_end->setDate(endDate);
-    emit rangeChanged(m_start->dateTime(), m_end->dateTime());
+    setRange(QDateTime(startDate,QTime(0,0),m_zone),QDateTime(endDate,QTime(0,0),m_zone));
+    const QSignalBlocker preset(m_presets); m_presets->setCurrentText(presetKey);
 }
 
 void DateRangePicker::setIncludeTime(bool enabled)
 {
+    const bool changed = m_includeTime != enabled;
     m_includeTime = enabled;
     m_startTime->setVisible(enabled);
     m_endTime->setVisible(enabled);
+    if (changed) notifyRangeChanged(true);
 }
 
 void DateRangePicker::setFirstDayOfWeek(Qt::DayOfWeek day)
@@ -202,8 +197,15 @@ void DateRangePicker::setTimeZones(const QStringList& ids)
 
 void DateRangePicker::updateTimeZoneCombo(const QStringList& ids)
 {
+    const QSignalBlocker block(m_zoneCombo);
     m_zoneCombo->clear();
-    m_zoneCombo->addItems(ids);
+    for (const QString& id : ids) {
+        const QTimeZone zone = id=="本地时区" ? QTimeZone::systemTimeZone() : QTimeZone(id.toUtf8());
+        if (zone.isValid()) m_zoneCombo->addItem(id,zone.id());
+    }
+    int index = m_zoneCombo->findData(m_zone.id());
+    if (index<0) { m_zoneCombo->addItem(QString::fromUtf8(m_zone.id()),m_zone.id()); index=m_zoneCombo->count()-1; }
+    m_zoneCombo->setCurrentIndex(index);
 }
 
 } // namespace basewidgets

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -10,6 +10,7 @@
 
 namespace basewidgets {
 
+/** 多选下拉列表；内部模型由控件持有，selectionChanged 返回选中的文本列表。 */
 class ACSS_UI_EXPORT MultiSelectComboBox : public ComboBox {
     Q_OBJECT
 public:

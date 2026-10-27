@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -22,6 +22,18 @@ ToolButton::ToolButton(acss::QtAdvancedStylesheet* manager, QWidget* parent)
 }
 
 ToolButton::~ToolButton() = default;
+
+void ToolButton::setAppearance(ButtonAppearance appearance)
+{
+    // Dynamic properties also let NativeStyle render plain Qt child buttons consistently.
+    setProperty("bwAppearance", static_cast<int>(appearance));
+    update();
+}
+
+ButtonAppearance ToolButton::appearance() const
+{
+    return static_cast<ButtonAppearance>(property("bwAppearance").toInt());
+}
 
 void ToolButton::setStyleManager(acss::QtAdvancedStylesheet* manager)
 {

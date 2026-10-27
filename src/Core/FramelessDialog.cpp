@@ -6,6 +6,7 @@
 #include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Inputs/ToolButton.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/ThemeTokens.h>
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -36,12 +37,6 @@
 
 #pragma comment (lib,"Dwmapi.lib")
 #pragma comment (lib,"user32.lib")
-#elif defined(Q_OS_LINUX)
-#include <QX11Info>
-
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-#include <X11/Xutil.h>
 #endif
 
 using namespace acss;
@@ -54,13 +49,11 @@ FramelessDialog::FramelessDialog(bool popDialog, QWidget* parent)
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint | Qt::Dialog);
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
-#if defined(Q_OS_LINUX)
-    if (!QX11Info::isPlatformX11() || QX11Info::display() == nullptr) {
-        setAttribute(Qt::WA_ShowWithoutActivating, true);
-    }
-#endif
-
+    // Modal dialogs need normal activation on Wayland as well as X11/Windows.
+    // Do not suppress normal activation when the compositor returns from a native drag.
     initUI();
+    updateSurfacePalette();
+    connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,this,&FramelessDialog::updateSurfacePalette);
 }
 
 FramelessDialog::FramelessDialog(QWidget* parent)
@@ -70,52 +63,58 @@ FramelessDialog::FramelessDialog(QWidget* parent)
 
 FramelessDialog::~FramelessDialog() = default;
 
-void FramelessDialog::showEvent(QShowEvent* e)
+void FramelessDialog::updateSurfacePalette()
 {
-    QDialog::showEvent(e);
-#if defined(Q_OS_LINUX)
-    if (QX11Info::isPlatformX11() && QX11Info::display() != nullptr) return;
+    // Window role is inherited by the title/content/footer. This keeps one continuous
+    // dialog surface while Base remains available for input fields and item views.
+    QPalette surface=ThemeTokens::instance()->palette();
+    surface.setColor(QPalette::Window,ThemeTokens::instance()->bg1());
+    setPalette(surface);
+    update();
+}
+
+void FramelessDialog::paintEvent(QPaintEvent*)
+{
+    QPainter painter(this);
+    painter.fillRect(rect(),palette().window());
+    // Draw inside a reserved logical-pixel inset; child backgrounds cannot cover the border.
+    painter.setPen(QPen(ThemeTokens::instance()->border(),1));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRect(QRectF(rect()).adjusted(.5,.5,-.5,-.5));
+    if (btnBox && btnBox->parentWidget()->isVisible()) {
+        const int y=btnBox->parentWidget()->mapTo(this,QPoint()).y();
+        painter.setPen(ThemeTokens::instance()->borderLight());
+        painter.drawLine(16,y,width()-17,y);
+    }
+}
+
+void FramelessDialog::changeEvent(QEvent* event)
+{
+    QDialog::changeEvent(event);
+    if (event->type()==QEvent::WindowStateChange)
+        if (auto* title=qobject_cast<CustomTitleBar*>(m_titleBar)) title->updateForWindowState();
+}
+
+void FramelessDialog::showEvent(QShowEvent* event)
+{
+    QDialog::showEvent(event);
     if (m_centeredOnce) return;
-    m_centeredOnce = true;
-
+    m_centeredOnce=true;
+    // Wayland places transient dialogs itself; clients cannot choose global positions.
+    if (QGuiApplication::platformName().startsWith("wayland")) return;
     QPointer<FramelessDialog> self(this);
-    QTimer::singleShot(0, this, [self]() {
-        if (!self) return;
-
-        QWidget* parent = self->parentWidget();
-        QWidget* parentWindowWidget = parent ? parent->window() : nullptr;
-
-        QWindow* parentWindowHandle = parentWindowWidget ? parentWindowWidget->windowHandle() : nullptr;
-        if (QWindow* handle = self->windowHandle()) {
-            if (parentWindowHandle) {
-                handle->setTransientParent(parentWindowHandle);
-            }
-        }
-
-        QRect refRect;
-        if (parentWindowWidget) {
-            refRect = parentWindowWidget->frameGeometry();
-        } else if (self->screen()) {
-            refRect = self->screen()->availableGeometry();
-        } else if (QGuiApplication::primaryScreen()) {
-            refRect = QGuiApplication::primaryScreen()->availableGeometry();
-        }
-
-        if (!refRect.isValid()) return;
-
-        QSize dialogSize = self->frameGeometry().size();
-        if (dialogSize.isEmpty()) dialogSize = self->size();
-        if (dialogSize.isEmpty()) dialogSize = self->sizeHint();
-        if (dialogSize.isEmpty()) return;
-
-        const QPoint target = refRect.center() - QPoint(dialogSize.width() / 2, dialogSize.height() / 2);
-        if (QWindow* handle = self->windowHandle()) {
-            handle->setPosition(target);
-        } else {
-            self->move(target);
-        }
+    QTimer::singleShot(0,this,[self] {
+        if (!self || !self->isVisible()) return;
+        QWidget* parent=self->parentWidget() ? self->parentWidget()->window() : nullptr;
+        QScreen* screen=parent ? parent->screen() : self->screen();
+        if (!screen) return;
+        const QRect available=screen->availableGeometry();
+        const QRect reference=parent ? parent->frameGeometry() : available;
+        QPoint target=reference.center()-QPoint(self->width()/2,self->height()/2);
+        target.setX(qBound(available.left(),target.x(),qMax(available.left(),available.right()-self->width()+1)));
+        target.setY(qBound(available.top(),target.y(),qMax(available.top(),available.bottom()-self->height()+1)));
+        self->move(target);
     });
-#endif
 }
 
 void FramelessDialog::initUI()
@@ -138,7 +137,7 @@ void FramelessDialog::initUI()
 
     // Main layout
     mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setContentsMargins(1, 1, 1, 1);
     mainLayout->setSpacing(0);
     mainLayout->addWidget(m_titleBar);
     mainLayout->addWidget(m_contentHost, 1);
@@ -148,7 +147,10 @@ void FramelessDialog::initUI()
         btnWidget->setProperty("bwDialogFooter", QVariant(true));
         btnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,this);
         btnBox->setObjectName("dialogBtnBox");
-        btnBox->setContentsMargins(5,5,5,5);
+        btnBox->setContentsMargins(0,0,0,0);
+        // Explicitly clear standard icons too: a platform theme may have initialized
+        // them before style polishing. Caller-created icon buttons are untouched.
+        for (auto* button : btnBox->buttons()) button->setIcon(QIcon());
         if (auto* okBtn = btnBox->button(QDialogButtonBox::Ok)) {
             okBtn->setText(QObject::tr("确定"));
             okBtn->setProperty("bwPrimary", QVariant(true));
@@ -158,11 +160,10 @@ void FramelessDialog::initUI()
         QObject::connect(btnBox, &QDialogButtonBox::accepted, this, &FramelessDialog::okButtonClicked);
         QObject::connect(btnBox, &QDialogButtonBox::rejected, this, &FramelessDialog::cancelButtonClicked);
         auto* btnLayout = new QVBoxLayout(btnWidget);
-        btnLayout->setContentsMargins(5, 10, 5, 5);
+        btnLayout->setContentsMargins(16, 12, 16, 16);
         btnLayout->addWidget(btnBox);
         mainLayout->addWidget(btnWidget);
     }
-    setLayout(mainLayout);
 
     // Default sizing to avoid too small dialogs
     setMinimumSize(380, 240);
@@ -170,20 +171,26 @@ void FramelessDialog::initUI()
 
 void FramelessDialog::setTitle(const QString& title)
 {
-    auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar);
-    if (customTitleBar) {
-        customTitleBar->setTitle(title);
-    }
+    setWindowTitle(title);
 }
 
-void FramelessDialog::setContentWidget(QWidget* w)
+void FramelessDialog::setContentWidget(QWidget* widget)
 {
-    if (m_contentHost && w) {
-        w->setProperty("bwMsgContent", QVariant(true));
-        w->setProperty("msgContent", QVariant(true));
-        auto* contentLayout = new QVBoxLayout(m_contentHost);
-        contentLayout->setContentsMargins(5, 5, 5, 0);
-        contentLayout->insertWidget(0,w);
+    if (!m_contentHost || widget == m_contentWidget) return;
+    auto* layout = m_contentHost->layout();
+    if (!layout) {
+        layout = new QVBoxLayout(m_contentHost);
+        layout->setContentsMargins(12, 12, 12, 0);
+    }
+    if (m_contentWidget) {
+        layout->removeWidget(m_contentWidget);
+        m_contentWidget->hide();
+        m_contentWidget->deleteLater();
+    }
+    m_contentWidget = widget;
+    if (widget) {
+        layout->addWidget(widget);
+        widget->show();
     }
 }
 
@@ -200,6 +207,8 @@ void FramelessDialog::setCustomDialogBtn(bool showOK, bool showCancel, bool okHi
     QPushButton* okBtn = btnBox->button(QDialogButtonBox::Ok);
     if(okBtn) {
         okBtn->setVisible(showOK);
+        okBtn->setDefault(showOK);
+        okBtn->setAutoDefault(showOK);
         okBtn->setProperty("bwPrimary", okHighLight);
         okBtn->setProperty("primary", okHighLight);
     }
@@ -207,89 +216,19 @@ void FramelessDialog::setCustomDialogBtn(bool showOK, bool showCancel, bool okHi
     if(cancelBtn)  cancelBtn->setVisible(showCancel);
 }
 
-void FramelessDialog::setFramelessWindowState(FramelessWindowState state) {
-#ifdef Q_OS_WIN
+void FramelessDialog::setFramelessWindowState(FramelessWindowState state)
+{
+    // Use the same Qt path for every platform; avoid hand-written X11 state messages.
     switch (state) {
-        case Maximized:
-            showMaximized();
-        break;
-        case Minimized:
-            showMinimized();
-        break;
-        case FullScreen:
-            showFullScreen();
-        break;
-        case Normal:
-            showNormal();
-        break;
+    case Maximized: showMaximized(); break;
+    case Minimized: showMinimized(); break;
+    case FullScreen: showFullScreen(); break;
+    case Normal: showNormal(); break;
     }
-#elif defined(Q_OS_LINUX)
-    if (!QX11Info::isPlatformX11() || QX11Info::display() == nullptr) {
-        switch (state) {
-        case Maximized:
-            showMaximized();
-            break;
-        case Minimized:
-            showMinimized();
-            break;
-        case FullScreen:
-            showFullScreen();
-            break;
-        case Normal:
-            showNormal();
-            break;
-        }
-        return;
-    }
-
-    Display *display = QX11Info::display();
-    Window window = winId();
-
-    Atom wmState = XInternAtom(display, "_NET_WM_STATE",false);
-    Atom maxHorz = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_HORZ",false);
-    Atom maxVert = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT",false);
-    Atom fullScreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN",false);
-
-    XEvent xev;
-    memset(&xev,0,sizeof(xev));
-    xev.type = ClientMessage;
-    xev.xclient.window = window;
-    xev.xclient.message_type = wmState;
-    xev.xclient.format = 32;
-
-    switch (state) {
-        case Maximized:
-            xev.xclient.data.l[0] = 1;//_NET_WM_STATE_ADD
-        xev.xclient.data.l[1] = maxHorz;
-        xev.xclient.data.l[2] = maxVert;
-        break;
-        case Minimized:
-            XIconifyWindow(display,window,0);
-        return;
-        case FullScreen:
-            xev.xclient.data.l[0] = 1;
-        xev.xclient.data.l[1] = fullScreen;
-        xev.xclient.data.l[2] = 0;
-        break;
-        case Normal:
-            //移除全屏
-                xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
-        xev.xclient.data.l[1] = fullScreen;
-        xev.xclient.data.l[2] = 0;
-        XSendEvent(display,DefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
-        //移除最大化
-        xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
-        xev.xclient.data.l[1] = maxHorz;
-        xev.xclient.data.l[2] = maxVert;
-        break;
-    }
-    XSendEvent(display,DefaultRootWindow(display),false,SubstructureRedirectMask | SubstructureNotifyMask,&xev);
-    XFlush(display);
-#endif
 }
 
 #ifdef Q_OS_WIN
-bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, long *result) {
+bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result) {
 #if (QT_VERSION == QT_VERSION_CHECK(5, 11, 1))
     MSG* msg = *reinterpret_cast<MSG**>(message);
 #else
@@ -325,7 +264,7 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, lo
                 return true;
             }
             //不在子控件上，且在标题栏内
-            if (m_titleBar->geometry().contains(titlePos)) {
+            if (m_titleBar->rect().contains(titlePos)) {
                 *result = HTCAPTION;
                 return true;
             }

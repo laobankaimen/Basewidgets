@@ -46,7 +46,7 @@ using QStringPair = QPair<QString, QString>;
 using tColorReplaceList = QVector<QStringPair>;
 
 /**
- * Encapsulates all information about a single stylesheet based style
+ * 主题数据及 SVG 管理器。保留历史类名以兼容已有应用，不再处理 QSS。
  */
 class ACSS_EXPORT QtAdvancedStylesheet : public QObject
 {
@@ -153,14 +153,10 @@ public:
 	 */
 	QString themeVariableValue(const QString& VariableId) const;
 
-	/**
-	 * You can use this function to add or overwrite a theme variable.
-	 * You may use this function to add application specific colors that are not
-	 * defined in the current style.
-	 * If you changed a theme variable or a number of theme variables then you
-	 * should call updateStylesheet() to request a reprocessing of the style
-	 * template and to update the stylesheet.
-	 */
+    /** 添加/覆盖主题变量，可用于应用自定义颜色。
+     * 批量修改后调用 updateTheme() 统一通知；theme-aware 图标重新替色，
+     * 内嵌 bwicon: 文件属于构建时生成的主题变体，不会在运行时重写。
+     */
 	void setThemeVariableValue(const QString& VariableId, const QString& Value);
 
 	/**
@@ -175,25 +171,8 @@ public:
 	 */
 	QString currentTheme() const;
 
-	/**
-	 * Returns the processed style stylesheet.
-	 * If the style or the theme of a style changed, you can read the new
-	 * stylesheet from this function
-	 */
-	QString styleSheet() const;
-
-	/**
-	 * This function replaces the style variables in the given template with
-	 * the value of the registered style variables.
-	 * You can use this function if you have split your stylesheet into
-	 * several parts or if you use plugins that provide additional stylesheets
-	 * to get the processed stylesheed if the theme changed.
-	 * Returns the final stylesheet or an empty string in case of an error.
-	 * If the OutputFile parameter is given, the generated stylesheet file
-	 * will be stored into the currentStyleOutputPath() folder with the given
-	 * OutputFile name.
-	 */
-	QString processStylesheetTemplate(const QString& Template, const QString& OutputFile = QString());
+    // Legacy query: native rendering has no stylesheet; always returns an empty string.
+    QString styleSheet() const;
 
 	/**
 	 * Returns the icon for the current style or an empty icon if the style does
@@ -251,17 +230,9 @@ public:
 	QIcon loadThemeAwareSvgIcon(const QString& Filename);
 
 public slots:
-	/**
-	 * Sets the theme to use.
-	 * Use the theme name without the file extension. That means, if your
-	 * theme file id dark_cyan.xml then set the theme to `dark_cyan'
-	 * Returns true on success and false on error.
-	 * Changing the theme does not trigger a stylesheet update. So after
-	 * changing the theme, you can add or overwrite theme variables
-	 * via setThemeVariableValue()
-	 * To trigger processing of the style template, you need to call
-	 * explicitely updateStylesheet().
-	 */
+    /** 读取指定主题（XML 文件名，不带扩展名），成功返回 true。
+     * 此函数只加载数据；随后可覆盖变量，再调用 updateTheme() 统一刷新。
+     */
 	bool setCurrentTheme(const QString& Theme);
 
 	/**
@@ -274,53 +245,28 @@ public slots:
 	 */
 	bool setCurrentStyle(const QString& Style);
 
-	/**
-	 * Call this function if you would like to reprocess the style template.
-	 * Call this function, if you have changed the theme or some theme variables
-	 * via setThemeVariable() to request an update of the stylesheet.
-	 * The function updates the application palette with the theme colors
-	 * (updateApplicationPaletteColors()), generates the theme SVG rseouces
-	 * (generateResources()) and then generates the stylesheet if it has a
-	 * template file.
-	 * If you have split your stylesheet into several pieces or if your would
-	 * like to separate the update of the resources and the generation of
-	 * the stylehseets, then you should not use this function. Instead, call
-	 * processStyleTemplate() to generate the SVG resources and update the
-	 * palette an then use processStylesheetTemplate() to generate the style
-	 * sheets.
-	 * @param force If true, the stylesheet is regenerated even if it already exists
-	 */
-	bool updateStylesheet(bool force = false);
+    /** 刷新主题并发出 themeChanged；内嵌资源直接复用预生成 SVG，不写磁盘。
+     * 外部源主题在 outputDir 下生成 SVG；失败返回 false，可通过 errorString 查询。
+     * 所有调用均应在 GUI 线程执行。NativeStyle/ThemeTokens 负责实际绘制。
+     */
+    bool updateTheme();
 
-	/**
-	 * Call this function, if you would like to update the SVG files and the
-	 * application palette. The function calls generateResources() and
-	 * updateApplicationPaletteColors().
-	 * The functio will not update or create any stylesheet. After calling this
-	 * function, you can use the processStylesheetTemplate() function to
-	 * manually generate the style sheets from stylesheet template files.
-	 */
-	bool processStyleTemplate();
+    // Compatibility entry point; force is ignored. No CSS is generated or loaded.
+    bool updateStylesheet(bool force = false);
 
-	/**
-	 * Generate the required icons for this theme.
-	 * You can call this function, if you changed some theme settings or theme
-	 * variables and if you would like to recreate the svg resources of this
-	 * style.If you call updateStylesheet(), then this function will be
-	 * called automatically
-	 */
+    // Legacy palette/resource helper, without stylesheet processing.
+    bool processStyleTemplate();
+
+    /** 显式生成当前主题的 SVG 变体到 currentStyleOutputPath，主要供构建阶段使用。 */
 	bool generateResources();
 
-	/**
-	 * Update the palette colors with the colors read from json file.
-	 * This function is called automatically if updateStylesheet() is called.
-	 * The function creates a palette with theme colors via generateThemePalette()
-	 * and then assigns the platte to the application object.
-	 */
+    /** 旧 JSON palette 映射入口；NativeStyle 使用 ThemeTokens 的完整 palette，不调用此函数。 */
 	void updateApplicationPaletteColors();
 
 
 signals:
+    /** 主题刷新完成；自绘控件可在此读取颜色并重绘。 */
+    void themeChanged();
 	/**
 	 * This signal is emitted if the selected style changed
 	 */
@@ -331,11 +277,7 @@ signals:
 	 */
 	void currentThemeChanged(const QString& Theme);
 
-	/**
-	 * This signal is emitted if the stylesheet changed.
-	 * The stylesheed changes if the style changes, the theme changes or if a
-	 * style variable changed an the user requested a styleheet update
-	 */
+    // Compatibility notification, emitted alongside themeChanged().
 	void stylesheetChanged();
 }; // class StyleManager
 }

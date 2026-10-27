@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 菜单栏包装；普通窗口可直接使用，FramelessWidgetWindow 会放在自定义标题栏下方。 */
 class ACSS_UI_EXPORT MenuBar : public QMenuBar
 {
     Q_OBJECT
@@ -19,6 +20,7 @@ public:
     explicit MenuBar(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~MenuBar() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 

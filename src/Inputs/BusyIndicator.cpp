@@ -1,10 +1,11 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
 #include <basewidgets/Inputs/BusyIndicator.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QPainter>
+#include <basewidgets/Core/ThemeTokens.h>
 #include <QTimer>
 #include <QtMath>
 
@@ -16,7 +17,11 @@ BusyIndicator::BusyIndicator(QWidget* parent)
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &BusyIndicator::onTick);
     setMinimumSize(24, 24);
-    setColor(StyleManagerAdapter::instance()->themeColor("primaryColor"));
+    m_color = ThemeTokens::instance()->primary();
+    connect(ThemeTokens::instance(), &ThemeTokens::tokensChanged, this, [this] {
+        if (!m_customColor) m_color = ThemeTokens::instance()->primary();
+        update();
+    });
     start();
 }
 
@@ -31,13 +36,25 @@ void BusyIndicator::setInterval(int ms)
 void BusyIndicator::start()
 {
     m_running = true;
-    m_timer->start(m_interval);
+    if (isVisible()) m_timer->start(m_interval);
 }
 
 void BusyIndicator::stop()
 {
     m_running = false;
     m_timer->stop();
+}
+
+void BusyIndicator::showEvent(QShowEvent* event)
+{
+    StyledWidget::showEvent(event);
+    if (m_running) m_timer->start(m_interval);
+}
+
+void BusyIndicator::hideEvent(QHideEvent* event)
+{
+    m_timer->stop();
+    StyledWidget::hideEvent(event);
 }
 
 void BusyIndicator::onTick()

@@ -1,3 +1,5 @@
+// 对话框示例：DialogUtils 管理弹窗生命周期；每次调用均以当前页面作为父窗口。
+// 取消结果通过空值/ok 标志区分；颜色预览通过 QPalette 更新。
 #include "DialogsPage.h"
 
 #include <QFrame>
@@ -8,6 +10,7 @@
 #include <basewidgets/Containers/GroupBox.h>
 #include <basewidgets/Containers/ScrollArea.h>
 #include <basewidgets/Dialogs/DialogUtils.h>
+#include <basewidgets/Core/FramelessDialog.h>
 #include <basewidgets/Inputs/Label.h>
 #include <basewidgets/Inputs/ProgressBar.h>
 #include <basewidgets/Inputs/PushButton.h>
@@ -29,7 +32,7 @@ DialogsPage::DialogsPage(QWidget* parent)
     layout->setSpacing(6);
     layout->setAlignment(Qt::AlignTop);
 
-    auto* dialogsGroup = new GroupBox("", content);
+    auto* dialogsGroup = new GroupBox("文件、消息与输入对话框", content);
     auto* dialogsLayout = new QGridLayout(dialogsGroup);
     dialogsLayout->setHorizontalSpacing(10);
     dialogsLayout->setVerticalSpacing(20);
@@ -61,14 +64,11 @@ DialogsPage::DialogsPage(QWidget* parent)
     auto* inputIntBtn = new PushButton("输入整数", dialogsGroup);
     auto* inputDoubleBtn = new PushButton("输入小数", dialogsGroup);
 
-    const int dlgBtnH = 32;
-    const int dlgBtnW = 96;
     for (auto* b : {openFileBtn, openFilesBtn, saveFileBtn, openDirBtn,
                     pickColorBtn, pickFontBtn,
                     msgInfoBtn, msgWarnBtn, msgErrorBtn, msgSuccessBtn, askQuestionBtn,
                     inputTextBtn, inputIntBtn, inputDoubleBtn}) {
-        b->setFixedSize(dlgBtnW, dlgBtnH);
-        b->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        b->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 
     dialogsLayout->addWidget(openFileBtn,    0, 0);
@@ -117,8 +117,14 @@ DialogsPage::DialogsPage(QWidget* parent)
 
     QObject::connect(pickColorBtn, &PushButton::clicked, [this, colorResult]() {
         const auto c = DialogUtils::pickColor(this, QColor(), "选择颜色");
+        if (!c.isValid()) return;
         colorResult->setText(QString("颜色结果: %1").arg(c.name()));
-        colorResult->setStyleSheet(QString("background:%1; padding:6px;").arg(c.name()));
+        QPalette palette = colorResult->palette();
+        palette.setColor(QPalette::Window, c);
+        palette.setColor(QPalette::WindowText, c.lightness() > 128 ? Qt::black : Qt::white);
+        colorResult->setPalette(palette);
+        colorResult->setAutoFillBackground(true);
+        colorResult->setMargin(6);
     });
     QObject::connect(pickFontBtn, &PushButton::clicked, [this, fontResult]() {
         bool ok = false;
@@ -159,15 +165,32 @@ DialogsPage::DialogsPage(QWidget* parent)
         inputResult->setText(QString("输入结果: 小数 = %1").arg(v));
     });
 
-    dialogsGroup->setLayout(dialogsLayout);
+    // 可见的实机验证入口：系统合成器负责拖动，检查拖动结束后 hover/click/键盘是否仍有效。
+    auto* dragDemo=new PushButton("拖动与悬停验证",content);
+    layout->addWidget(dragDemo);
+    connect(dragDemo,&QPushButton::clicked,this,[this] {
+        FramelessDialog dialog(true,this);
+        dialog.setTitle("对话框交互验证");
+        auto* body=new QWidget;
+        auto* bodyLayout=new QVBoxLayout(body);
+        auto* hint=new Label("拖动标题栏并松开鼠标，再移动到按钮上：底色应变化，点击应更新计数；Tab 可移动焦点。",body);
+        hint->setWordWrap(true);
+        auto* probe=new PushButton("悬停 / 点击此按钮",body);
+        auto* count=new Label("点击次数：0",body);
+        bodyLayout->addWidget(hint); bodyLayout->addWidget(probe); bodyLayout->addWidget(count);
+        connect(probe,&QPushButton::clicked,count,[count,n=0]() mutable { count->setText(QString("点击次数：%1").arg(++n)); });
+        dialog.setContentWidget(body);
+        connect(&dialog,&FramelessDialog::okButtonClicked,&dialog,&QDialog::accept);
+        connect(&dialog,&FramelessDialog::cancelButtonClicked,&dialog,&QDialog::reject);
+        dialog.exec();
+    });
     layout->addWidget(dialogsGroup);
 
-    content->setLayout(layout);
     scrollArea->setWidget(content);
 
     auto* pageLayout = new QVBoxLayout(this);
     pageLayout->setContentsMargins(0, 0, 0, 0);
     pageLayout->addWidget(scrollArea);
-    setLayout(pageLayout);
+
 }
 

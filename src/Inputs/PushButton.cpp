@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -13,21 +13,36 @@ PushButton::PushButton(QWidget* parent)
     : QPushButton(parent)
 {
     setStyleManager(StyleManagerAdapter::instance());
+    setAttribute(Qt::WA_Hover);
 }
 
 PushButton::PushButton(const QString& text, QWidget* parent)
     : QPushButton(text, parent)
 {
     setStyleManager(StyleManagerAdapter::instance());
+    setAttribute(Qt::WA_Hover);
 }
 
 PushButton::PushButton(acss::QtAdvancedStylesheet* manager, QWidget* parent)
     : QPushButton(parent)
 {
     setStyleManager(manager ? manager : StyleManagerAdapter::instance());
+    setAttribute(Qt::WA_Hover);
 }
 
 PushButton::~PushButton() = default;
+
+void PushButton::setAppearance(ButtonAppearance appearance)
+{
+    // Dynamic properties also let NativeStyle render plain Qt child buttons consistently.
+    setProperty("bwAppearance", static_cast<int>(appearance));
+    update();
+}
+
+ButtonAppearance PushButton::appearance() const
+{
+    return static_cast<ButtonAppearance>(property("bwAppearance").toInt());
+}
 
 void PushButton::setStyleManager(acss::QtAdvancedStylesheet* manager)
 {
@@ -36,21 +51,8 @@ void PushButton::setStyleManager(acss::QtAdvancedStylesheet* manager)
     attachToManager();
 }
 
-void PushButton::attachToManager()
-{
-    if (!m_manager) return;
-    // 组件级不再连接样式变更信号；应用级统一管理
-}
-
-void PushButton::onStylesheetChanged()
-{
-    // 统一在应用级进行样式更新；此处不再单独处理
-}
-
-void PushButton::applyStylesheet()
-{
-    // 清空组件级样式应用，改为应用级统一管理
-}
+void PushButton::attachToManager() {}
+void PushButton::onStylesheetChanged() {}
+void PushButton::applyStylesheet() {}
 
 } // namespace basewidgets
-

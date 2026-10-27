@@ -6,6 +6,7 @@
 #include <basewidgets/Core/StyleManagerAdapter.h>
 #include <basewidgets/Styles/QtAdvancedStylesheet.h>
 #include <basewidgets/Inputs/ToolButton.h>
+#include <basewidgets/Inputs/ElidedLabel.h>
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -32,10 +33,11 @@ CustomTitleBar::CustomTitleBar(QWidget* parent)
     setProperty("title", QVariant(true));
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
+    setMouseTracking(true);
     // 统一标题栏高度，确保在 MainWindow 与 Dialog 中一致
     setFixedHeight(fixedHieght);
     initUI();
-    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, &CustomTitleBar::updateIcons);
+    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::themeChanged, this, &CustomTitleBar::updateIcons);
     updateIcons();
 }
 
@@ -43,6 +45,7 @@ CustomTitleBar::~CustomTitleBar() = default;
 
 void CustomTitleBar::attachToWindow(QWidget* window)
 {
+    if (m_window) disconnect(m_window, nullptr, this, nullptr);
     m_window = window;
     if (!m_window) return;
     // 跟随窗口标题变化
@@ -59,13 +62,12 @@ void CustomTitleBar::attachToWindow(QWidget* window)
 
 void CustomTitleBar::setTitle(const QString& title)
 {
-    if (m_titleLabel) m_titleLabel->setText(title);
+    if (m_titleLabel) { m_titleLabel->setText(title); m_titleLabel->setToolTip(title); }
 }
 
 void CustomTitleBar::updateIcons()
 {
-    if (m_btnMin) m_btnMin->setIcon(QIcon("bwicon:buttons/hx_custom_hide.svg"));
-    if (m_btnClose) m_btnClose->setIcon(QIcon("bwicon:buttons/hx_custom_close.svg"));
+    // Window-control glyphs are drawn by NativeStyle, keeping contrast on red hover surfaces.
 
     QIcon icon = StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/material_icon.svg");
     // 更新左上角图标（确保跟随主题颜色变化）
@@ -83,7 +85,7 @@ void CustomTitleBar::updateIcons()
 void CustomTitleBar::setIcon(const QIcon& icon)
 {
     if (m_iconLabel) {
-        int iconSize = 30;
+        int iconSize = 20;
         m_iconLabel->setPixmap(icon.pixmap(QSize(iconSize, iconSize)));
     }
 }
@@ -92,18 +94,29 @@ void CustomTitleBar::updateForWindowState()
 {
     if (!m_window || !m_btnMax) return;
     const bool maximized = (m_window->windowState() == Qt::WindowMaximized || isFullScreen());
-    const QIcon icon = maximized ? QIcon("bwicon:buttons/hx_custom_tosmall.svg")
-                                 : QIcon("bwicon:buttons/hx_custom_tobig.svg");
-    m_btnMax->setIcon(icon);
+    m_btnMax->setProperty("bwWindowControl",maximized ? "restore" : "maximize");
+    m_btnMax->setToolTip(maximized ? tr("还原") : tr("最大化"));
+    m_btnMax->setAccessibleName(m_btnMax->toolTip());
 
-    //全屏不显示最大化最小化按钮（通用做法）
-    if(isFullScreen())
-        setButtonsVisible(false,false,true);
-    else
-        setButtonsVisible(true,true,true);
+    m_btnMin->setVisible(m_showMinimize && !isFullScreen());
+    m_btnMax->setVisible(m_showMaximize && !isFullScreen());
+    m_btnClose->setVisible(m_showClose);
+
 }
 
-#ifdef Q_OS_LINUX
+bool CustomTitleBar::event(QEvent* event)
+{
+    // Compositors can consume the release during native move. Do not leave the
+    // fallback drag active after a grab is cancelled, the window deactivates or hides.
+    if (event->type()==QEvent::UngrabMouse || event->type()==QEvent::WindowDeactivate
+        || event->type()==QEvent::Hide) {
+        m_dragging=false;
+        if (event->type()!=QEvent::UngrabMouse && QWidget::mouseGrabber()==this) releaseMouse();
+    }
+    return QWidget::event(event);
+}
+
+#ifndef Q_OS_WIN
 void CustomTitleBar::mousePressEvent(QMouseEvent* e)
 {
     if (!m_window) {
@@ -115,14 +128,43 @@ void CustomTitleBar::mousePressEvent(QMouseEvent* e)
         return;
     }
     if (e->button() == Qt::LeftButton) {
+        m_dragging=false;
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
         if (QWindow* handle = m_window->windowHandle()) {
             if (handle->startSystemMove()) {
+                // The compositor owns the drag. Do not retain an explicit widget grab.
+                if (QWidget::mouseGrabber()==this) releaseMouse();
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                if (QGuiApplication::platformName().startsWith("wayland")) {
+                    // Qt5 Widgets keeps an implicit pressed receiver until a release
+                    // passes through QWidgetWindow. Wayland may consume the real release
+                    // during xdg_toplevel.move, otherwise later hover stays on the title.
+                    // Send one Qt-only release AFTER the initiating press finishes. It
+                    // cannot activate a button: this handoff starts on title-bar blank space.
+                    const QPointer<QWindow> window=handle;
+                    const QPoint local=m_window->mapFromGlobal(e->globalPos());
+                    const QPoint global=e->globalPos();
+                    const Qt::MouseButtons remaining=e->buttons() & ~Qt::LeftButton;
+                    const Qt::KeyboardModifiers modifiers=e->modifiers();
+                    QTimer::singleShot(0,this,[window,local,global,remaining,modifiers] {
+                        if (!window || !window->isVisible()) return;
+                        QMouseEvent release(QEvent::MouseButtonRelease,local,local,global,
+                                            Qt::LeftButton,remaining,modifiers,Qt::MouseEventSynthesizedByApplication);
+                        QCoreApplication::sendEvent(window,&release);
+                    });
+                }
+#endif
                 e->accept();
                 return;
             }
         }
 #endif
+        // QWidget::move is not a supported fallback on Wayland and can leave a
+        // misleading drag state when the compositor rejected an input serial.
+        if (QGuiApplication::platformName().startsWith("wayland")) {
+            e->ignore();
+            return;
+        }
         m_dragging = true;
         m_dragStartPos = e->globalPos() - m_window->frameGeometry().topLeft();
         e->accept();
@@ -136,6 +178,10 @@ void CustomTitleBar::mouseMoveEvent(QMouseEvent* e)
     if (!m_window) {
         QWidget::mouseMoveEvent(e);
         return;
+    }
+    if (m_dragging && !(e->buttons() & Qt::LeftButton)) {
+        m_dragging=false; // missed release: next mouse motion recovers instead of dragging forever
+        if (QWidget::mouseGrabber()==this) releaseMouse();
     }
     if (m_dragging) {
         m_window->move(e->globalPos() - m_dragStartPos);
@@ -153,6 +199,7 @@ void CustomTitleBar::mouseReleaseEvent(QMouseEvent* e)
     }
     if (m_dragging && e->button() == Qt::LeftButton) {
         m_dragging = false;
+        if (QWidget::mouseGrabber()==this) releaseMouse();
         e->accept();
         return;
     }
@@ -181,9 +228,11 @@ void CustomTitleBar::initUI()
     m_iconLabel->setPixmap(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/material_icon.svg").pixmap(QSize(iconSize, iconSize)));
     // 移除手动设置的边距，使用布局间距控制
     m_iconLabel->setContentsMargins(0, 0, 0, 0);
+    m_iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
 
-    m_titleLabel = new QLabel(this);
+    m_titleLabel = new ElidedLabel(this);
     m_titleLabel->setObjectName("TitleLabel");
+    m_titleLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
     m_titleLabel->setProperty("title", QVariant(true));
     // 确保标题文字左对齐并垂直居中
     m_titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -193,34 +242,41 @@ void CustomTitleBar::initUI()
 
     m_btnMin = new ToolButton(this);
     m_btnMin->setObjectName("TitleBarMinButton");
-    // m_btnMin->setToolTip(tr("最小化"));
+    m_btnMin->setToolTip(tr("最小化"));
+    m_btnMin->setAccessibleName(tr("最小化"));
+    m_btnMin->setProperty("bwWindowControl","minimize");
     m_btnMin->setCursor(Qt::PointingHandCursor);
-    m_btnMin->setAutoRaise(false);
+    m_btnMin->setAutoRaise(true);
     m_btnMin->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnMin->setFixedSize(buttonSize);
     m_btnMin->setIconSize(btnIconSize);
 
     m_btnMax = new ToolButton(this);
     m_btnMax->setObjectName("TitleBarMaxButton");
-    // m_btnMax->setToolTip(tr("最大化/还原"));
+    m_btnMax->setToolTip(tr("最大化/还原"));
+    m_btnMax->setAccessibleName(tr("最大化/还原"));
+    m_btnMax->setProperty("bwWindowControl","maximize");
     m_btnMax->setCursor(Qt::PointingHandCursor);
-    m_btnMax->setAutoRaise(false);
+    m_btnMax->setAutoRaise(true);
     m_btnMax->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnMax->setFixedSize(buttonSize);
     m_btnMax->setIconSize(btnIconSize);
 
     m_btnClose = new ToolButton(this);
     m_btnClose->setObjectName("TitleBarCloseButton");
-    // m_btnClose->setToolTip(tr("关闭"));
+    m_btnClose->setToolTip(tr("关闭"));
+    m_btnClose->setAccessibleName(tr("关闭"));
+    m_btnClose->setProperty("bwWindowControl","close");
+    m_btnClose->setAppearance(ButtonAppearance::Danger);
     m_btnClose->setCursor(Qt::PointingHandCursor);
-    m_btnClose->setAutoRaise(false);
+    m_btnClose->setAutoRaise(true);
     m_btnClose->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_btnClose->setFixedSize(buttonSize);
     m_btnClose->setIconSize(btnIconSize);
 
     auto* h = new QHBoxLayout(this);
     h->setContentsMargins(5, 0, 0, 0);
-    h->setSpacing(2); // 减小图标与标题的间距
+    h->setSpacing(0); // Caption buttons share contiguous hit regions, as desktop users expect.
     h->addWidget(m_iconLabel, 0);
     h->addWidget(m_titleLabel, 1);
     h->addWidget(m_btnMin, 0);
@@ -230,9 +286,9 @@ void CustomTitleBar::initUI()
 
     // 行为连接
     connect(m_btnMin, &ToolButton::clicked, this, [this] {
-        auto *window = dynamic_cast<BaseWidgetInterface *>(m_window);
-        if (!window) return;
-        window->setFramelessWindowState(Minimized);
+        auto *window = dynamic_cast<BaseWidgetInterface *>(m_window.data());
+        if (window) window->setFramelessWindowState(Minimized);
+        else if (m_window) m_window->showMinimized();
     });
     connect(m_btnMax, &ToolButton::clicked, this, [this]{ toggleMaximizeRestore(); });
     connect(m_btnClose, &ToolButton::clicked, this, [this]{
@@ -243,6 +299,7 @@ void CustomTitleBar::initUI()
 // 简化toggleMaximizeRestore，移除状态记录逻辑
 void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
 {
+    if (!m_window) return;
     if(isDoubleClick && isFullScreen()){
         return;//全屏双击不生效
     }
@@ -253,68 +310,27 @@ void CustomTitleBar::toggleMaximizeRestore(bool isDoubleClick)
     else {
         states = Maximized;//默认全部最大化，全屏没有动画效果
     }
-    auto *window = dynamic_cast<BaseWidgetInterface *>(m_window);
-    if (!window) return;
-    window->setFramelessWindowState(states);
-/*#ifdef Q_OS_WIN
-//     if (window->windowState() == Qt::WindowMaximized || isFullScreen()) {
-//         window->showNormal();
-//     }
-//     else {
-//         window->showMaximized();//默认全部最大化，全屏没有动画效果
-//     }
-// #elif defined(Q_OS_LINUX)
-//     //Linux下需要处理缩放动画
-//     QPropertyAnimation* animation = new QPropertyAnimation(m_window,"geometry");
-//     animation->setDuration(150);
-//     animation->setEasingCurve(QEasingCurve::OutQuad);
-//     if (m_window->windowState() == Qt::WindowMaximized
-//             || isFullScreen()) {
-//         QRect startGeometry = m_window->geometry();
-//         animation->setStartValue(startGeometry);
-//         animation->setEndValue(normalGeometry);
-//         //确保执行到位
-//         connect(animation,&QPropertyAnimation::finished,this,[this,window]() {
-//             window->setFramelessWindowState(Normal);
-//             updateForWindowState();
-//         });
-//     }
-//     else {
-//         if(m_window->windowState() == Qt::WindowNoState) {
-//             normalGeometry = m_window->geometry();
-//         }
-//         QScreen *primaryScreen = QGuiApplication::screenAt(this->geometry().center());
-//         QRect maximizedGeometry = primaryScreen->geometry();
-//
-//         animation->setStartValue(normalGeometry);
-//         animation->setEndValue(maximizedGeometry);
-//
-//         //确保执行到位
-//         connect(animation,&QPropertyAnimation::finished,this,[this,window]() {
-//             window->setFramelessWindowState(Maximized);
-//             updateForWindowState();
-//         });
-//     }
-//     animation->start(QPropertyAnimation::DeleteWhenStopped);
-     if (window->windowState() == Qt::WindowMaximized ||
-             isFullScreen()) {
-         window->setFramelessWindowState(Normal);
-     }
-     else {
-         window->setFramelessWindowState(Maximized);//默认全部最大化，全屏没有动画效果
-     }
-// #endif*/
+    auto *window = dynamic_cast<BaseWidgetInterface *>(m_window.data());
+    if (window) window->setFramelessWindowState(states);
+    else if (m_window) {
+        if (states == Maximized) m_window->showMaximized();
+        else m_window->showNormal();
+    }
+
 }
 
 bool CustomTitleBar::isFullScreen()
 {
-    return (m_window->windowState() == Qt::WindowFullScreen || m_window->windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen));
+    return m_window && m_window->isFullScreen();
 }
 
 void CustomTitleBar::setButtonsVisible(bool showMinimize, bool showMaximize, bool showClose)
 {
-    if (m_btnMin)   m_btnMin->setVisible(showMinimize);
-    if (m_btnMax)   m_btnMax->setVisible(showMaximize);
+    m_showMinimize = showMinimize;
+    m_showMaximize = showMaximize;
+    m_showClose = showClose;
+    if (m_btnMin) m_btnMin->setVisible(showMinimize && !isFullScreen());
+    if (m_btnMax) m_btnMax->setVisible(showMaximize && !isFullScreen());
     if (m_btnClose) m_btnClose->setVisible(showClose);
 }
 

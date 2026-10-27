@@ -1,3 +1,5 @@
+// 分页表格示例：只设置源模型，AdvancedTable 内部负责筛选→排序→分页。
+// pager() 使用从 0 开始的页号；用户看到的跳转框从 1 开始。
 #include "PagedTablePage.h"
 
 #include <basewidgets/Containers/GroupBox.h>
@@ -16,7 +18,7 @@ PagedTablePage::PagedTablePage(QWidget* parent)
     outer->setContentsMargins(8, 8, 8, 8);
     outer->setSpacing(10);
 
-    auto* gb = new GroupBox("", this);
+    auto* gb = new GroupBox("分页、筛选与排序", this);
     auto* vbox = new QVBoxLayout(gb);
     vbox->setContentsMargins(10, 10, 10, 10);
     vbox->setSpacing(8);

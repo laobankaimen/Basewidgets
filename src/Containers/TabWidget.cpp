@@ -1,9 +1,10 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
 #include <basewidgets/Containers/TabWidget.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
+#include <QTabBar>
 
 using namespace acss;
 
@@ -22,6 +23,17 @@ TabWidget::TabWidget(acss::QtAdvancedStylesheet* manager, QWidget* parent)
 }
 
 TabWidget::~TabWidget() = default;
+
+void TabWidget::setHoverEffectEnabled(bool enabled)
+{
+    tabBar()->setProperty("bwTabHoverEnabled",enabled);
+    tabBar()->update();
+}
+
+bool TabWidget::hoverEffectEnabled() const
+{
+    return tabBar()->property("bwTabHoverEnabled").toBool();
+}
 
 void TabWidget::setStyleManager(acss::QtAdvancedStylesheet* manager)
 {

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -8,6 +8,7 @@
 #include <basewidgets/QtAdvancedUIExport.h>
 #include <QWidget>
 #include <QPoint>
+#include <QPointer>
 
 class QLabel;
 class QMenuBar;
@@ -24,20 +25,24 @@ public:
     explicit CustomTitleBar(QWidget* parent = nullptr);
     ~CustomTitleBar() override;
 
+    /** 绑定被控制窗口；不接管所有权，重绑定会断开旧窗口的同步连接。 */
     void attachToWindow(QWidget* window);
-    QWidget* attachedWindow() const { return m_window; }
+    QWidget* attachedWindow() const { return m_window.data(); }
 
 public slots:
     void setTitle(const QString& title);
     void setIcon(const QIcon& icon);
     void updateForWindowState();
     // 仅用于对话框等场景：按钮显隐与双击开关
+    /** 保存按钮显隐偏好；后续状态更新不会重新显示被调用方隐藏的按钮。 */
     void setButtonsVisible(bool showMinimize, bool showMaximize, bool showClose);
+    /** 禁用后双击不切换最大化；对话框通常关闭此行为。 */
     void setDoubleClickToToggleEnabled(bool enabled);
     void updateIcons();
-#ifdef Q_OS_LINUX
 protected:
-    //Linux下拖动需要处理
+    bool event(QEvent* event) override;
+#ifndef Q_OS_WIN
+    // 非 Windows 平台优先使用 QWindow 系统拖动；Windows 由原生标题栏命中处理。
     void mousePressEvent(QMouseEvent* e) override;
     void mouseMoveEvent(QMouseEvent* e) override;
     void mouseReleaseEvent(QMouseEvent* e) override;
@@ -49,7 +54,7 @@ private:
     bool isFullScreen();
 
 private:
-    QWidget* m_window = nullptr;
+    QPointer<QWidget> m_window;
     QLabel* m_iconLabel = nullptr;
     QLabel* m_titleLabel = nullptr;
     ToolButton* m_btnMin = nullptr;
@@ -57,12 +62,14 @@ private:
     ToolButton* m_btnClose = nullptr;
 
     bool m_doubleClickToggleEnabled = true;
+    bool m_showMinimize = true;
+    bool m_showMaximize = true;
+    bool m_showClose = true;
 
-    // 移除所有拖动和状态记录相关的成员变量
+    // 仅手动回退拖动使用；系统拖动绝不留下此状态。
     bool m_dragging = false;
     QPoint m_dragStartPos;
 
-    QRect normalGeometry;
 };
 
 } // namespace basewidgets

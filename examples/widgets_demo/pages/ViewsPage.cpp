@@ -1,3 +1,5 @@
+// 模型视图示例：模型以对应视图为 QObject 父对象，随页面一起销毁。
+// NavigationList 使用业务 ID；排序、表头与选择继续使用 Qt 原生 Model/View API。
 #include "ViewsPage.h"
 
 #include <QFrame>
@@ -32,13 +34,15 @@ ViewsPage::ViewsPage(QWidget* parent)
     layout->setSpacing(6);
     layout->setAlignment(Qt::AlignTop);
 
-    auto* navGroup = new GroupBox("", content);
+    auto* navGroup = new GroupBox("导航列表", content);
     {
         auto* navLayout = new QHBoxLayout(navGroup);
         navLayout->setContentsMargins(4, 4, 4, 4);
         navLayout->setSpacing(8);
 
         auto* navList = new NavigationList(navGroup);
+        navList->setFixedWidth(160);
+        navList->setMinimumHeight(180);
         navList->addButton("首页");
         navList->addButton("设置");
         navList->addButton("关于");
@@ -51,8 +55,8 @@ ViewsPage::ViewsPage(QWidget* parent)
         navCurrentLabel->setWordWrap(true);
 
         navLayout->addWidget(navList);
-        navLayout->addWidget(navCurrentLabel);
-        navGroup->setLayout(navLayout);
+        navLayout->addWidget(navCurrentLabel,1);
+
 
         QObject::connect(navList, &NavigationList::currentItemChanged,
                          [navList, navCurrentLabel](QListWidgetItem* current, QListWidgetItem* /*previous*/){
@@ -64,7 +68,7 @@ ViewsPage::ViewsPage(QWidget* parent)
     }
     layout->addWidget(navGroup);
 
-    auto* viewGroup = new GroupBox("", content);
+    auto* viewGroup = new GroupBox("模型与视图", content);
     {
         auto* viewLayout = new QGridLayout(viewGroup);
 
@@ -73,6 +77,7 @@ ViewsPage::ViewsPage(QWidget* parent)
         listView->setMinimumHeight(160);
         tableView->setMinimumHeight(200);
         auto* treeTable = new TreeTable(viewGroup);
+        treeTable->setMinimumHeight(240);
 
         {
             auto* listModel = new QStandardItemModel(listView);
@@ -121,16 +126,15 @@ ViewsPage::ViewsPage(QWidget* parent)
         viewLayout->addWidget(new Label("树形表格:", viewGroup), 4, 0);
         viewLayout->addWidget(treeTable, 5, 0);
         viewLayout->setColumnStretch(0, 1);
-        viewGroup->setLayout(viewLayout);
+
     }
     layout->addWidget(viewGroup);
 
-    content->setLayout(layout);
     scrollArea->setWidget(content);
 
     auto* pageLayout = new QVBoxLayout(this);
     pageLayout->setContentsMargins(0, 0, 0, 0);
     pageLayout->addWidget(scrollArea);
-    setLayout(pageLayout);
+
 }
 

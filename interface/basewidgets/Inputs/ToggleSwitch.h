@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,7 +11,9 @@
 
 namespace basewidgets {
 
-// 滑动开关按钮，带动画
+/** 可选中的自绘开关。使用 setChecked/isChecked 和 toggled 信号；支持键盘 Space、RTL。
+ * 动画绑定 toggled，因此程序设置和鼠标/键盘触发具有一致效果。
+ */
 class ACSS_UI_EXPORT ToggleSwitch : public QAbstractButton {
     Q_OBJECT
     Q_PROPERTY(qreal offset READ offset WRITE setOffset)
@@ -21,10 +23,12 @@ public:
 
     QSize sizeHint() const override;
 
+    /** 临时覆盖颜色；后续 updateColors/主题切换会恢复主题色。 */
     void setOnColor(const QColor& c) { m_on = c; }
     void setOffColor(const QColor& c) { m_off = c; }
     void setKnobColor(const QColor& c) { m_knob = c; }
     void updateColors();
+    /** 状态切换动画时长（毫秒），最小为 60。 */
     void setAnimationDuration(int ms);
 
 protected:

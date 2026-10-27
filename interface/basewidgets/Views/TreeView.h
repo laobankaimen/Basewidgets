@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 树视图包装；外部模型不转移所有权，展开/排序行为沿用 QTreeView。 */
 class ACSS_UI_EXPORT TreeView : public QTreeView
 {
     Q_OBJECT
@@ -18,6 +19,7 @@ public:
     explicit TreeView(QWidget* parent = nullptr);
     ~TreeView() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 

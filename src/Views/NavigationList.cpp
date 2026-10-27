@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2026-03-16
  */
@@ -6,13 +6,24 @@
 #include <basewidgets/Core/StyleManagerAdapter.h>
 
 #include <QListWidgetItem>
+#include <QStyledItemDelegate>
 
-#define NAVI_MENU_WIDTH 75
-#define NAVI_MENU_HEIGHT 45
 
 using namespace acss;
 
 namespace basewidgets {
+    namespace {
+    class NavigationDelegate : public QStyledItemDelegate {
+    public:
+        using QStyledItemDelegate::QStyledItemDelegate;
+        QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+            QSize size = QStyledItemDelegate::sizeHint(option,index);
+            size.setHeight(qMax(32,option.fontMetrics.height()+12));
+            return size;
+        }
+    };
+    }
+
     NavigationList::NavigationList(QWidget *parent)
         : QListWidget(parent) {
         setAttribute(Qt::WA_StyledBackground, true);
@@ -20,10 +31,30 @@ namespace basewidgets {
         setStyleManager(StyleManagerAdapter::instance());
 
         setObjectName("Navigation");
-        setFixedWidth(NAVI_MENU_WIDTH);
+        setMinimumWidth(120);
+        setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Expanding);
+        setItemDelegate(new NavigationDelegate(this));
+        connect(this,&QListWidget::itemClicked,this,[this](QListWidgetItem* item) {
+            emit buttonClicked(m_items.key(item,-1),item->text(),row(item));
+        });
+        connect(model(),&QAbstractItemModel::modelAboutToBeReset,this,[this] { m_items.clear(); });
+        connect(model(),&QAbstractItemModel::rowsAboutToBeRemoved,this,[this](const QModelIndex&,int first,int last) {
+            for (int row=first;row<=last;++row) {
+                const auto* removed = item(row);
+                for (auto it=m_items.begin();it!=m_items.end();) {
+                    if (it.value()==removed) it=m_items.erase(it);
+                    else ++it;
+                }
+            }
+        });
     }
 
-    NavigationList::~NavigationList() = default;
+    NavigationList::~NavigationList()
+    {
+        // QListWidget clears its model in its base destructor, after m_items is gone.
+        // Disconnect the bookkeeping callbacks while the derived members still exist.
+        disconnect(model(),nullptr,this,nullptr);
+    }
 
     void NavigationList::setStyleManager(acss::QtAdvancedStylesheet *manager) {
         if (m_manager == manager) return;
@@ -94,12 +125,9 @@ namespace basewidgets {
     }
 
     int NavigationList::findAvailableId() {
-        if(m_items.isEmpty()) return 0;
-        int maxId = 0;
-        for (auto it = m_items.constBegin();it != m_items.constEnd();it++) {
-            if(it.key() > maxId) maxId = it.key();
-        }
-        return maxId + 1;
+        int id = 0;
+        while (m_items.contains(id)) ++id;
+        return id;
     }
 
     void NavigationList::onStylesheetChanged() {

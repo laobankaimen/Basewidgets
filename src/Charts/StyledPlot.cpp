@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -28,7 +28,7 @@ StyledPlot::StyledPlot(QWidget* parent)
 
     auto* mgr = StyleManagerAdapter::instance();
     if (mgr) {
-        connect(mgr, &acss::QtAdvancedStylesheet::stylesheetChanged,
+        connect(mgr, &acss::QtAdvancedStylesheet::themeChanged,
                 this, &StyledPlot::onStylesheetChanged);
     }
 }

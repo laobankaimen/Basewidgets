@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -80,7 +80,7 @@ void QCPLineChart::installThemeSync(QCustomPlot* plot)
     if (!plot) return;
     m_plot = plot;
     applyThemeBackground();
-    QObject::connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged,
+    QObject::connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::themeChanged,
                      this, &QCPLineChart::onStylesheetChanged);
 }
 

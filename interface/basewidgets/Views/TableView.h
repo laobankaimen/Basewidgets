@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 表格视图包装；表头、模型和选择接口沿用 QTableView。 */
 class ACSS_UI_EXPORT TableView : public QTableView
 {
     Q_OBJECT
@@ -18,6 +19,7 @@ public:
     explicit TableView(QWidget* parent = nullptr);
     ~TableView() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 

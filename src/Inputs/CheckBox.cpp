@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -9,22 +9,26 @@ using namespace acss;
 
 namespace basewidgets {
 
+
 CheckBox::CheckBox(QWidget* parent)
     : QCheckBox(parent)
 {
     setStyleManager(StyleManagerAdapter::instance());
+    setAttribute(Qt::WA_Hover);
 }
 
 CheckBox::CheckBox(const QString& text, QWidget* parent)
     : QCheckBox(text, parent)
 {
     setStyleManager(StyleManagerAdapter::instance());
+    setAttribute(Qt::WA_Hover);
 }
 
 CheckBox::CheckBox(acss::QtAdvancedStylesheet* manager, QWidget* parent)
     : QCheckBox(parent)
 {
     setStyleManager(manager ? manager : StyleManagerAdapter::instance());
+    setAttribute(Qt::WA_Hover);
 }
 
 CheckBox::~CheckBox() = default;
@@ -36,21 +40,8 @@ void CheckBox::setStyleManager(acss::QtAdvancedStylesheet* manager)
     attachToManager();
 }
 
-void CheckBox::attachToManager()
-{
-    if (!m_manager) return;
-    // 组件级不再连接样式变更信号；应用级统一管理
-}
-
-void CheckBox::onStylesheetChanged()
-{
-    // 统一在应用级进行样式更新；此处不再单独处理
-}
-
-void CheckBox::applyStylesheet()
-{
-    // 清空组件级样式应用，改为应用级统一管理
-}
+void CheckBox::attachToManager() {}
+void CheckBox::onStylesheetChanged() {}
+void CheckBox::applyStylesheet() {}
 
 } // namespace basewidgets
-

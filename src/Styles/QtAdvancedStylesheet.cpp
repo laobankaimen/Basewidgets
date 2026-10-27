@@ -36,8 +36,8 @@
 #include <QFile>
 #include <QDebug>
 #include <QDir>
-#include <QRegularExpression>
 #include <QFontDatabase>
+#include <QPointer>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -68,7 +68,7 @@ class CSVGIconEngine : public QIconEngine
 private:
 	QByteArray m_SvgTemplate;
 	QByteArray m_SvgContent; ///< memory buffer with SVG data load from file
-	QtAdvancedStylesheet* m_AdvancedStyleheet = nullptr;
+	QPointer<QtAdvancedStylesheet> m_AdvancedStyleheet;
 
 public:
 	/**
@@ -102,7 +102,7 @@ public:
 	void update()
 	{
 		m_SvgContent = m_SvgTemplate;
-		m_AdvancedStyleheet->replaceSvgColors(m_SvgContent);
+		if (m_AdvancedStyleheet) m_AdvancedStyleheet->replaceSvgColors(m_SvgContent);
 	}
 
 	/**
@@ -134,7 +134,7 @@ public:
 
 	virtual QIconEngine* clone() const override
 	{
-		return new CSVGIconEngine(*this);
+		return new CSVGIconEngine(m_SvgTemplate, m_AdvancedStyleheet);
 	}
 
 	virtual QPixmap pixmap(const QSize &size, QIcon::Mode mode,
@@ -253,7 +253,6 @@ struct QtAdvancedStylesheetPrivate
 	QMap<QString, QString> StyleVariables;
 	QMap<QString, QString> ThemeColors;
 	QMap<QString, QString> ThemeVariables;// theme variables contains StyleVariables and ThemeColors
-	QString Stylesheet;
 	QString CurrentStyle;
 	QString CurrentTheme;
 	QString DefaultTheme;
@@ -277,21 +276,6 @@ struct QtAdvancedStylesheetPrivate
 	QtAdvancedStylesheetPrivate(QtAdvancedStylesheet *_public);
 
 	/**
-	 * Generate the final stylesheet from the stylesheet template file
-	 */
-	bool generateStylesheet();
-
-	/**
-	 * Export the internal generated stylesheet
-	 */
-	bool exportInternalStylesheet(const QString& Filename);
-
-	/**
-	 * Store the given stylesheet
-	 */
-	bool storeStylesheet(const QString& Stylesheet, const QString& Filename);
-
-	/**
 	 * Parse a list of theme variables
 	 */
 	bool parseVariablesFromXml(QXmlStreamReader& s, const QString& VariableTagName,
@@ -306,17 +290,6 @@ struct QtAdvancedStylesheetPrivate
 	 * Parse the style JSON file
 	 */
 	bool parseStyleJsonFile();
-
-	/**
-	 * Creates an Rgba color from a given color and an opacity value in the
-	 * range from 0 (transparent) to 1 (opaque)
-	 */
-	QString rgbaColor(const QString& RgbColor, float Opacity);
-
-	/**
-	 *	Replace the stylesheet variables in the given template
-	 */
-	void replaceStylesheetVariables(QString& Template);
 
 	/**
 	 * Register the style fonts to the font database
@@ -391,105 +364,6 @@ void QtAdvancedStylesheetPrivate::setError(QtAdvancedStylesheet::eError Error,
 	{
 		qDebug() << "CAdvancedStylesheet Error: " << Error << " " << ErrorString;
 	}
-}
-
-
-//============================================================================
-QString QtAdvancedStylesheetPrivate::rgbaColor(const QString& RgbColor, float Opacity)
-{
-	int Alpha = 255 * Opacity;
-	auto RgbaColor = RgbColor;
-	RgbaColor.insert(1, QString("%1").arg(Alpha, 2, 16, QChar('0')));
-	return RgbaColor;
-}
-
-
-//============================================================================
-void QtAdvancedStylesheetPrivate::replaceStylesheetVariables(QString& Content)
-{
-	static const int OpacityStrSize = QString("opacity(").size();
-
-	QRegularExpression re("\\{\\{.*\\}\\}");
-	QRegularExpressionMatch match;
-	int index = 0;
-	while ((index = Content.indexOf(re, index, &match)) != -1)
-	{
-		QString ValueString;
-		QString MatchString = match.captured();
-		// Use only the value inside of the brackets {{ }} without the brackets
-                auto TemplateVariable = MatchString.mid(2, MatchString.size() - 4);
-		bool HasOpacity = TemplateVariable.endsWith(')');
-
-		if (HasOpacity)
-		{
-			auto Values = TemplateVariable.split("|");
-                        ValueString = _this->themeVariableValue(Values[0]);
-			auto OpacityStr = Values[1].mid(OpacityStrSize, Values[1].size() - OpacityStrSize - 1);
-			bool Ok;
-			auto Opacity = OpacityStr.toFloat(&Ok);
-			ValueString = rgbaColor(ValueString, Opacity);
-		}
-		else
-		{
-                        ValueString = _this->themeVariableValue(TemplateVariable);
-		}
-
-		Content.replace(index, MatchString.size(), ValueString);
-		index += ValueString.size();
-	}
-}
-
-
-//============================================================================
-bool QtAdvancedStylesheetPrivate::generateStylesheet()
-{
-	auto CssTemplateFileName = JsonStyleParam.value("css_template").toString();
-	if (CssTemplateFileName.isEmpty())
-	{
-		return false;
-	}
-
-	QString TemplateFilePath = _this->currentStylePath() + "/" + CssTemplateFileName;
-	if (!QFile::exists(TemplateFilePath))
-	{
-		setError(QtAdvancedStylesheet::CssTemplateError, "Stylesheet folder "
-			"does not contain the CSS template file " + CssTemplateFileName);
-		return false;
-	}
-
-	QFile TemplateFile(_this->currentStylePath() + "/" + CssTemplateFileName);
-	TemplateFile.open(QIODevice::ReadOnly);
-	QString Content(TemplateFile.readAll());
-	replaceStylesheetVariables(Content);
-	Stylesheet = Content;
-	exportInternalStylesheet(QFileInfo(TemplateFilePath).baseName() + ".css");
-	return true;
-}
-
-
-//============================================================================
-bool QtAdvancedStylesheetPrivate::exportInternalStylesheet(const QString& Filename)
-{
-	return storeStylesheet(this->Stylesheet, Filename);
-}
-
-
-//============================================================================
-bool QtAdvancedStylesheetPrivate::storeStylesheet(const QString& Stylesheet, const QString& Filename)
-{
-	auto OutputPath = _this->currentStyleOutputPath();
-	QDir().mkpath(OutputPath);
-	QString OutputFilename = OutputPath + "/" + Filename;
-	QFile OutputFile(OutputFilename);
-	if (!OutputFile.open(QIODevice::WriteOnly))
-	{
-		setError(QtAdvancedStylesheet::CssExportError, "Exporting stylesheet "
-			+ Filename + " caused error: " + OutputFile.errorString());
-		return false;
-	}
-	OutputFile.write(Stylesheet.toUtf8());
-	OutputFile.close();
-	return true;
 }
 
 
@@ -745,17 +619,20 @@ bool QtAdvancedStylesheetPrivate::generateResourcesFor(const QString& SubDir,
 	for (const auto& Entry : Entries)
 	{
 		QFile SvgFile(Entry.absoluteFilePath());
-		SvgFile.open(QIODevice::ReadOnly);
+        if (!SvgFile.open(QIODevice::ReadOnly)) {
+            setError(QtAdvancedStylesheet::ResourceGeneratorError, SvgFile.errorString());
+            return false;
+        }
 		auto Content = SvgFile.readAll();
 		SvgFile.close();
-		//找到对应的内容才进行替换
-		if(!_this->replaceSvgColors(Content, ColorReplaceList))
-			continue;
+        _this->replaceSvgColors(Content, ColorReplaceList);
 		QString OutputFilename = OutputDir + "/" + Entry.fileName();
 		QFile OutputFile(OutputFilename);
-		OutputFile.open(QIODevice::WriteOnly);
-		OutputFile.write(Content);
-		OutputFile.close();
+        if (!OutputFile.open(QIODevice::WriteOnly) || OutputFile.write(Content) != Content.size()) {
+            setError(QtAdvancedStylesheet::ResourceGeneratorError, OutputFile.errorString());
+            return false;
+        }
+        OutputFile.close();
 	}
 
 	return true;
@@ -799,12 +676,17 @@ bool QtAdvancedStylesheet::replaceSvgColors(QByteArray& SvgContent,
 
 
 //============================================================================
-QIcon QtAdvancedStylesheet::loadThemeAwareSvgIcon(const QString& Filename)
+QIcon QtAdvancedStylesheet::loadThemeAwareSvgIcon(const QString& filename)
 {
-	QFile SvgFile(Filename);
-	SvgFile.open(QIODevice::ReadOnly);
-	auto Content = SvgFile.readAll();
-	return QIcon(new CSVGIconEngine(Content, this));
+    QString resolved = filename;
+    // Source-directory themes must also work without a registered RCC bundle.
+    if (filename.startsWith(":/styles/")) {
+        const QString source = QDir(stylesDirPath()).filePath(filename.mid(9));
+        if (QFile::exists(source)) resolved = source;
+    }
+    QFile file(resolved);
+    if (!file.open(QIODevice::ReadOnly)) return QIcon();
+    return QIcon(new CSVGIconEngine(file.readAll(), this));
 }
 
 
@@ -950,7 +832,11 @@ bool QtAdvancedStylesheet::setCurrentTheme(const QString& Theme)
 
 	d->CurrentTheme = Theme;
 	// Keep both schemes alive so stale generated CSS and older code keep working.
-	const QStringList iconSearchPaths = {currentStyleOutputPath()};
+	// Built-in themes already contain all generated icon variants. Custom themes can
+    // generate them into outputDir; both use the same public bwicon: lookup convention.
+    const QString bundled = currentStylePath()+"/"+Theme;
+    const QStringList iconSearchPaths = d->StylesDir.startsWith(":/")
+        ? QStringList{bundled} : QStringList{currentStyleOutputPath(),bundled};
 	QDir::setSearchPaths("bwicon", iconSearchPaths);
 	QDir::setSearchPaths("icon", iconSearchPaths);
 	
@@ -967,63 +853,25 @@ void QtAdvancedStylesheet::setDefaultTheme()
 
 
 //============================================================================
-bool QtAdvancedStylesheet::updateStylesheet(bool force)
+bool QtAdvancedStylesheet::updateTheme()
 {
-	// Check if the stylesheet file already exists in the output directory.
-	// If it exists, we load it directly instead of regenerating it.
-	auto CssTemplateFileName = d->JsonStyleParam.value("css_template").toString();
-	if (!force && !CssTemplateFileName.isEmpty())
-	{
-		const QString TemplateCssPath = currentStylePath() + "/" + CssTemplateFileName;
-		QString OutputCssName = QFileInfo(CssTemplateFileName).baseName() + ".css";
-		QString OutputCssPath = currentStyleOutputPath() + "/" + OutputCssName;
-		if (QFile::exists(OutputCssPath))
-		{
-			const QFileInfo outputCssInfo(OutputCssPath);
-			const QFileInfo templateCssInfo(TemplateCssPath);
-			const bool canReuseCachedCss = !templateCssInfo.exists()
-				|| outputCssInfo.lastModified() >= templateCssInfo.lastModified();
-			if (canReuseCachedCss)
-			{
-				QFile CssFile(OutputCssPath);
-				if (CssFile.open(QIODevice::ReadOnly))
-				{
-					d->Stylesheet = QString::fromUtf8(CssFile.readAll());
-					CssFile.close();
-					
-					// Even if we load the stylesheet, we still need to update the palette
-					// because it's an in-memory application state.
-					updateApplicationPaletteColors();
-					
-					// Resources (SVGs) are assumed to be present in the output directory
-					// since the CSS file exists. We don't regenerate them.
-					
-					emit stylesheetChanged();
-					return true;
-				}
-			}
-		}
-	}
-
-	if (!processStyleTemplate())
-	{
-		return false;
-	}
-
-	d->IconColorReplaceList.clear();
-	CSVGIconEngine::updateAllIcons();
-	if (!d->generateStylesheet() && (error() != QtAdvancedStylesheet::NoError))
-	{
-		return false;
-	}
-
-	emit stylesheetChanged();
-	return true;
+    d->clearError();
+    // Embedded RCC variants were generated during the library build. Do not write
+    // application directories or regenerate the same SVGs on every theme switch.
+    const bool resourcesReady = d->StylesDir.startsWith(":/") || generateResources();
+    d->IconColorReplaceList.clear();
+    CSVGIconEngine::updateAllIcons();
+    emit themeChanged();
+    emit stylesheetChanged(); // legacy notification, no stylesheet processing
+    return resourcesReady;
 }
 
+bool QtAdvancedStylesheet::updateStylesheet(bool force)
+{
+    Q_UNUSED(force);
+    return updateTheme();
+}
 
-
-//============================================================================
 bool QtAdvancedStylesheet::processStyleTemplate()
 {
 	updateApplicationPaletteColors();
@@ -1041,7 +889,7 @@ QString QtAdvancedStylesheet::currentTheme() const
 //============================================================================
 QString QtAdvancedStylesheet::styleSheet() const
 {
-	return d->Stylesheet;
+	return QString();
 }
 
 
@@ -1068,20 +916,6 @@ const QStringList& QtAdvancedStylesheet::styles() const
 const QStringList& QtAdvancedStylesheet::themes() const
 {
 	return d->Themes;
-}
-
-
-//============================================================================
-QString QtAdvancedStylesheet::processStylesheetTemplate(const QString& Template,
-	const QString& OutputFile)
-{
-	auto Stylesheet = Template;
-	d->replaceStylesheetVariables(Stylesheet);
-	if (!OutputFile.isEmpty())
-	{
-		d->storeStylesheet(Stylesheet, OutputFile);
-	}
-	return Stylesheet;
 }
 
 

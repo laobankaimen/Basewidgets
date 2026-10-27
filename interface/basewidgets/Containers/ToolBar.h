@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 工具栏包装；使用 addAction/addWidget，主窗口通过原生 toolbar area 管理。 */
 class ACSS_UI_EXPORT ToolBar : public QToolBar
 {
     Q_OBJECT
@@ -19,6 +20,7 @@ public:
     explicit ToolBar(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~ToolBar() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 

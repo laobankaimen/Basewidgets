@@ -1,21 +1,14 @@
 # Qt Advanced UI - Widgets library
 
-# Find Qt (full component set; root CMakeLists only finds the base subset)
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport X11Extras Svg)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets PrintSupport X11Extras Svg)
-    find_package(X11 REQUIRED)
-endif()
-
 # Sources
 set(UI_PUBLIC_HEADERS
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/QtAdvancedUIExport.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Styles/acss_globals.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Styles/QtAdvancedStylesheet.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/StyleManagerAdapter.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/ButtonAppearance.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/NativeStyle.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/ThemeTokens.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/StyledWidget.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/FramelessDialog.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/CustomTitleBar.h
@@ -27,6 +20,7 @@ set(UI_PUBLIC_HEADERS
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/RadioButton.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/ComboBox.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/Slider.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/ElidedLabel.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/Label.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/SpinBox.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/ToolButton.h
@@ -41,6 +35,7 @@ set(UI_PUBLIC_HEADERS
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/BusyIndicator.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/MultiSelectComboBox.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/GroupBox.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/ResponsiveGridLayout.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/Frame.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/TabWidget.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/ScrollArea.h
@@ -77,6 +72,8 @@ set(UI_PUBLIC_HEADERS
 set(UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Styles/QtAdvancedStylesheet.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/StyleManagerAdapter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/NativeStyle.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/ThemeTokens.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/StyledWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/FramelessDialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/CustomTitleBar.cpp
@@ -87,6 +84,7 @@ set(UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/RadioButton.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/ComboBox.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/Slider.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/ElidedLabel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/Label.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/SpinBox.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/ToolButton.cpp
@@ -101,6 +99,7 @@ set(UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/BusyIndicator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/MultiSelectComboBox.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Containers/GroupBox.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Containers/ResponsiveGridLayout.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Containers/Frame.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Containers/TabWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Containers/ScrollArea.cpp
@@ -135,11 +134,15 @@ set(UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Charts/StyledPlot.cpp
 )
 
+# CMake 3.16 scopes GENERATED per directory; mark the source in the consumer scope too.
+set_source_files_properties("${BASEWIDGETS_GENERATED_RESOURCE_CPP}" PROPERTIES GENERATED TRUE)
 add_library(BaseWidgets SHARED
     ${UI_PUBLIC_HEADERS}
     ${UI_SOURCES}
+    "${BASEWIDGETS_GENERATED_RESOURCE_CPP}"
 )
 add_library(BaseWidgets::BaseWidgets ALIAS BaseWidgets)
+add_dependencies(BaseWidgets basewidgets_resources)
 
 # Export macro
 target_compile_definitions(BaseWidgets PRIVATE QTADVANCED_UI_BUILD)
@@ -164,7 +167,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(BaseWidgets
         PUBLIC
             Qt${QT_VERSION_MAJOR}::X11Extras
-            ${X11_LIBRARIES}
+            X11::X11
     )
 endif()
 
@@ -178,23 +181,20 @@ if(MSVC)
     target_compile_options(BaseWidgets PRIVATE /FS)
 endif()
 
-set(BASEWIDGETS_RESOURCE_DIR "${CMAKE_SOURCE_DIR}/assets")
-
-# 确保 themes.rcc 复制到可执行目录
-add_custom_command(TARGET BaseWidgets POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${BASEWIDGETS_RESOURCE_DIR}/themes.rcc
-    $<TARGET_FILE_DIR:BaseWidgets>
-)
+# The generated resource source embeds all themes into the shared UI library.
+# The optional external RCC is installed for applications that want an override bundle.
 
 # Install rules
 if(NOT UI_ENABLE_PLUGIN_RELEASE)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets")
-        install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/
-            DESTINATION assets
-            COMPONENT ${BASEWIDGETS_COMPONENT_ASSETS}
-        )
-    endif()
+    # Building an install-tree target from a fresh directory must first build the
+    # library and its embedded/external resource outputs.
+    foreach(_package_target package_dir package_runtime_dir package_development_dir package_assets_dir)
+        if(TARGET ${_package_target})
+            add_dependencies(${_package_target} BaseWidgets)
+        endif()
+    endforeach()
+    install(FILES "${BASEWIDGETS_GENERATED_RCC}"
+        DESTINATION assets COMPONENT ${BASEWIDGETS_COMPONENT_ASSETS})
     install(TARGETS BaseWidgets
         EXPORT BaseWidgetsTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${BASEWIDGETS_COMPONENT_RUNTIME}

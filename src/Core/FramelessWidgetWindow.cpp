@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -8,9 +8,8 @@
 #include <QGraphicsDropShadowEffect>
 #include <QMenuBar>
 #include <QShortcut>
-#include <QSettings>
+#include <QHoverEvent>
 
-#include "basewidgets/Charts/QCPBarChart.h"
 #include <basewidgets/Core/FramelessWidgetWindow.h>
 #include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
@@ -31,24 +30,9 @@
 #include <QPoint>
 #include <QTimer>
 #include <QWindow>
-#include <QX11Info>
-
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-#include <X11/Xutil.h>
-
 #endif
 
 namespace basewidgets {
-
-#ifdef Q_OS_LINUX
-namespace {
-bool canUseX11WindowOps()
-{
-    return QX11Info::isPlatformX11() && QX11Info::display() != nullptr;
-}
-} // namespace
-#endif
 
 // Windows平台实现 - 复刻framelesswindow的代码
 FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
@@ -63,9 +47,8 @@ FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
     initUI();
     setResizableEdgesEnabled(m_bResizeable);
 
-    //获取初始化显示大小
-    QSettings setting("ZKHX",objectName().isEmpty()?"MainWindow":objectName());
-    restoreGeometry(setting.value("geometry").toByteArray());
+    // Persistence belongs to the application, which can choose a unique settings key.
+    resize(1100, 760);
 }
 
 void FramelessWidgetWindow::setResizeableAreaWidth(int width)
@@ -75,7 +58,7 @@ void FramelessWidgetWindow::setResizeableAreaWidth(int width)
 }
 
 #ifdef Q_OS_WIN
-bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void *message, long *result)
+bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void *message, NativeEventResult *result)
 {
 #if (QT_VERSION == QT_VERSION_CHECK(5, 11, 1))
     MSG* msg = *reinterpret_cast<MSG**>(message);
@@ -184,7 +167,7 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
                     return true;
                     }
                 //不在子控件上，且在标题栏内
-                if (m_titleBar->geometry().contains(titlePos)) {
+                if (m_titleBar->rect().contains(titlePos)) {
                     *result = HTCAPTION;
                     return true;
                 }
@@ -274,114 +257,94 @@ QRect FramelessWidgetWindow::contentsRect() const
 
 #elif defined(Q_OS_LINUX)
 //拖动缩放大小
+FramelessWidgetWindow::ResizeRegion FramelessWidgetWindow::resizeRegionAt(const QPoint& pos) const
+{
+    if (!rect().contains(pos) || !m_bResizeable || isMaximized() || isFullScreen()) return NoneR;
+    const bool horizontal = minimumWidth() < maximumWidth();
+    const bool vertical = minimumHeight() < maximumHeight();
+    const bool left = horizontal && pos.x() < m_borderWidth;
+    const bool right = horizontal && pos.x() >= width() - m_borderWidth;
+    const bool top = vertical && pos.y() < m_borderWidth;
+    const bool bottom = vertical && pos.y() >= height() - m_borderWidth;
+    if (top && left) return TopLeft;
+    if (top && right) return TopRight;
+    if (bottom && left) return BottomLeft;
+    if (bottom && right) return BottomRight;
+    if (top) return Top;
+    if (bottom) return Bottom;
+    if (left) return Left;
+    if (right) return Right;
+    return NoneR;
+}
+
+void FramelessWidgetWindow::updateResizeCursor(ResizeRegion region)
+{
+    m_resizeRegion = region;
+    switch (region) {
+    case TopLeft: case BottomRight: setCursor(Qt::SizeFDiagCursor); break;
+    case TopRight: case BottomLeft: setCursor(Qt::SizeBDiagCursor); break;
+    case Left: case Right: setCursor(Qt::SizeHorCursor); break;
+    case Top: case Bottom: setCursor(Qt::SizeVerCursor); break;
+    default: unsetCursor(); break;
+    }
+}
+
 bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
 {
-    QWidget* w = qobject_cast<QWidget*>(watched);
-    if (!w || w->window() != this) return QMainWindow::eventFilter(watched, event);
-    if (!m_bResizeable) return QMainWindow::eventFilter(watched, event);
-    if (isMaximized()|| isFullScreen()) return QMainWindow::eventFilter(watched, event);
-
-    switch (event->type()) {
-    case QEvent::MouseMove: {
-        auto* me = static_cast<QMouseEvent*>(event);
-        const QPoint global = me->globalPos();
-        const QPoint local = mapFromGlobal(global);
-        const QRect r = rect();
-
-        if (m_resizing) {
-            QRect geo = m_startGeo;
-            const QPoint d = global - m_dragStartPos;
-            const int minW = minimumSize().width();
-            const int minH = minimumSize().height();
-
-            switch (m_resizeRegion) {
-            case Left:       geo.setLeft(geo.left() + d.x()); break;
-            case Right:      geo.setRight(geo.right() + d.x()); break;
-            case Top:        geo.setTop(geo.top() + d.y()); break;
-            case Bottom:     geo.setBottom(geo.bottom() + d.y()); break;
-            case TopLeft:    geo.setTop(geo.top() + d.y()); geo.setLeft(geo.left() + d.x()); break;
-            case TopRight:   geo.setTop(geo.top() + d.y()); geo.setRight(geo.right() + d.x()); break;
-            case BottomLeft: geo.setBottom(geo.bottom() + d.y()); geo.setLeft(geo.left() + d.x()); break;
-            case BottomRight:geo.setBottom(geo.bottom() + d.y()); geo.setRight(geo.right() + d.x()); break;
-            default: break;
-            }
-
-            if (geo.width() < minW) geo.setWidth(minW);
-            if (geo.height() < minH) geo.setHeight(minH);
-            setGeometry(geo);
+    auto* widget = qobject_cast<QWidget*>(watched);
+    if (!widget || widget->window() != this) return QMainWindow::eventFilter(watched, event);
+    if (event->type() == QEvent::Polish) widget->setAttribute(Qt::WA_Hover);
+    if (!m_bResizeable || isMaximized() || isFullScreen()) return QMainWindow::eventFilter(watched, event);
+    if (event->type() == QEvent::HoverMove && !m_resizing) {
+        const auto* hover = static_cast<QHoverEvent*>(event);
+        updateResizeCursor(resizeRegionAt(widget->mapTo(this, hover->pos())));
+    } else if (event->type() == QEvent::Leave && watched == this && !m_resizing) {
+        updateResizeCursor(NoneR);
+    } else if (event->type() == QEvent::MouseMove) {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (!m_resizing) {
+            updateResizeCursor(resizeRegionAt(mapFromGlobal(mouse->globalPos())));
+        } else {
+            const QPoint delta = mouse->globalPos() - m_dragStartPos;
+            QRect geometry = m_startGeo;
+            const Qt::Edges edges = resizeRegionToEdges();
+            const QSize min = minimumSize().expandedTo(minimumSizeHint());
+            if (edges & Qt::LeftEdge)
+                geometry.setLeft(m_startGeo.right() - qBound(min.width(), m_startGeo.width()-delta.x(), maximumWidth()) + 1);
+            if (edges & Qt::RightEdge)
+                geometry.setWidth(qBound(min.width(), m_startGeo.width()+delta.x(), maximumWidth()));
+            if (edges & Qt::TopEdge)
+                geometry.setTop(m_startGeo.bottom() - qBound(min.height(), m_startGeo.height()-delta.y(), maximumHeight()) + 1);
+            if (edges & Qt::BottomEdge)
+                geometry.setHeight(qBound(min.height(), m_startGeo.height()+delta.y(), maximumHeight()));
+            setGeometry(geometry);
             return true;
         }
-
-        ResizeRegion region = NoneR;
-        const int m = m_resizeMargin;
-        const bool onLeft   = local.x() <= m;
-        const bool onRight  = local.x() >= r.width() - m;
-        const bool onTop    = local.y() <= m;
-        const bool onBottom = local.y() >= r.height() - m;
-        if (onTop && onLeft) region = TopLeft;
-        else if (onTop && onRight) region = TopRight;
-        else if (onBottom && onLeft) region = BottomLeft;
-        else if (onBottom && onRight) region = BottomRight;
-        else if (onTop) region = Top;
-        else if (onBottom) region = Bottom;
-        else if (onLeft) region = Left;
-        else if (onRight) region = Right;
-        m_resizeRegion = region;
-
-        switch (region) {
-        case TopLeft:
-        case BottomRight:
-            setCursor(Qt::SizeFDiagCursor); break;
-        case TopRight:
-        case BottomLeft:
-            setCursor(Qt::SizeBDiagCursor); break;
-        case Left:
-        case Right:
-            setCursor(Qt::SizeHorCursor); break;
-        case Top:
-        case Bottom:
-            setCursor(Qt::SizeVerCursor); break;
-        default:
-            unsetCursor(); break;
-        }
-        return QMainWindow::eventFilter(watched, event);
-    }
-    case QEvent::MouseButtonPress: {
-        auto* me = static_cast<QMouseEvent*>(event);
-        if (me->button() == Qt::LeftButton && m_resizeRegion != NoneR) {
-            if (QWindow* handle = windowHandle()) {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
-                const Qt::Edges edges = resizeRegionToEdges();
-                if (edges && handle->startSystemResize(edges)) {
-                    return true;
-                }
-#endif
-            }
+    } else if (event->type() == QEvent::MouseButtonPress) {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        // Recompute on press: a previous hover position must not resize the wrong edge.
+        updateResizeCursor(resizeRegionAt(mapFromGlobal(mouse->globalPos())));
+        if (mouse->button() == Qt::LeftButton && m_resizeRegion != NoneR) {
+            if (windowHandle() && windowHandle()->startSystemResize(resizeRegionToEdges())) return true;
             m_resizing = true;
-            m_dragStartPos = me->globalPos();
+            m_dragStartPos = mouse->globalPos();
             m_startGeo = frameGeometry();
+            grabMouse();
             return true;
         }
-        break;
-    }
-    case QEvent::MouseButtonRelease: {
-        auto* me = static_cast<QMouseEvent*>(event);
-        if (me->button() == Qt::LeftButton && m_resizing) {
+    } else if (event->type() == QEvent::MouseButtonRelease) {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (mouse->button() == Qt::LeftButton && m_resizing) {
             m_resizing = false;
-            m_resizeRegion = NoneR;
-            unsetCursor();
+            releaseMouse();
+            updateResizeCursor(NoneR);
             return true;
         }
-        break;
     }
-    default:
-        break;
-    }
-
     return QMainWindow::eventFilter(watched, event);
 }
 
-bool FramelessWidgetWindow::nativeLinuxEvent(const QByteArray &eventType, void *message, long *result)
+bool FramelessWidgetWindow::nativeLinuxEvent(const QByteArray &eventType, void *message, NativeEventResult *result)
 {
     return QMainWindow::nativeEvent(eventType, message, result);
 }
@@ -416,84 +379,13 @@ Qt::Edges FramelessWidgetWindow::resizeRegionToEdges() const
 
 void FramelessWidgetWindow::setFramelessWindowState(FramelessWindowState state)
 {
-#ifdef Q_OS_WIN
+    // Qt owns platform window-state transitions and sends the matching change events.
     switch (state) {
-        case Maximized:
-            showMaximized();
-            break;
-        case Minimized:
-            showMinimized();
-            break;
-        case FullScreen:
-            showFullScreen();
-            break;
-        case Normal:
-            showNormal();
-            break;
+    case Maximized: showMaximized(); break;
+    case Minimized: showMinimized(); break;
+    case FullScreen: showFullScreen(); break;
+    case Normal: showNormal(); break;
     }
-#elif defined(Q_OS_LINUX)
-    if (!canUseX11WindowOps()) {
-        switch (state) {
-        case Maximized:
-            showMaximized();
-            break;
-        case Minimized:
-            showMinimized();
-            break;
-        case FullScreen:
-            showFullScreen();
-            break;
-        case Normal:
-            showNormal();
-            break;
-        }
-        return;
-    }
-
-    Display *display = QX11Info::display();
-    Window window = winId();
-
-    Atom wmState = XInternAtom(display, "_NET_WM_STATE", false);
-    Atom maxHorz = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_HORZ", false);
-    Atom maxVert = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT", false);
-    Atom fullScreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", false);
-
-    XEvent xev;
-    memset(&xev, 0, sizeof(xev));
-    xev.type = ClientMessage;
-    xev.xclient.window = window;
-    xev.xclient.message_type = wmState;
-    xev.xclient.format = 32;
-
-    switch (state) {
-    case Maximized:
-        xev.xclient.data.l[0] = 1;//_NET_WM_STATE_ADD
-        xev.xclient.data.l[1] = maxHorz;
-        xev.xclient.data.l[2] = maxVert;
-        break;
-    case Minimized:
-        XIconifyWindow(display, window, 0);
-        return;
-    case FullScreen:
-        xev.xclient.data.l[0] = 1;
-        xev.xclient.data.l[1] = fullScreen;
-        xev.xclient.data.l[2] = 0;
-        break;
-    case Normal:
-        // 先移除全屏，再移除最大化，保持与原有状态切换顺序一致。
-        xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
-        xev.xclient.data.l[1] = fullScreen;
-        xev.xclient.data.l[2] = 0;
-        XSendEvent(display, DefaultRootWindow(display), false, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
-        xev.xclient.data.l[0] = 0;//_NET_WM_STATE_REMOVE
-        xev.xclient.data.l[1] = maxHorz;
-        xev.xclient.data.l[2] = maxVert;
-        break;
-    }
-    XSendEvent(display, DefaultRootWindow(display), false, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
-    XFlush(display);
-#endif
-
 }
 
 void FramelessWidgetWindow::showEvent(QShowEvent *ev)
@@ -504,16 +396,12 @@ void FramelessWidgetWindow::showEvent(QShowEvent *ev)
 void FramelessWidgetWindow::closeEvent(QCloseEvent *ev)
 {
     QMainWindow::closeEvent(ev);
-    if (!ev->isAccepted()) {
-        return;
-    }
 
-    QSettings setting("ZKHX", objectName().isEmpty() ? "MainWindow" : objectName());
-    setting.setValue("geometry", saveGeometry());
 }
 
 void FramelessWidgetWindow::showFullScreen()
 {
+    if (!isFullScreen()) m_preFullScreenState = windowState();
     if (isMaximized())
     {
         QMainWindow::setContentsMargins(m_margins);
@@ -526,67 +414,42 @@ FramelessWidgetWindow::~FramelessWidgetWindow()= default;
 
 void FramelessWidgetWindow::initUI()
 {
-    // 创建CustomTitleBar作为标题栏
-    auto* customTitleBar = new CustomTitleBar(this);
-    customTitleBar->attachToWindow(this);
-    customTitleBar->setFixedHeight(m_titlebarHeight);
-
-    // 设置标题栏
-    m_titleBar = customTitleBar;
-
-    m_contentHost = new QWidget(this);
-    auto* centralLayout = new QVBoxLayout(m_contentHost);
-    centralLayout->setContentsMargins(0, 0, 0, 0);
-
-    m_menuBarWidget = new QWidget(this);
+    auto* header = new QWidget(this);
+    auto* headerLayout = new QVBoxLayout(header);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(0);
+    auto* title = new CustomTitleBar(header);
+    title->attachToWindow(this);
+    title->setFixedHeight(m_titlebarHeight);
+    m_titleBar = title;
+    headerLayout->addWidget(title);
+    m_menuBarWidget = new QWidget(header);
     auto* menuLayout = new QVBoxLayout(m_menuBarWidget);
     menuLayout->setContentsMargins(0, 0, 0, 0);
-    m_toolBarWidget = new QWidget(this);
-    auto* toolLayout = new QVBoxLayout(m_toolBarWidget);
-    toolLayout->setContentsMargins(0, 0, 0, 0);
-    m_statusBarWidget = new QWidget(this);
-    auto* statusLayout = new QVBoxLayout(m_statusBarWidget);
-    statusLayout->setContentsMargins(0, 0, 0, 0);
+    menuLayout->setSpacing(0);
+    headerLayout->addWidget(m_menuBarWidget);
+    m_menuBarWidget->hide();
+    QMainWindow::setMenuWidget(header);
 
-    auto centralWidget = new QWidget(this);
-    mainLayout = new QVBoxLayout(centralWidget);
+    m_contentHost = new QWidget(this);
+    auto* contentLayout = new QVBoxLayout(m_contentHost);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setSpacing(0);
+    QMainWindow::setCentralWidget(m_contentHost);
+    setAttribute(Qt::WA_Hover);
 
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(0);
-    mainLayout->addWidget(m_titleBar);
-    mainLayout->addWidget(m_menuBarWidget);
-    mainLayout->addWidget(m_toolBarWidget);
-    mainLayout->addWidget(m_contentHost, 1);
-    mainLayout->addWidget(m_statusBarWidget);
-    
-    setCentralWidget(centralWidget);
-
-    //通过快捷键全屏，避免误操作，全屏无动画效果
-    auto *shortcut = new QShortcut(QKeySequence(tr("F11")),this);
-    ::QObject::connect(shortcut,&QShortcut::activated,[this](){
-        //恢复到全屏前的状态
-        if(windowState() == Qt::WindowFullScreen || windowState() == (Qt::WindowMaximized|Qt::WindowFullScreen)) {
-            this->setFramelessWindowState(Normal);
-#ifdef Q_OS_LINUX
-            setResizableEdgesEnabled(true);
-#endif
-        }
-        else {
-            this->setFramelessWindowState(FullScreen);
-#ifdef Q_OS_LINUX
-            setResizableEdgesEnabled(false);
-#endif
-        }
+    auto* shortcut = new QShortcut(QKeySequence(Qt::Key_F11), this);
+    connect(shortcut, &QShortcut::activated, this, [this] {
+        if (isFullScreen()) {
+            if (m_preFullScreenState & Qt::WindowMaximized) showMaximized();
+            else showNormal();
+        } else showFullScreen();
     });
 }
 
 void FramelessWidgetWindow::setTitle(const QString& title)
 {
-    // 由于m_titleBar是QWidget*类型，我们需要转换为CustomTitleBar*
-    auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar);
-    if (customTitleBar) {
-        customTitleBar->setTitle(title);
-    }
+    setWindowTitle(title);
 }
 
 void FramelessWidgetWindow::setContentWidget(QWidget* w)
@@ -596,13 +459,15 @@ void FramelessWidgetWindow::setContentWidget(QWidget* w)
     }
     if(m_centralWidget && m_contentHost) {
         m_contentHost->layout()->removeWidget(m_centralWidget);
-        auto* old = m_centralWidget;
+        auto* old = m_centralWidget.data();
         m_centralWidget = nullptr;
+        old->hide();
         old->deleteLater();
     }
     if (m_contentHost && w) {
         m_centralWidget = w;
         m_contentHost->layout()->addWidget(m_centralWidget);
+        m_centralWidget->show();
     }
 }
 
@@ -631,9 +496,9 @@ void FramelessWidgetWindow::setResizableEdgesEnabled(bool enabled)
         qApp->installEventFilter(this);
     } else {
         qApp->removeEventFilter(this);
+        if (m_resizing) releaseMouse();
         m_resizing = false;
-        m_resizeRegion = NoneR;
-        unsetCursor();
+        updateResizeCursor(NoneR);
     }
 #endif
     setVisible(visible);
@@ -646,49 +511,43 @@ void FramelessWidgetWindow::setMenuBar(QMenuBar* menuBar)
     }
     if(m_menuBar && m_menuBarWidget) {
         m_menuBarWidget->layout()->removeWidget(m_menuBar);
-        auto* old = m_menuBar;
+        auto* old = m_menuBar.data();
         m_menuBar = nullptr;
+        old->hide();
         old->deleteLater();
     }
     if (m_menuBarWidget && menuBar) {
         m_menuBar = menuBar;
+        m_menuBar->setNativeMenuBar(false);
         m_menuBarWidget->layout()->addWidget(m_menuBar);
+        m_menuBar->show();
+    }
+    m_menuBarWidget->setVisible(m_menuBar != nullptr);
+}
+
+void FramelessWidgetWindow::setToolBar(QToolBar* toolbar)
+{
+    if (toolbar == m_toolBar) return;
+    if (m_toolBar) {
+        QMainWindow::removeToolBar(m_toolBar);
+        m_toolBar->hide();
+        m_toolBar->deleteLater();
+    }
+    m_toolBar = toolbar;
+    if (toolbar) {
+        QMainWindow::addToolBar(Qt::TopToolBarArea, toolbar);
+        toolbar->show();
     }
 }
 
-void FramelessWidgetWindow::setToolBar(QToolBar *toolBar) {
-    if (toolBar == m_toolBar) {
-        return;
-    }
-    if(m_toolBar && m_toolBarWidget) {
-        m_toolBarWidget->layout()->removeWidget(m_toolBar);
-        auto* old = m_toolBar;
-        m_toolBar = nullptr;
-        old->deleteLater();
-    }
-    if (m_toolBarWidget && toolBar) {
-        m_toolBar = toolBar;
-        m_toolBarWidget->layout()->addWidget(m_toolBar);
-    }
+void FramelessWidgetWindow::setStatusBar(QStatusBar* statusbar)
+{
+    if (statusbar == m_statusBar) return;
+    m_statusBar = statusbar;
+    QMainWindow::setStatusBar(statusbar);
 }
 
-void FramelessWidgetWindow::setStatusBar(QStatusBar *statusBar) {
-    if (statusBar == m_statusBar) {
-        return;
-    }
-    if(m_statusBar && m_statusBarWidget) {
-        m_statusBarWidget->layout()->removeWidget(m_statusBar);
-        auto* old = m_statusBar;
-        m_statusBar = nullptr;
-        old->deleteLater();
-    }
-    if (m_statusBarWidget && statusBar) {
-        m_statusBar = statusBar;
-        m_statusBarWidget->layout()->addWidget(m_statusBar);
-    }
-}
-
-bool FramelessWidgetWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
+bool FramelessWidgetWindow::nativeEvent(const QByteArray &eventType, void *message, NativeEventResult *result)
 {
 #ifdef Q_OS_WIN
     return nativeWindowsEvent(eventType, message, result);
@@ -702,6 +561,12 @@ bool FramelessWidgetWindow::nativeEvent(const QByteArray &eventType, void *messa
 void FramelessWidgetWindow::changeEvent(QEvent* e)
 {
     if (e->type() == QEvent::WindowStateChange) {
+        if (m_titleBar) m_titleBar->setVisible(!isFullScreen());
+#ifdef Q_OS_LINUX
+        if (m_resizing) releaseMouse();
+        m_resizing = false;
+        updateResizeCursor(NoneR);
+#endif
         // 由于m_titleBar是QWidget*类型，我们需要转换为CustomTitleBar*
         auto* customTitleBar = qobject_cast<CustomTitleBar*>(m_titleBar);
         if (customTitleBar) {

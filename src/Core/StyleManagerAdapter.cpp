@@ -3,7 +3,10 @@
  * Date: 2025-12-25
  */
 #include <basewidgets/Core/StyleManagerAdapter.h>
+#include <basewidgets/Core/ThemeTokens.h>
+#include <basewidgets/Core/NativeStyle.h>
 #include <QApplication>
+#include <QWidget>
 #include <QDir>
 #include <QResource>
 #include <QMetaObject>
@@ -29,20 +32,6 @@ QString preferredOutputDir()
         QDir().mkpath(outputDir);
     }
     return outputDir;
-}
-
-bool shouldForceFusionStyle()
-{
-#ifdef Q_OS_LINUX
-    if (!qEnvironmentVariableIsSet("BASEWIDGETS_FORCE_FUSION")) {
-        return true;
-    }
-
-    const QByteArray value = qgetenv("BASEWIDGETS_FORCE_FUSION").trimmed().toLower();
-    return !(value == "0" || value == "false" || value == "off" || value == "no");
-#else
-    return false;
-#endif
 }
 
 } // namespace
@@ -87,41 +76,20 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
         s_instance->setParent(qApp);
     }
 
-    QString resolvedStylesDir = stylesDir;
-    // 如果未明确传入样式目录，则默认使用应用目录下的 styles 目录
+    // Prefer explicit source themes, otherwise use resources embedded in BaseWidgets.
+    // External RCC overrides are opt-in, so stale files beside the app cannot shadow rebuilt assets.
+    QString resolvedStylesDir=stylesDir;
     if (resolvedStylesDir.isEmpty()) {
-        resolvedStylesDir = QDir(QApplication::applicationDirPath()).filePath("styles");
+        resolvedStylesDir=":/styles";
+    } else if (QFileInfo(resolvedStylesDir).isFile()) {
+        // Mount external bundles at a separate root rather than replacing the built-in namespace.
+        if (QResource::registerResource(resolvedStylesDir,"/basewidgets-override"))
+            resolvedStylesDir=":/basewidgets-override/styles";
+        else qWarning() << "Cannot register theme bundle:" << resolvedStylesDir;
     }
-
-    if (!resolvedStylesDir.isEmpty()) {
-        s_instance->setStylesDirPath(resolvedStylesDir);
-        const QString outputDir = preferredOutputDir();
-        if (!outputDir.isEmpty()) {
-            s_instance->setOutputDirPath(outputDir);
-        }
-
-        // Try to load themes.rcc from styles directory or application directory
-        QString rccName = "themes.rcc";
-        QString rccPath = QDir(resolvedStylesDir).filePath(rccName);
-        if (!QFile::exists(rccPath)) {
-            rccPath = QDir(QApplication::applicationDirPath()).filePath(rccName);
-        }
-        
-        bool rccLoaded = false;
-        if (QFile::exists(rccPath)) {
-            if (QResource::registerResource(rccPath)) {
-                rccLoaded = true;
-            }
-        }
-        
-        if (rccLoaded) {
-            s_instance->setStylesDirPath(":/styles");
-        }
-    }
-
-    // 允许通过环境变量或外部配置覆盖输出目录（可选）
-    // const QString outDir = QDir(QApplication::applicationDirPath()).filePath("output");
-    // s_instance->setOutputDirPath(outDir);
+    s_instance->setStylesDirPath(resolvedStylesDir);
+    const QString outputDir=preferredOutputDir();
+    if (!outputDir.isEmpty()) s_instance->setOutputDirPath(outputDir);
 
     if (!styleName.isEmpty()) {
         s_instance->setCurrentStyle(styleName);
@@ -129,35 +97,27 @@ void StyleManagerAdapter::initialize(const QString& stylesDir,
         s_instance->setCurrentStyle("themes");
     }
 
-    if (!themeName.isEmpty()) {
-        s_instance->setCurrentTheme(themeName);
+    if (themeName.isEmpty() || !s_instance->setCurrentTheme(themeName)) {
+        s_instance->setDefaultTheme();
     }
-    // 始终确保设置默认主题（当未指定或样式要求默认初始化时）
-    s_instance->setDefaultTheme();
 
-    // 仅更新应用调色板和图标，不强制重新生成（由 updateStylesheet 内部判断模板是否需要处理）
-    // 假设样式表已由外部工具生成并作为静态资源或文件提供，此处主要负责加载
-    s_instance->updateStylesheet();
+    // Install the shared painter style before widgets are polished. No runtime QSS.
+    if (!qobject_cast<NativeStyle*>(qApp->style())) {
+        qApp->setStyle(new NativeStyle());
+    }
+    qApp->setStyleSheet(QString());
+
+    if (s_stylesheetConnection) QObject::disconnect(s_stylesheetConnection);
+    s_stylesheetConnection = QObject::connect(s_instance, &QtAdvancedStylesheet::themeChanged,
+        qApp, []() {
+            auto* tokens = ThemeTokens::instance();
+            tokens->reload();
+            qApp->setPalette(tokens->palette());
+            // Custom painter widgets may not consume QPalette roles directly.
+            for (QWidget* widget : QApplication::allWidgets()) widget->update();
+        });
+    s_instance->updateTheme();
     QApplication::setWindowIcon(s_instance->styleIcon());
-
-    #ifdef Q_OS_LINUX
-    // 默认继续保持统一 Fusion 风格；如宿主不希望被覆盖，可设置
-    // BASEWIDGETS_FORCE_FUSION=0/false/off/no 来关闭。
-    if (shouldForceFusionStyle()) {
-        QApplication::setStyle("Fusion");
-    }
-    #endif
-    qApp->setStyleSheet(s_instance->styleSheet());
-
-    // 监听样式变化，自动应用到整个应用
-    if (s_stylesheetConnection) {
-        QObject::disconnect(s_stylesheetConnection);
-    }
-    s_stylesheetConnection = QObject::connect(s_instance, &QtAdvancedStylesheet::stylesheetChanged, []() {
-        auto* mgr = StyleManagerAdapter::instance();
-        //QApplication::setWindowIcon(mgr->styleIcon());
-        qApp->setStyleSheet(mgr->styleSheet());
-    });
 }
 
 void StyleManagerAdapter::initialBuilder(const QString &stylesDir) {
@@ -182,9 +142,8 @@ void StyleManagerAdapter::initialBuilder(const QString &stylesDir) {
     }
     s_instance->setCurrentStyle("themes");
 
-    // 仅更新应用调色板和图标，不强制重新生成（由 updateStylesheet 内部判断模板是否需要处理）
-    // 假设样式表已由外部工具生成并作为静态资源或文件提供，此处主要负责加载
-    s_instance->updateStylesheet();
+    // Compatibility builder initialization: only refresh theme resources and icons.
+    s_instance->updateTheme();
 }
 
 void StyleManagerAdapter::setInstance(acss::QtAdvancedStylesheet* mgr)

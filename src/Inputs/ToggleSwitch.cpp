@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -6,6 +6,7 @@
 #include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QPainter>
 #include <QMouseEvent>
+#include <basewidgets/Core/ThemeTokens.h>
 
 using namespace acss;
 
@@ -16,7 +17,7 @@ ToggleSwitch::ToggleSwitch(QWidget* parent)
 {
     initSwitch();
     //主题切换
-    connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged, this, [this] {
+    connect(ThemeTokens::instance(), &ThemeTokens::tokensChanged, this, [this] {
         updateColors();
         update();
     });
@@ -30,9 +31,11 @@ QSize ToggleSwitch::sizeHint() const
 }
 
 void ToggleSwitch::updateColors() {
-    setOnColor(StyleManagerAdapter::instance()->themeColor("primaryColor"));
-    setOffColor(StyleManagerAdapter::instance()->themeColor("placeholderTextColor"));
-    setKnobColor(StyleManagerAdapter::instance()->themeColor("lightFillColor"));
+    StyleManagerAdapter::instance();
+    auto* tokens = ThemeTokens::instance();
+    setOnColor(tokens->primary());
+    setOffColor(tokens->border());
+    setKnobColor(Qt::white);
 }
 
 void ToggleSwitch::setAnimationDuration(int ms)
@@ -54,7 +57,7 @@ void ToggleSwitch::paintEvent(QPaintEvent* e)
 
     QRectF track(0, 0, m_w, m_h);
     qreal radius = m_h / 2.0;
-    QColor trackColor = isChecked() ? m_on : m_off;
+    QColor trackColor = isEnabled() ? (isChecked() ? m_on : m_off) : ThemeTokens::instance()->borderLight();
     p.setPen(Qt::NoPen);
     p.setBrush(trackColor);
     p.drawRoundedRect(track, radius, radius);
@@ -62,18 +65,22 @@ void ToggleSwitch::paintEvent(QPaintEvent* e)
     qreal knobR = m_h/2.0 - 3;
     qreal leftX = knobR + 3;
     qreal rightX = m_w - knobR - 3;
-    qreal x = leftX + (rightX - leftX) * m_offset;
+    const qreal offset = layoutDirection() == Qt::RightToLeft ? 1.0-m_offset : m_offset;
+    qreal x = leftX + (rightX - leftX) * offset;
     QPointF center(x, m_h/2.0);
-    p.setBrush(m_knob);
+    p.setBrush(isEnabled() ? m_knob : ThemeTokens::instance()->textDisabled());
     p.drawEllipse(center, knobR, knobR);
+    if (hasFocus()) {
+        p.setBrush(Qt::NoBrush);
+        p.setPen(QPen(ThemeTokens::instance()->primary(), 1));
+        p.drawRoundedRect(track.adjusted(.5, .5, -.5, -.5), radius, radius);
+    }
 }
 
 void ToggleSwitch::mouseReleaseEvent(QMouseEvent* e)
 {
     // 交由基类处理切换逻辑（checkable 按钮会自动切换并发射信号）
     QAbstractButton::mouseReleaseEvent(e);
-    // 根据当前状态启动动画，不再手动二次切换状态以避免复原
-    animateTo(isChecked());
 }
 
 void ToggleSwitch::animateTo(bool checked)
@@ -91,6 +98,8 @@ void ToggleSwitch::initSwitch() {
     setCursor(Qt::PointingHandCursor);
     m_anim = new QPropertyAnimation(this, "offset");
     m_anim->setDuration(120);
+    setFocusPolicy(Qt::StrongFocus);
+    connect(this, &QAbstractButton::toggled, this, &ToggleSwitch::animateTo);
 }
 } // namespace basewidgets
 

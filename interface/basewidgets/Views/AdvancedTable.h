@@ -11,6 +11,7 @@
 #include <QScrollArea>
 #include <QAbstractItemView>
 #include <QRegularExpression>
+#include <QPointer>
 
 class QAbstractItemModel;
 class QSortFilterProxyModel;
@@ -31,6 +32,7 @@ class ToolButton;
 class Label;
 class TableView;
 
+/** 复合表格：源模型→筛选/排序代理→分页代理→TableView。内部控件归本控件持有。 */
 class ACSS_UI_EXPORT AdvancedTable : public StyledWidget {
     Q_OBJECT
 public:
@@ -63,10 +65,12 @@ public:
     explicit AdvancedTable(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~AdvancedTable() override;
 
+    /** 不接管源模型所有权；模型应由应用/页面持有。替换模型会刷新列配置。 */
     void setSourceModel(QAbstractItemModel* source);
     QAbstractItemModel* sourceModel() const;
 
     TableView* view() const { return m_tableView; }
+    /** 借用分页代理；currentPage 从 0 开始，用户可见跳转从 1 开始。 */
     PagedProxyModel* pager() const { return m_paged; }
     QSortFilterProxyModel* sortFilterProxy() const { return m_sortFilter; }
     QHeaderView* header() const;
@@ -91,6 +95,7 @@ public:
 
     // 导出当前过滤结果到 CSV 文件（不含表头或含表头由参数决定）
     bool exportCsvToFile(const QString& filePath, bool includeHeader = true) const;
+    /** 导出失败返回 false，可选 error 接收原因；字段按 CSV 规则转义。 */
     bool exportCsv(const CsvExportOptions& options, QString* error = nullptr) const;
     void setExportDelimiter(const QString& delim);
     QString exportDelimiter() const;
@@ -164,7 +169,7 @@ private:
     PushButton* m_exportBtn = nullptr;
 
     // 模型链
-    QAbstractItemModel* m_source = nullptr;
+    QPointer<QAbstractItemModel> m_source;
     QSortFilterProxyModel* m_sortFilter = nullptr;
     PagedProxyModel* m_paged = nullptr;
 

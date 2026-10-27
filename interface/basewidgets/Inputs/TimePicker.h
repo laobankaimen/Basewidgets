@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 时间编辑器包装；显示格式、时间范围和步进沿用 QTimeEdit。 */
 class ACSS_UI_EXPORT TimePicker : public QTimeEdit
 {
     Q_OBJECT
@@ -19,6 +20,7 @@ public:
     explicit TimePicker(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~TimePicker() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 

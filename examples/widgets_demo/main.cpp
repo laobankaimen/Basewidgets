@@ -1,5 +1,9 @@
+// 完整接入示例：高 DPI 设置→QApplication→初始化主题→组合主窗口。
+// --smoke-test 遍历所有页面并退出；普通启动展示交互，--verify 开启可选回归验证。
 #include <QApplication>
 #include <QCloseEvent>
+#include <QSettings>
+#include <QScreen>
 #include <QFont>
 #include <QDir>
 #include <QVBoxLayout>
@@ -15,6 +19,7 @@
 #include <basewidgets/Containers/StatusBar.h>
 #include <basewidgets/Containers/TabWidget.h>
 #include <basewidgets/Containers/GroupBox.h>
+#include <basewidgets/Containers/ResponsiveGridLayout.h>
 #include <basewidgets/Containers/Frame.h>
 #include <basewidgets/Containers/ScrollArea.h>
 #include <basewidgets/Inputs/PushButton.h>
@@ -57,6 +62,7 @@
 #include <QMenu>
 #include <QtMath>
 #include "pages/InputsPage.h"
+#include "pages/DialogsPage.h"
 #include "pages/PagedTablePage.h"
 #include "pages/TextPage.h"
 #include "pages/ViewsPage.h"
@@ -93,7 +99,7 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
 
     // 折线图 Plot（独立，使用通用基类封装交互与主题）
     auto* plotLine = new StyledPlot(chartGroup);
-    plotLine->setMinimumSize(600, 300);
+    plotLine->setMinimumSize(320, 300);
 
     // 折线图示例（多条折线，支持多纵轴与显示/隐藏）
     QVector<double> xs(200);
@@ -162,7 +168,7 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
 
     // 瀑布图 Plot（独立，使用通用基类封装交互与主题）
     auto* plotMap = new StyledPlot(chartGroup);
-    plotMap->setMinimumSize(600, 300);
+    plotMap->setMinimumSize(320, 300);
 
     // 瀑布图（基于 QCPColorMap，绑定到 plotMap）
     auto* cmap = new QCPWaterfallChart(plotMap->xAxis, plotMap->yAxis);
@@ -242,7 +248,7 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
         plotMap->replot();
     };
     syncTheme();
-    QObject::connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged,
+    QObject::connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::themeChanged,
                      chartGroup, [syncTheme](){ syncTheme(); });
 
     // 由基类处理背景与坐标轴主题联动
@@ -253,7 +259,7 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
     // 序列显示/隐藏控制
     {
         auto* controls = new StyledWidget(chartGroup);
-        auto* hl = new QHBoxLayout(controls);
+        auto* hl = new ResponsiveGridLayout(controls,220,2);
         hl->setContentsMargins(0, 0, 0, 0);
         auto* cb1 = new CheckBox("显示 sin(x)", controls);
         auto* cb2 = new CheckBox("显示 cos(x)", controls);
@@ -268,12 +274,12 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
         hl->addWidget(cb2);
         hl->addWidget(cb3);
         hl->addWidget(cbLegendLine);
-        controls->setLayout(hl);
+
         chartLayout->addWidget(controls, 2, 0);
     }
     // 柱状图 Plot（独立，使用通用基类封装交互与主题）
     auto* plotBar = new StyledPlot(chartGroup);
-    plotBar->setMinimumSize(600, 280);
+    plotBar->setMinimumSize(320, 280);
     auto* bars = new QCPBarChart(plotBar->xAxis, plotBar->yAxis);
     {
         // 示例数据
@@ -317,11 +323,11 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
         cbLegendBar->setChecked(true);
         QObject::connect(cbLegendBar, &CheckBox::toggled, [plotBar](bool v){ plotBar->legend->setVisible(v); plotBar->replot(); });
         hlb->addWidget(cbLegendBar);
-        legendControlsBar->setLayout(hlb);
+
         chartLayout->addWidget(legendControlsBar, 5, 0);
     }
     // 主题切换时同步柱状图配色
-    QObject::connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::stylesheetChanged,
+    QObject::connect(StyleManagerAdapter::instance(), &acss::QtAdvancedStylesheet::themeChanged,
                      chartGroup, [plotBar, bars](){
         auto* mgr = StyleManagerAdapter::instance();
         QColor fill = mgr->themeColor("primaryColor");
@@ -345,19 +351,18 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
         cbLegendMap->setChecked(true);
         QObject::connect(cbLegendMap, &CheckBox::toggled, [plotMap](bool v){ plotMap->legend->setVisible(v); plotMap->replot(); });
         hl2->addWidget(cbLegendMap);
-        legendControls->setLayout(hl2);
+
     chartLayout->addWidget(legendControls, 7, 0);
     }
     chartLayout->addWidget(plotMap, 8, 0);
     layout->addWidget(chartGroup, 0, 0);
-    
-    content->setLayout(layout);
+
     scrollArea->setWidget(content);
     
     auto* pageLayout = new QVBoxLayout(page);
     pageLayout->setContentsMargins(0, 0, 0, 0);
     pageLayout->addWidget(scrollArea);
-    page->setLayout(pageLayout);
+
     
     return page;
 }
@@ -365,147 +370,63 @@ StyledWidget* createViewsChartsShowcase(QWidget* parent) {
 // 创建仪表盘展示页面（独立标签页）
 StyledWidget* createGaugesShowcase(QWidget* parent) {
     auto* page = new StyledWidget(parent);
-    auto* scrollArea = new ScrollArea(page);
-    auto* content = new StyledWidget(scrollArea);
-    auto* layout = new QGridLayout(content);
-    layout->setContentsMargins(16, 16, 16, 16);
-    layout->setSpacing(16);
+    auto* scroll = new ScrollArea(page); scroll->setFrameShape(QFrame::NoFrame);
+    auto* content = new StyledWidget;
+    auto* cards = new ResponsiveGridLayout(content,300,2);
+    auto makeCard = [&](const QString& title) {
+        auto* group = new GroupBox(title,content); cards->addWidget(group);
+        return new QVBoxLayout(group);
+    };
+    auto addSlider = [](QVBoxLayout* layout,int maximum) {
+        auto* slider = new Slider(Qt::Horizontal); slider->setRange(0,maximum); layout->addWidget(slider); return slider;
+    };
+    auto* basicLayout = makeCard("基础速度表");
+    auto* basic = new BasicGauge; basic->setMinimumSize(240,240); basicLayout->addWidget(basic);
+    QObject::connect(addSlider(basicLayout,100),&QSlider::valueChanged,basic,&BasicGauge::setValue);
 
-    auto* gaugeGroup = new GroupBox("", content);
-    auto* gaugeLayout = new QGridLayout(gaugeGroup);
+    auto* compassLayout = makeCard("罗盘");
+    auto* compass = new CompassGauge; compass->setMinimumSize(240,240); compassLayout->addWidget(compass);
+    QObject::connect(addSlider(compassLayout,360),&QSlider::valueChanged,compass,&CompassGauge::setValue);
 
-    // Basic 速度表
-    {
-        auto* g = new BasicGauge(gaugeGroup);
-        g->setMinimumSize(240, 240);
-        auto* slider = new Slider(Qt::Horizontal, gaugeGroup);
-        slider->setRange(0, 100);
-        slider->setValue(0);
-        QObject::connect(slider, &Slider::valueChanged, [g](int v){ g->setValue(v); });
-        gaugeLayout->addWidget(new Label("Basic 速度表", gaugeGroup), 0, 0);
-        gaugeLayout->addWidget(g, 1, 0);
-        gaugeLayout->addWidget(slider, 2, 0);
-    }
+    auto* speedLayout = makeCard("经典速度表");
+    auto* speed = new SpeedGauge; speed->setMinimumSize(240,240); speedLayout->addWidget(speed);
+    QObject::connect(addSlider(speedLayout,80),&QSlider::valueChanged,speed,&SpeedGauge::setValue);
 
-    // Compass 罗盘
-    {
-        auto* g = new CompassGauge(gaugeGroup);
-        g->setMinimumSize(240, 240);
-        auto* slider = new Slider(Qt::Horizontal, gaugeGroup);
-        slider->setRange(0, 360);
-        slider->setValue(0);
-        QObject::connect(slider, &Slider::valueChanged, [g](int v){ g->setValue(v); });
-        gaugeLayout->addWidget(new Label("Compass 罗盘", gaugeGroup), 0, 1);
-        gaugeLayout->addWidget(g, 1, 1);
-        gaugeLayout->addWidget(slider, 2, 1);
-    }
+    auto* attitudeLayout = makeCard("姿态仪");
+    auto* attitude = new AttitudeMeter; attitude->setMinimumSize(240,240); attitudeLayout->addWidget(attitude);
+    auto* pitch = addSlider(attitudeLayout,45); pitch->setRange(-45,45);
+    auto* roll = addSlider(attitudeLayout,90); roll->setRange(-90,90);
+    pitch->setToolTip("俯仰角"); roll->setToolTip("横滚角");
+    QObject::connect(pitch,&QSlider::valueChanged,attitude,&AttitudeMeter::setCurrentPitch);
+    QObject::connect(roll,&QSlider::valueChanged,attitude,&AttitudeMeter::setCurrentRoll);
+    auto* automatic = new CheckBox("自动更新"); attitudeLayout->addWidget(automatic);
+    auto* timer = new QTimer(attitude); timer->setInterval(60);
+    QObject::connect(automatic,&QCheckBox::toggled,timer,[timer](bool enabled) { enabled ? timer->start() : timer->stop(); });
+    QObject::connect(timer,&QTimer::timeout,attitude,[attitude,t=0.0]() mutable {
+        if (!attitude->isVisible()) return;
+        t += .05; attitude->setCurrentPitch(20*qSin(t*1.2)); attitude->setCurrentRoll(45*qSin(t*.8));
+    });
 
-    // SpeedGauge 速度表 + 主题预设
-    {
-        auto* g = new SpeedGauge(gaugeGroup);
-        g->setMinimumSize(240, 240);
-        auto* slider = new Slider(Qt::Horizontal, gaugeGroup);
-        slider->setRange(0, 80);
-        slider->setValue(0);
-        QObject::connect(slider, &Slider::valueChanged, [g](int v){ g->setValue(v); });
-
-        auto* row = new StyledWidget(gaugeGroup);
-        auto* hl = new QHBoxLayout(row); hl->setContentsMargins(0,0,0,0);
-        hl->addWidget(new Label("主题预设:", row));
-        auto* preset = new ComboBox(row);
-        preset->addItem("经典三色预设");
-        preset->addItem("完成率预设");
-        preset->addItem("自定义分段");
-        hl->addWidget(preset);
-        row->setLayout(hl);
-
-        QObject::connect(preset, QOverload<int>::of(&ComboBox::currentIndexChanged), [g](int idx){
-            if (idx == 0) {
-                g->useClassicThreeColorPercentPreset(QString(), QString("Km/h"), 30, 50, 20,
-                                                     QColor(162, 208, 190), QColor(103,133,160), QColor(203,80,80));
-                g->setRange(0, 80);
-            } else if (idx == 1) {
-                g->useCompletionRatePreset(QString(), QString("Km/h"));
-                g->setRange(0, 80);
-            } else {
-                QVector<CircularGauge::GaugeRange> ranges;
-                ranges.push_back({0, 30, QColor(66, 135, 245), 12});   // 蓝
-                ranges.push_back({30, 60, QColor(241, 90, 34), 12});  // 橙
-                ranges.push_back({60, 80, QColor(203, 80, 80), 12});  // 红
-                g->setRanges(ranges);
-                g->setShowValueArc(true);
-                g->setDialColor(QColor(40,40,40));
-                g->setNeedleColor(QColor(50, 120, 255));
-                g->setUnit("Km/h");
-                g->setRange(0, 80);
-                g->setTickCount(9);
-                g->setShowTickLabels(true);
-            }
-            g->update();
-        });
-        preset->setCurrentIndex(0);
-
-        gaugeLayout->addWidget(new Label("SpeedGauge 速度表", gaugeGroup), 3, 0);
-        gaugeLayout->addWidget(g, 4, 0);
-        gaugeLayout->addWidget(slider, 5, 0);
-        gaugeLayout->addWidget(row, 6, 0);
-    }
-
-    // AttitudeMeter 姿态仪 + 自动更新动画
-    {
-        auto* g = new AttitudeMeter(gaugeGroup);
-        g->setMinimumSize(240, 240);
-        auto* pitch = new Slider(Qt::Horizontal, gaugeGroup);
-        auto* roll  = new Slider(Qt::Horizontal, gaugeGroup);
-        pitch->setRange(-45, 45); pitch->setValue(0);
-        roll->setRange(-90, 90);  roll->setValue(0);
-        QObject::connect(pitch, &Slider::valueChanged, [g](int v){ g->setCurrentPitch(v); });
-        QObject::connect(roll,  &Slider::valueChanged, [g](int v){ g->setCurrentRoll(v); });
-
-        auto* animRow = new StyledWidget(gaugeGroup);
-        auto* hl = new QHBoxLayout(animRow); hl->setContentsMargins(0,0,0,0);
-        auto* cb = new CheckBox("自动更新", animRow);
-        hl->addWidget(cb);
-        animRow->setLayout(hl);
-        auto* timer = new QTimer(animRow);
-        timer->setInterval(60);
-        QObject::connect(cb, &CheckBox::toggled, [timer](bool on){ on ? timer->start() : timer->stop(); });
-        QObject::connect(timer, &QTimer::timeout, [g]{
-            static double t = 0.0; t += 0.05;
-            g->setCurrentPitch(20 * qSin(t * 1.2));
-            g->setCurrentRoll(45 * qSin(t * 0.8));
-        });
-
-        gaugeLayout->addWidget(new Label("AttitudeMeter 姿态仪", gaugeGroup), 3, 1);
-        gaugeLayout->addWidget(g, 4, 1);
-        auto* row = new StyledWidget(gaugeGroup);
-        auto* sliders = new QHBoxLayout(row); sliders->setContentsMargins(0,0,0,0);
-        sliders->addWidget(new Label("Pitch:", row)); sliders->addWidget(pitch);
-        sliders->addWidget(new Label("Roll:", row));  sliders->addWidget(roll);
-        row->setLayout(sliders);
-        gaugeLayout->addWidget(row, 5, 1);
-        gaugeLayout->addWidget(animRow, 6, 1);
-    }
-
-    // CircularGauge 圆形仪表（迁移自首页）
-    {
-        auto* g = new CircularGauge(gaugeGroup);
-        // 保持与迁移前一致的初始化参数
-        g->useClassicThreeColorPercentPreset("完成率", "%", 30, 50, 20);
-        g->setTickLabelFontScale(0.75);
-        g->setValue(75);
-        g->setMinimumSize(260, 260);
-        gaugeLayout->addWidget(new Label("CircularGauge 圆形仪表", gaugeGroup), 7, 0);
-        gaugeLayout->addWidget(g, 8, 0);
-    }
-
-    layout->addWidget(gaugeGroup, 0, 0);
-    content->setLayout(layout);
-    scrollArea->setWidget(content);
-    auto* pageLayout = new QVBoxLayout(page);
-    pageLayout->setContentsMargins(0, 0, 0, 0);
-    pageLayout->addWidget(scrollArea);
-    page->setLayout(pageLayout);
+    // Configurable presets belong to CircularGauge, not SpeedGauge's old no-op shims.
+    auto* circularLayout = makeCard("分段仪表与主题预设");
+    auto* circular = new CircularGauge; circular->setMinimumSize(260,260); circularLayout->addWidget(circular);
+    auto* presets = new ComboBox; presets->addItems({"经典三色","完成率","自定义分段"}); circularLayout->addWidget(presets);
+    auto updatePreset = [circular](int index) {
+        if (index==0) circular->useClassicThreeColorPercentPreset("完成率","%",30,50,20);
+        else if (index==1) circular->useCompletionRatePreset("完成率","%");
+        else {
+            circular->setRange(0,100); circular->setRanges({{0,30,QColor("#409EFF"),12},{30,70,QColor("#E6A23C"),12},{70,100,QColor("#67C23A"),12}});
+            circular->setShowValueArc(true);
+        }
+        circular->update();
+    };
+    QObject::connect(presets,QOverload<int>::of(&QComboBox::currentIndexChanged),circular,updatePreset);
+    updatePreset(0);
+    auto* value = addSlider(circularLayout,100);
+    QObject::connect(value,&QSlider::valueChanged,circular,[circular](int number) { circular->setValue(number); });
+    value->setValue(75);
+    scroll->setWidget(content);
+    auto* layout = new QVBoxLayout(page); layout->setContentsMargins(0,0,0,0); layout->addWidget(scroll);
     return page;
 }
 
@@ -514,11 +435,23 @@ int main(int argc, char *argv[])
     StyleManagerAdapter::EnableHighDpi();
 
     QApplication app(argc, argv);
-    // 初始化样式管理器；不传 stylesDir 时会默认查找应用目录下的 styles/ 与 themes.rcc
+    QCoreApplication::setOrganizationName("BaseWidgets");
+    QCoreApplication::setApplicationName("widgets_demo");
+    if (app.arguments().contains("--verify")) {
+#ifdef UI_DEMO_CHECKS
+        extern int runDemoChecks();
+        return runDemoChecks();
+#else
+        qCritical() << "Configure with -DUI_DEMO_CHECKS=ON to enable --verify.";
+        return 2;
+#endif
+    }
+    // 默认读取 UI 库内嵌主题，不依赖工作目录，也无需复制 themes.rcc。
     StyleManagerAdapter::initialize();
 
     // 创建主窗口（使用基于 QWidget 的无边框主界面）
     auto* window = new DemoMainWindow();
+    window->setObjectName("WidgetsDemoMainWindow");
     window->setTitle("basewidgets 组件全面展示");
     // 设置窗口图标（会自动同步到标题栏）
     window->setWindowIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/logo/logo.svg"));
@@ -549,6 +482,8 @@ int main(int argc, char *argv[])
     // 创建工具栏
     auto* toolBar = new ToolBar(window);
     toolBar->setWindowTitle("主工具栏");
+    toolBar->setObjectName("DemoToolBar");
+    toolBar->setMovable(false);
     toolBar->addAction("新建", [](){});
     toolBar->addAction("打开", [](){});
     toolBar->addAction("保存", [](){});
@@ -592,7 +527,7 @@ int main(int argc, char *argv[])
     
     // 添加永久控件
     auto* networkLabel = new Label("网络: 已连接", statusBar);
-    statusBar->addWidget(networkLabel);
+    statusBar->addPermanentWidget(networkLabel);
     
     auto* progressBar = new ProgressBar(statusBar);
     progressBar->setRange(0, 100);
@@ -615,6 +550,7 @@ int main(int argc, char *argv[])
     // 添加主要展示页面
     // 顶部标签取消 Emoji 图标，避免跨平台字体缺失
     mainTabWidget->addTab(new InputsPage(mainTabWidget), "输入控件");
+    mainTabWidget->addTab(new DialogsPage(mainTabWidget), "对话框");
     mainTabWidget->addTab(new ViewsPage(mainTabWidget), "视图控件");
     mainTabWidget->addTab(new TextPage(mainTabWidget), "文本&容器");
     // 图表控件页
@@ -625,16 +561,10 @@ int main(int argc, char *argv[])
     mainTabWidget->addTab(new PagedTablePage(mainTabWidget), "高级表格");
 
     centralLayout->addWidget(mainTabWidget);
-    centralWidget->setLayout(centralLayout);
-    // 工具栏（主题切换）置于顶部工具栏区域下方
-    auto* themeToolbar = new ToolBar(contentRoot);
-    themeToolbar->setMovable(false);
-    rootLayout->addWidget(themeToolbar);
-    themeToolbar->addWidget(new Label("二号工具栏", themeToolbar));
 
     // 主内容
     rootLayout->addWidget(centralWidget, 1);
-    contentRoot->setLayout(rootLayout);
+
     window->setContentWidget(contentRoot);
     window->setStatusBar(statusBar);
 
@@ -642,7 +572,7 @@ int main(int argc, char *argv[])
 
     // 取消标题栏注入与按钮控制示例，恢复默认布局
 
-    // 连接主题切换：仅修改当前主题并生成样式表，由 StyleManagerAdapter 统一应用到 qApp
+    // 切换主题色和 SVG 资源；StyleManagerAdapter 刷新自绘样式，不生成或应用 QSS。
     QObject::connect(themeCombo, QOverload<int>::of(&ComboBox::currentIndexChanged), 
                      [](int index) {
         auto* mgr = StyleManagerAdapter::instance();
@@ -651,9 +581,50 @@ int main(int argc, char *argv[])
         } else {
             mgr->setCurrentTheme("light");
         }
-        mgr->updateStylesheet();
+        mgr->updateTheme();
     });
 
+    // 几何持久化属于应用；库不写入全局设置，多个窗口可选择不同 key。
+    const bool smoke = app.arguments().contains("--smoke-test");
+    QSettings settings;
+    if (!smoke) {
+        if (!window->restoreGeometry(settings.value("mainWindow/geometry").toByteArray())) {
+            const QSize available = app.primaryScreen()->availableGeometry().size();
+            window->resize(QSize(1100,760).boundedTo(available));
+        }
+        QObject::connect(&app, &QCoreApplication::aboutToQuit, window, [window] {
+            QSettings settings; settings.setValue("mainWindow/geometry",window->saveGeometry());
+        });
+    } else {
+        window->resize(1100,760);
+    }
     window->show();
+    // Reproducible headless smoke test of the real composite pages.
+    if (smoke) {
+        QTimer::singleShot(150, &app, [window, mainTabWidget, &app] {
+            const QString captureDir = qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+            if (!captureDir.isEmpty()) QDir().mkpath(captureDir);
+            bool ok = qApp->styleSheet().isEmpty();
+            for (int width : {1100,640}) {
+                window->resize(width,760);
+                QApplication::processEvents();
+                ok = window->width()==width && ok;
+                for (const QString theme : {QString("dark"), QString("light")}) {
+                    auto* manager = StyleManagerAdapter::instance();
+                    ok = manager->setCurrentTheme(theme) && manager->updateTheme() && ok;
+                    for (int i=0;i<mainTabWidget->count();++i) {
+                        mainTabWidget->setCurrentIndex(i);
+                        QApplication::processEvents();
+                        const QPixmap image = window->grab();
+                        ok = !image.isNull() && ok;
+                        if (!captureDir.isEmpty())
+                            ok = image.save(QDir(captureDir).filePath(QString("demo-%1-%2-%3.png").arg(width).arg(theme).arg(i))) && ok;
+                    }
+                }
+            }
+            for (QWidget* widget : QApplication::allWidgets()) ok = widget->styleSheet().isEmpty() && ok;
+            app.exit(ok ? 0 : 1);
+        });
+    }
     return app.exec();
 }

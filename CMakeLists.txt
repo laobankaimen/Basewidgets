@@ -18,9 +18,19 @@ option(UI_ENABLE_CPACK "Enable CPack packaging targets" ON)
 # MSVC UTF-8 source encoding
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
-# Find Qt (Qt5 or Qt6)
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets Svg)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Svg)
+# Select Qt once for the library, examples, tools, and exported package.
+# Linux window integration uses QX11Info from Qt5 X11Extras. A cached QT_DIR
+# may still point to Qt6, so do not use the versionless lookup on Linux.
+set(_basewidgets_qt_components Core Gui Widgets PrintSupport Svg)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(Qt5 5.15 REQUIRED COMPONENTS ${_basewidgets_qt_components} X11Extras)
+    set(QT_VERSION_MAJOR 5)
+    find_package(X11 REQUIRED)
+else()
+    find_package(QT NAMES Qt5 Qt6 REQUIRED COMPONENTS ${_basewidgets_qt_components})
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS ${_basewidgets_qt_components})
+endif()
+message(STATUS "BaseWidgets: Using Qt${QT_VERSION_MAJOR} (${Qt${QT_VERSION_MAJOR}_DIR})")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 if(UI_ENABLE_PLUGIN_RELEASE)
@@ -36,14 +46,15 @@ endif()
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# 内部资源生成器不依赖 BaseWidgets，先建立工具→资源→UI 库的单向依赖。
+include(resources/resources)
+
 # Subdirectories
 add_subdirectory(src)
 if(UI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
-# Build tools
-add_subdirectory(tools)
 
 if(UI_ENABLE_PLUGIN_RELEASE)
     PF_PUBLISH_TARGET("BaseWidgets")

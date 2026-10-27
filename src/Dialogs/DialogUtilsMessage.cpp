@@ -54,12 +54,12 @@ QWidget* createMessageBody(QWidget* parent, const QString& text, const QString& 
     iconLabel->setPixmap(makeBadgeIcon(shape));
 
     auto* textLabel = new QLabel(text, body);
+    textLabel->setTextFormat(Qt::PlainText); // User messages are text, not implicit HTML.
     textLabel->setWordWrap(true);
     textLabel->setObjectName("DialogTextLabel");
 
     layout->addWidget(iconLabel);
     layout->addWidget(textLabel, 1);
-    body->setLayout(layout);
     return body;
 }
 

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -45,16 +45,26 @@ public:
     }
 
     // 为了兼容 widgets_demo 旧接口，提供空实现的占位方法（不改变 Qc 组合）
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void useClassicThreeColorPercentPreset(const QString&, const QString&, int, int, int,
                                            const QColor&, const QColor&, const QColor&) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void useCompletionRatePreset(const QString&, const QString&) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void setRange(int, int) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void setShowValueArc(bool) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void setDialColor(const QColor&) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void setNeedleColor(const QColor&) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void setUnit(const QString&) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void setTickCount(int) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void setShowTickLabels(bool) {}
+    Q_DECL_DEPRECATED_X("Use CircularGauge for configurable presets")
     void setRanges(const QVector<CircularGauge::GaugeRange>&) {}
     void setValue(int v) { if (m_needle) { m_needle->setCurrentValue(v); update(); } }
 

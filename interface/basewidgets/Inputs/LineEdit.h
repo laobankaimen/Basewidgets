@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
  */
@@ -11,6 +11,7 @@
 
 namespace basewidgets {
 
+/** 单行编辑器包装；保留验证器、回显模式、选择与输入法接口。 */
 class ACSS_UI_EXPORT LineEdit : public QLineEdit
 {
     Q_OBJECT
@@ -20,6 +21,7 @@ public:
     explicit LineEdit(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~LineEdit() override;
 
+    /** 兼容管理器入口；不转移所有权。全应用主题请通过 StyleManagerAdapter 设置。 */
     void setStyleManager(acss::QtAdvancedStylesheet* manager);
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 
