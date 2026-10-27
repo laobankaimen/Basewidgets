@@ -12,6 +12,7 @@
 #include <QAbstractItemView>
 #include <QRegularExpression>
 #include <QPointer>
+#include <QPersistentModelIndex>
 
 class QAbstractItemModel;
 class QSortFilterProxyModel;
@@ -36,6 +37,10 @@ class TableView;
 class ACSS_UI_EXPORT AdvancedTable : public StyledWidget {
     Q_OBJECT
 public:
+    /** Basic 仅表格；Standard 带筛选/导出但不分页；Paged 增加分页。 */
+    enum class PresentationMode { Basic, Standard, Paged };
+    enum class PinPosition { Top, Bottom };
+
     enum class FilterMode {
         Literal,
         RegularExpression,
@@ -75,6 +80,29 @@ public:
     QSortFilterProxyModel* sortFilterProxy() const { return m_sortFilter; }
     QHeaderView* header() const;
 
+    /** 模式只是 UI/分页预设，不改变源模型、排序、筛选或固定记录。默认 Paged。 */
+    void setPresentationMode(PresentationMode mode);
+    PresentationMode presentationMode() const { return m_mode; }
+    void setSortingEnabled(bool enabled);
+    void setSortRole(int role);
+    /** 传入本类 view() 的索引，返回调用者 setSourceModel() 提供的模型索引。 */
+    QModelIndex mapToSource(const QModelIndex& viewIndex) const;
+    /** 记录被过滤/不在当前页时返回无效索引。 */
+    QModelIndex mapFromSource(const QModelIndex& sourceIndex) const;
+    QModelIndexList selectedSourceIndexes() const;
+    /** 支持单元格选择：只要该行有单元格选中就返回其源模型第 0 列索引。 */
+    QModelIndexList selectedSourceRows() const;
+    /** 原子替换固定行；行号属于源模型，合计最多 64 行，重复/越界返回 false。
+     * 顺序按参数保留，升降序都不改变；遵守筛选，每页重复显示；pageSize 不含固定行。
+     * 固定的是记录顺序，不是滚动视口。源模型 reset/替换后须重新设置。 */
+    bool setPinnedRows(const QList<int>& topRows, const QList<int>& bottomRows = {});
+    /** 追加到对应固定区；已固定的记录会移动到新位置。 */
+    bool pinRows(const QModelIndexList& sourceRows, PinPosition position = PinPosition::Top);
+    void unpinRows(const QModelIndexList& sourceRows);
+    void clearPinnedRows();
+    QModelIndexList pinnedSourceRows(PinPosition position) const;
+    /** 关闭内置菜单后仍会发出 prepareContextMenu，便于完全自定义。 */
+    void setDefaultContextMenuEnabled(bool enabled) { m_defaultContextMenu = enabled; }
     void setPageSize(int size);
     int pageSize() const;
     void setPageSizeOptions(const QStringList& sizes);
@@ -100,6 +128,20 @@ public:
     void setExportDelimiter(const QString& delim);
     QString exportDelimiter() const;
 
+    /** 行头勾选默认开启；隐藏不清空勾选。勾选与 Qt 单元格/行高亮选择独立，
+     * 不写入源模型 CheckStateRole、不增加业务模型列。表头全选只作用于当前页。
+     * 排序/翻页/筛选保留勾选；删除记录会移除其勾选，模型 reset/替换会清空。 */
+    void setRowCheckBoxesVisible(bool visible);
+    bool rowCheckBoxesVisible() const { return m_rowChecksVisible; }
+    /** 返回跨页（包括被筛选隐藏）的已勾选记录，第 0 列，按当前源模型行号排序。 */
+    QModelIndexList checkedSourceRows() const;
+    bool isRowChecked(const QModelIndex& sourceIndex) const;
+    /** 索引必须属于 sourceModel() 的根层记录；禁用/不可选择记录不能新勾选。 */
+    bool setRowChecked(const QModelIndex& sourceIndex, bool checked);
+    void setCurrentPageChecked(bool checked);
+    void clearCheckedRows();
+    Qt::CheckState currentPageCheckState() const;
+
     void setSelectionMode(QAbstractItemView::SelectionMode mode);
     void setSelectionBehavior(QAbstractItemView::SelectionBehavior behavior);
     void setEditTriggers(QAbstractItemView::EditTriggers triggers);
@@ -119,7 +161,16 @@ signals:
     void pageChanged(int currentPage, int totalPages);
     void exportCompleted(const QString& filePath, int rows);
     void exportFailed(const QString& filePath, const QString& error);
+    /** menu 由控件持有，关闭后删除；selectedRows 属于 sourceModel()，非分页代理。
+     * 在同步槽内添加动作；动作执行时若异步保留索引，请使用 QPersistentModelIndex。 */
     void prepareContextMenu(QMenu* menu, const QModelIndexList& selectedRows);
+    void contextMenuRequested(const QModelIndex& sourceIndex, const QPoint& globalPosition);
+    void sourceActivated(const QModelIndex& sourceIndex);
+    void pinnedRowsChanged();
+    /** 勾选集合改变时发送；批量全选/清空只发送一次。排序/翻页不改变集合。 */
+    void checkedRowsChanged();
+    /** 无效正则保留上次有效结果，输入框会显示错误提示。 */
+    void filterRejected(const QString& error);
 
 protected:
     void applyStylesheet();
@@ -130,6 +181,12 @@ private:
     void rebuildColumnUi();
     void rebuildPaginationUi();
     void applyFilter();
+    void showContextMenu(const QPoint& pos);
+    void updatePageInfo();
+    bool commitPins(const QModelIndexList& top, const QModelIndexList& bottom);
+    void scheduleColumnRefresh();
+    void refreshCheckedRows();
+    bool isRowCheckable(const QModelIndex& sourceIndex) const;
     QStringList currentHeaderLabels() const;
 
 private:
@@ -152,10 +209,6 @@ private:
     LineEdit* m_filterEdit = nullptr;
     Label* m_columnLabel = nullptr;
     ComboBox* m_columnCombo = nullptr;
-    Label* m_pageSizeLabel = nullptr;
-    ComboBox* m_pageSizeCombo = nullptr;
-    Label* m_jumpLabel = nullptr;
-    SpinBox* m_jumpSpin = nullptr;
     ToolButton* m_columnsBtn = nullptr;
     QMenu* m_columnsMenu = nullptr;
 
@@ -163,7 +216,6 @@ private:
     TableView* m_tableView = nullptr;
 
     // 底部分页与导出
-    Label* m_pageInfo = nullptr;
     PushButton* m_prevBtn = nullptr;
     PushButton* m_nextBtn = nullptr;
     PushButton* m_exportBtn = nullptr;
@@ -175,6 +227,14 @@ private:
 
     // 防抖
     QTimer* m_filterTimer = nullptr;
+    QVector<QMetaObject::Connection> m_sourceConnections;
+    QVector<QPersistentModelIndex> m_topPins, m_bottomPins, m_savedSelection;
+    QPersistentModelIndex m_savedCurrent;
+    PresentationMode m_mode = PresentationMode::Paged;
+    bool m_defaultContextMenu = true;
+    bool m_columnRefreshPending = false;
+    bool m_rowChecksVisible = true;
+    QVector<QPersistentModelIndex> m_checkedRows;
 
     // 选项
     Qt::CaseSensitivity m_filterCs = Qt::CaseInsensitive;

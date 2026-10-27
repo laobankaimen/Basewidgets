@@ -3,6 +3,7 @@
  * Date: 2025-12-25
  */
 #include <basewidgets/Core/FramelessDialog.h>
+#include <basewidgets/Core/WindowPlacement.h>
 #include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Inputs/ToolButton.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
@@ -52,6 +53,7 @@ FramelessDialog::FramelessDialog(bool popDialog, QWidget* parent)
     // Modal dialogs need normal activation on Wayland as well as X11/Windows.
     // Do not suppress normal activation when the compositor returns from a native drag.
     initUI();
+    WindowPlacement::watch(this);
     updateSurfacePalette();
     connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,this,&FramelessDialog::updateSurfacePalette);
 }
@@ -100,20 +102,9 @@ void FramelessDialog::showEvent(QShowEvent* event)
     QDialog::showEvent(event);
     if (m_centeredOnce) return;
     m_centeredOnce=true;
-    // Wayland places transient dialogs itself; clients cannot choose global positions.
-    if (QGuiApplication::platformName().startsWith("wayland")) return;
     QPointer<FramelessDialog> self(this);
     QTimer::singleShot(0,this,[self] {
-        if (!self || !self->isVisible()) return;
-        QWidget* parent=self->parentWidget() ? self->parentWidget()->window() : nullptr;
-        QScreen* screen=parent ? parent->screen() : self->screen();
-        if (!screen) return;
-        const QRect available=screen->availableGeometry();
-        const QRect reference=parent ? parent->frameGeometry() : available;
-        QPoint target=reference.center()-QPoint(self->width()/2,self->height()/2);
-        target.setX(qBound(available.left(),target.x(),qMax(available.left(),available.right()-self->width()+1)));
-        target.setY(qBound(available.top(),target.y(),qMax(available.top(),available.bottom()-self->height()+1)));
-        self->move(target);
+        if (self && self->isVisible()) WindowPlacement::centerOnParent(self);
     });
 }
 
@@ -252,8 +243,9 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, Na
         long y = GET_Y_LPARAM(msg->lParam);
 
         if (m_titleBar) {
-            double dpr = this->devicePixelRatioF();
-            QPoint titlePos = m_titleBar->mapFromGlobal(QPoint(x/dpr,y/dpr));
+            POINT clientPoint{x,y}; ScreenToClient(msg->hwnd,&clientPoint);
+            const qreal dpr=devicePixelRatioF();
+            const QPoint titlePos=m_titleBar->mapFrom(this,QPoint(qRound(clientPoint.x/dpr),qRound(clientPoint.y/dpr)));
 
             QWidget* child = m_titleBar->childAt(titlePos);
             //鼠标标题栏的子控件，让子控件接收事件（过滤掉其他不需要鼠标交互的控件）

@@ -2,6 +2,30 @@
 // 检查渲染/交互/生命周期，不作为独立测试工程或应用安装依赖。
 #include <QtTest>
 #include <QApplication>
+#include <basewidgets/Gauges/CircularGauge.h>
+#include <basewidgets/Gauges/CompassGauge.h>
+#include <basewidgets/Gauges/AttitudeMeter.h>
+#include "pages/GaugesPage.h"
+#include "pages/AcousticPage.h"
+#include "pages/DirectionAnalysisPage.h"
+#include "pages/DataManagementPage.h"
+#include <basewidgets/Acoustics/DemonAnalysis.h>
+#include <basewidgets/Charts/BeamPlots.h>
+#include <basewidgets/Charts/LofarDemonPlots.h>
+#include <basewidgets/Charts/RateHistoryPlot.h>
+#include <basewidgets/Gauges/StorageCapacityMeter.h>
+#include <basewidgets/Gauges/DataManagementDashboards.h>
+#include <QContextMenuEvent>
+#include <basewidgets/Gauges/TransferRateMeter.h>
+#include <QScopedPointer>
+#include <basewidgets/Acoustics/AcousticAnalysis.h>
+#include <basewidgets/Charts/AcousticWaveformPlot.h>
+#include <basewidgets/Charts/AcousticSpectrumPlot.h>
+#include <basewidgets/Charts/AcousticSpectrogramPlot.h>
+#include <basewidgets/Charts/RecordingTimelinePlot.h>
+#include <basewidgets/Gauges/SignalQualityMeter.h>
+#include <basewidgets/Gauges/AcquisitionStatusPanel.h>
+#include <cmath>
 #include <QComboBox>
 #include <QDirIterator>
 #include <QGridLayout>
@@ -28,6 +52,11 @@
 #include <QToolBar>
 #include <QStatusBar>
 #include <basewidgets/Core/FramelessWidgetWindow.h>
+#include <basewidgets/Core/WindowPlacement.h>
+#include <QScreen>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <basewidgets/Core/FramelessDialog.h>
 #include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Containers/ResponsiveGridLayout.h>
@@ -36,6 +65,8 @@
 #include <basewidgets/Views/NavigationList.h>
 #include <basewidgets/Views/AdvancedTable.h>
 #include <QStandardItemModel>
+#include <QAbstractItemModelTester>
+#include <QSortFilterProxyModel>
 #include <QClipboard>
 #include <basewidgets/Views/TableView.h>
 #include <limits>
@@ -396,6 +427,75 @@ private slots:
         QCOMPARE(picker.range().first.timeZone(),QTimeZone("Asia/Shanghai"));
         picker.setIncludeTime(false); QCOMPARE(picker.range().first.time(),QTime(0,0));
     }
+    void advancedTableRowCheckboxes()
+    {
+        QStandardItemModel source(8,2);
+        for(int row=0;row<8;++row) { source.setData(source.index(row,0),row); source.setData(source.index(row,1),QString("file-%1").arg(row)); }
+        AdvancedTable table; table.setSourceModel(&source); table.setPageSize(3);
+        table.resize(640,440); table.show(); QTest::qWait(20);
+        auto* all=table.findChild<QCheckBox*>("AdvancedTableCheckAll"); QVERIFY(all); QVERIFY(all->isVisible());
+        QCOMPARE(table.view()->model()->columnCount(),2); // no synthetic column shifts existing public indexes
+        QCOMPARE(table.currentPageCheckState(),Qt::Unchecked);
+        auto* rowHeader=table.view()->verticalHeader();
+        const QPoint checkbox(12,rowHeader->sectionViewportPosition(0)+rowHeader->sectionSize(0)/2);
+        const QRect checkArea(0,rowHeader->sectionViewportPosition(0),28,rowHeader->sectionSize(0));
+        const QImage unchecked=render(*rowHeader->viewport()).copy(checkArea);
+        QTest::mouseClick(rowHeader->viewport(),Qt::LeftButton,Qt::NoModifier,checkbox);
+        QVERIFY(render(*rowHeader->viewport()).copy(checkArea)!=unchecked);
+        QCOMPARE(table.checkedSourceRows().size(),1); QCOMPARE(table.checkedSourceRows().first().row(),0);
+        QCOMPARE(all->checkState(),Qt::PartiallyChecked);
+        QVERIFY(!source.index(0,0).data(Qt::CheckStateRole).isValid());
+        QSignalSpy changes(&table,&AdvancedTable::checkedRowsChanged);
+        all->click(); QCOMPARE(changes.count(),1); QCOMPARE(table.checkedSourceRows().size(),3); QCOMPARE(all->checkState(),Qt::Checked);
+        all->click(); QCOMPARE(table.checkedSourceRows().size(),0); QCOMPARE(all->checkState(),Qt::Unchecked);
+        QVERIFY(table.setRowChecked(source.index(1,1),true));
+        table.pager()->setCurrentPage(1); QCOMPARE(all->checkState(),Qt::Unchecked);
+        all->click(); QCOMPARE(table.checkedSourceRows().size(),4);
+        table.pager()->setCurrentPage(0); QCOMPARE(all->checkState(),Qt::PartiallyChecked);
+        table.view()->sortByColumn(0,Qt::DescendingOrder);
+        QVERIFY(table.isRowChecked(source.index(1,0))); QVERIFY(table.isRowChecked(source.index(4,0)));
+        table.setFilterColumn(1); table.setFilterText("file-1"); QCOMPARE(table.pager()->rowCount(),1);
+        QCOMPARE(all->checkState(),Qt::Checked); all->click(); QCOMPARE(table.checkedSourceRows().size(),3);
+        table.setFilterText("no match"); QVERIFY(!all->isEnabled()); QCOMPARE(all->checkState(),Qt::Unchecked);
+        table.setFilterText(""); table.clearCheckedRows();
+        QVERIFY(table.setPinnedRows({7})); all->click(); QCOMPARE(table.checkedSourceRows().size(),4);
+        table.pager()->setCurrentPage(1); QCOMPARE(all->checkState(),Qt::PartiallyChecked);
+        all->click(); QCOMPARE(table.checkedSourceRows().size(),7); // repeated pinned record is counted once
+        all->click(); QCOMPARE(table.checkedSourceRows().size(),3);
+        table.clearCheckedRows(); table.view()->setCurrentIndex(table.pager()->index(0,0));
+        QTest::keyClick(table.view(),Qt::Key_Space,Qt::ControlModifier);
+        QCOMPARE(table.checkedSourceRows().size(),1); QVERIFY(table.isRowChecked(source.index(7,0)));
+        QTest::keyClick(table.view(),Qt::Key_Space,Qt::ControlModifier); QVERIFY(table.checkedSourceRows().isEmpty());
+        table.setRowCheckBoxesVisible(false); QVERIFY(!all->isVisible());
+        table.setRowCheckBoxesVisible(true); QVERIFY(all->isVisible());
+        const QString capture=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        if(!capture.isEmpty()) { QDir().mkpath(capture); QVERIFY(render(table).save(capture+"/AdvancedTableChecks-ltr.png")); }
+        table.setLayoutDirection(Qt::RightToLeft); QCoreApplication::processEvents();
+        QVERIFY(table.view()->rect().contains(all->geometry()));
+        if(!capture.isEmpty()) { QDir().mkpath(capture); QVERIFY(render(table).save(capture+"/AdvancedTableChecks-rtl.png")); }
+    }
+    void advancedTableCheckedRecordLifecycle()
+    {
+        AdvancedTable table;
+        auto* source=new QStandardItemModel(5,1);
+        for(int row=0;row<5;++row)source->setData(source->index(row,0),row);
+        table.setSourceModel(source); table.setPageSize(5);
+        source->item(2)->setEnabled(false);
+        table.setCurrentPageChecked(true); QCOMPARE(table.checkedSourceRows().size(),4);
+        QCOMPARE(table.currentPageCheckState(),Qt::Checked); QVERIFY(!table.setRowChecked(source->index(2,0),true));
+        QStandardItemModel foreign(1,1); QVERIFY(!table.setRowChecked(foreign.index(0,0),true));
+        source->insertRow(0); QCOMPARE(table.checkedSourceRows().first().row(),1);
+        QVERIFY(table.isRowChecked(source->index(5,0)));
+        source->sort(0,Qt::DescendingOrder); QCOMPARE(table.checkedSourceRows().size(),4);
+        QVERIFY(table.checkedSourceRows().first().data().toInt()==4);
+        QSignalSpy changes(&table,&AdvancedTable::checkedRowsChanged);
+        source->removeRow(table.checkedSourceRows().first().row()); QCOMPARE(table.checkedSourceRows().size(),3); QCOMPARE(changes.count(),1);
+        source->clear(); QVERIFY(table.checkedSourceRows().isEmpty());
+        source->setColumnCount(1); source->setRowCount(2); table.setCurrentPageChecked(true); QCOMPARE(table.checkedSourceRows().size(),2);
+        delete source; QVERIFY(table.checkedSourceRows().isEmpty());
+        QStandardItemModel replacement(2,1); table.setSourceModel(&replacement); table.setCurrentPageChecked(true);
+        QCOMPARE(table.checkedSourceRows().size(),2); table.setSourceModel(&foreign); QVERIFY(table.checkedSourceRows().isEmpty());
+    }
     void compactTableAndJump()
     {
         AdvancedTable table;
@@ -428,7 +528,161 @@ private slots:
             opened = true; menu->setActiveAction(menu->actions().first()); QTest::keyClick(menu,Qt::Key_Return);
         });
         table.view()->customContextMenuRequested(table.view()->visualRect(selected).center());
-        QVERIFY(opened); QCOMPARE(QApplication::clipboard()->text(),expected);
+        QTRY_VERIFY(opened); QCOMPARE(QApplication::clipboard()->text(),expected);
+    }
+    void pinnedTableRecords()
+    {
+        QStandardItemModel model(12,2);
+        for(int r=0;r<12;++r) { model.setData(model.index(r,0),r); model.setData(model.index(r,1),QString("record %1").arg(r)); }
+        AdvancedTable table; table.setSourceModel(&model); table.setPageSize(3);
+        QAbstractItemModelTester tester(table.pager(),QAbstractItemModelTester::FailureReportingMode::QtTest);
+        QVERIFY(table.setPinnedRows({7,2},{9}));
+        QCOMPARE(table.pager()->pageCount(),3); QCOMPARE(table.pager()->rowCount(),6);
+        for(const auto order:{Qt::AscendingOrder,Qt::DescendingOrder}) {
+            table.view()->sortByColumn(0,order);
+            for(int page=0;page<3;++page) {
+                table.pager()->setCurrentPage(page);
+                QCOMPARE(table.pager()->index(0,0).data().toInt(),7);
+                QCOMPARE(table.pager()->index(1,0).data().toInt(),2);
+                QCOMPARE(table.pager()->index(5,0).data().toInt(),9);
+                for(int r=0;r<table.pager()->rowCount();++r) {
+                    const auto index=table.pager()->index(r,1);
+                    QCOMPARE(table.mapFromSource(table.mapToSource(index)),index);
+                }
+            }
+        }
+        QVERIFY(!table.setPinnedRows({7,7})); QVERIFY(!table.setPinnedRows({50}));
+        table.setFilterColumn(1); table.setFilterText("record 7");
+        QCOMPARE(table.pager()->rowCount(),1); QCOMPARE(table.pager()->pinnedRowCount(),1);
+        table.setFilterText(""); QCOMPARE(table.pager()->pinnedRowCount(),3);
+        model.insertRow(0); // persistent indexes track source-record identity after insert
+        QCOMPARE(table.pager()->index(0,0).data().toInt(),7);
+        model.removeRow(8); // remove pinned record 7
+        QCOMPARE(table.pager()->index(0,0).data().toInt(),2);
+        QCOMPARE(table.pager()->pinnedRowCount(),2);
+        table.setPresentationMode(AdvancedTable::PresentationMode::Standard);
+        QCOMPARE(table.pager()->rowCount(),model.rowCount()); QCOMPARE(table.pager()->pageCount(),1);
+        table.setPresentationMode(AdvancedTable::PresentationMode::Basic);
+        QVERIFY(!table.pager()->paginationEnabled());
+        table.clearPinnedRows(); QCOMPARE(table.pager()->pinnedRowCount(),0);
+        table.setSortingEnabled(false);
+        QCOMPARE(table.mapToSource(table.pager()->index(0,0)).row(),0);
+        table.setPresentationMode(AdvancedTable::PresentationMode::Paged);
+        table.pager()->setCurrentPage(3); model.removeRows(2,10);
+        QCOMPARE(table.pager()->currentPage(),0); QCOMPARE(table.pager()->rowCount(),2);
+    }
+    void standalonePagerModelLifecycle()
+    {
+        PagedProxyModel pager;
+        QAbstractItemModelTester tester(&pager,QAbstractItemModelTester::FailureReportingMode::QtTest);
+        auto* model=new QStandardItemModel(5,2);
+        for(int r=0;r<5;++r)model->setData(model->index(r,0),r);
+        pager.setSourceModel(model); pager.setPageSize(2);
+        QVERIFY(pager.setPinnedIndexes({model->index(3,0)},{model->index(1,0)}));
+        model->sort(0,Qt::DescendingOrder);
+        QCOMPARE(pager.index(0,0).data().toInt(),3);
+        QCOMPARE(pager.index(pager.rowCount()-1,0).data().toInt(),1);
+        QVERIFY(pager.setData(pager.index(0,1),"edited"));
+        QCOMPARE(pager.mapToSource(pager.index(0,1)).data().toString(),QString("edited"));
+        QStandardItemModel foreign(1,1); QVERIFY(!pager.mapFromSource(foreign.index(0,0)).isValid());
+        delete model;
+        QCOMPARE(pager.rowCount(),0); QCOMPARE(pager.columnCount(),0); QCOMPARE(pager.pageCount(),0);
+        QStandardItemModel replacement(2,1); pager.setSourceModel(&replacement);
+        QCOMPARE(pager.pinnedRowCount(),0); QCOMPARE(pager.rowCount(),2);
+        pager.setSourceModel(nullptr); QCOMPARE(pager.rowCount(),0);
+    }
+    void tableUpdatesAndExports()
+    {
+        AdvancedTable table; auto* model=new QStandardItemModel(10,2);
+        for(int r=0;r<10;++r) { model->setData(model->index(r,0),r); model->setData(model->index(r,1),QString("record,%1").arg(r)); }
+        table.setSourceModel(model); table.setPageSize(3);
+        QAbstractItemModelTester tester(table.pager(),QAbstractItemModelTester::FailureReportingMode::QtTest);
+        const auto first=table.pager()->index(0,1);
+        table.view()->selectionModel()->select(first,QItemSelectionModel::ClearAndSelect);
+        QSignalSpy reset(table.pager(),&QAbstractItemModel::modelReset);
+        QSignalSpy data(table.pager(),&QAbstractItemModel::dataChanged);
+        model->setData(model->index(0,1),"updated,record");
+        QCOMPARE(reset.count(),0); QVERIFY(data.count()>0);
+        QCOMPARE(table.selectedSourceRows().size(),1);
+        AdvancedTable::CsvExportOptions options; options.filePath=output.filePath("selected.csv");
+        options.scope=AdvancedTable::ExportScope::Selection; options.includeHeader=false;
+        QVERIFY(table.exportCsv(options)); QFile file(options.filePath); QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(),QByteArray("0,\"updated,record\"\n"));
+        QVERIFY(table.setPinnedRows({0})); table.view()->sortByColumn(0,Qt::DescendingOrder);
+        QCOMPARE(table.selectedSourceRows().size(),1); QCOMPARE(table.selectedSourceRows().first().row(),0);
+        table.setFilterText("updated"); QCOMPARE(table.pager()->rowCount(),1);
+        table.setFilterMode(AdvancedTable::FilterMode::RegularExpression);
+        QSignalSpy rejected(&table,&AdvancedTable::filterRejected); table.setFilterText("[");
+        QCOMPARE(rejected.count(),1); QCOMPARE(table.pager()->rowCount(),1);
+        table.setFilterText("");
+#if QT_VERSION < QT_VERSION_CHECK(6,0,0)
+        table.setFilterRegExp(QRegExp("updated*",Qt::CaseInsensitive,QRegExp::Wildcard));
+        QCOMPARE(table.pager()->rowCount(),1);
+        table.setFilterRegExp(QRegExp("record,9",Qt::CaseSensitive,QRegExp::FixedString));
+        QCOMPARE(table.pager()->rowCount(),1);
+#endif
+        model->clear(); QCOMPARE(table.pager()->rowCount(),0); QCOMPARE(table.pager()->pinnedRowCount(),0);
+        delete model; QCoreApplication::processEvents();
+        QCOMPARE(table.pager()->rowCount(),0); QCOMPARE(table.pager()->columnCount(),0);
+        QVERIFY(!table.sourceModel());
+    }
+    void tableMenuExtensionUsesSourceIndexes()
+    {
+        QStandardItemModel model(8,1); for(int r=0;r<8;++r)model.setData(model.index(r,0),r);
+        AdvancedTable table; table.setSourceModel(&model); table.setPageSize(3);
+        table.view()->sortByColumn(0,Qt::DescendingOrder); table.pager()->setCurrentPage(1);
+        table.resize(600,400); table.show(); QTest::qWait(10);
+        QPointer<QMenu> opened; int row=-1;
+        connect(&table,&AdvancedTable::prepareContextMenu,&table,[&](QMenu* menu,const QModelIndexList& selection) {
+            opened=menu; QVERIFY(!selection.isEmpty()); QCOMPARE(selection.first().model(),&model); row=selection.first().row();
+            menu->addAction("Business action");
+        });
+        table.view()->customContextMenuRequested(table.view()->visualRect(table.pager()->index(0,0)).center());
+        QVERIFY(opened); QCOMPARE(row,4); QCOMPARE(opened->actions().last()->text(),QString("Business action"));
+        model.removeRow(4); // menu action must tolerate the selected source record disappearing
+        opened->actions().first()->trigger(); opened->close();
+    }
+    void multiScreenTopology()
+    {
+        // Logical pixels: left monitor uses a negative origin; a third monitor sits above/right.
+        const QVector<QRect> screens{QRect(0,0,1920,1040),QRect(-1280,0,1280,984),QRect(2560,-900,1600,900)};
+        const QRect left(-1200,50,900,700);
+        QCOMPARE(WindowPlacement::bestScreen(left,screens),1);
+        QCOMPARE(WindowPlacement::fitToScreens(left,screens),left);
+        const QRect gap(2100,100,500,600);
+        const auto fitted=WindowPlacement::fitToScreens(gap,screens);
+        QVERIFY(screens[WindowPlacement::bestScreen(fitted,screens)].contains(fitted));
+        const QRect third(2800,-800,1200,700);
+        QCOMPARE(WindowPlacement::bestScreen(third,screens),2);
+        const auto disconnected=WindowPlacement::fitToScreens(third,{screens[0],screens[1]},0);
+        QVERIFY(screens[0].contains(disconnected));
+        QCOMPARE(WindowPlacement::fitToScreens(QRect(-4000,-3000,6000,4000),{screens[1]}),screens[1]);
+        QCOMPARE(WindowPlacement::bestScreen(left,{}),-1);
+        QCOMPARE(WindowPlacement::fitToScreens(left,{}),left);
+    }
+    void windowPlacementPersistence()
+    {
+        QWidget window; window.resize(360,260); window.move(30,40);
+        auto* guard=WindowPlacement::watch(&window); QVERIFY(guard); QCOMPARE(WindowPlacement::watch(&window),guard);
+        const auto saved=WindowPlacement::save(&window); QVERIFY(!saved.isEmpty());
+        window.move(4000,4000); QVERIFY(WindowPlacement::restore(&window,saved));
+        QCOMPARE(window.size(),QSize(360,260)); QVERIFY(window.screen()->availableGeometry().contains(window.geometry()));
+        const QRect before=window.geometry(); QVERIFY(!WindowPlacement::restore(&window,"bad json")); QCOMPARE(window.geometry(),before);
+        auto object=QJsonDocument::fromJson(saved).object();
+        object["screenName"]="disconnected-screen"; object["serial"]="missing";
+        object["normal"]=QJsonArray{9999,-9999,900,700};
+        QVERIFY(WindowPlacement::restore(&window,QJsonDocument(object).toJson()));
+        QVERIFY(window.screen()->availableGeometry().contains(window.geometry()));
+        object["normal"]=QJsonArray{0,0,-10,10};
+        QVERIFY(!WindowPlacement::restore(&window,QJsonDocument(object).toJson()));
+        QCOMPARE(WindowPlacement::moveToScreen(&window,nullptr),WindowPlacement::MoveResult::InvalidTarget);
+        QVERIFY(WindowPlacement::moveToScreen(&window,window.screen())!=WindowPlacement::MoveResult::InvalidTarget);
+        QVERIFY(!window.isVisible()); // moving an auxiliary window must not show it
+        QWidget child(&window); QVERIFY(!WindowPlacement::watch(&child));
+        window.setWindowState(Qt::WindowMaximized);
+        const auto maximized=WindowPlacement::save(&window);
+        window.setWindowState(Qt::WindowNoState); QVERIFY(WindowPlacement::restore(&window,maximized));
+        QVERIFY(window.isMaximized());
     }
     void resizeClampsOppositeEdge()
     {
@@ -629,6 +883,516 @@ private slots:
                           button->mapTo(&dialog,button->rect().center()));
         QCOMPARE(clicks.count(),1);
 #endif
+    }
+    void gaugeRangesAndMissingData()
+    {
+        CircularGauge gauge;
+        QVERIFY(gauge.setRange(-20,120)); gauge.setValue(65.25); gauge.setLabelPrecision(2);
+        QCOMPARE(gauge.value(),65.25);
+        QVERIFY(!gauge.setRange(10,10)); QVERIFY(!gauge.setRange(50,10));
+        QVERIFY(!gauge.setRange(-std::numeric_limits<double>::max(),std::numeric_limits<double>::max()));
+        QCOMPARE(gauge.minimum(),-20.); QCOMPARE(gauge.maximum(),120.);
+        QSignalSpy values(&gauge,&CircularGauge::valueChanged);
+        QSignalSpy available(&gauge,&CircularGauge::availabilityChanged);
+        gauge.setValue(200); QCOMPARE(gauge.value(),120.); QCOMPARE(values.count(),1);
+        gauge.setValue(120); QCOMPARE(values.count(),1);
+        gauge.setValue(std::numeric_limits<double>::quiet_NaN()); QVERIFY(!gauge.valueAvailable());
+        QCOMPARE(gauge.value(),120.); QCOMPARE(gauge.formattedValue(),QString::fromUtf8("—"));
+        QVERIFY(!gauge.statusText().isEmpty());
+        gauge.setValue(40); QVERIFY(gauge.valueAvailable()); QCOMPARE(available.count(),2);
+        gauge.setTargetValue(500); QCOMPARE(gauge.targetValue(),120.);
+        QVERIFY(gauge.setRange(0,20)); QCOMPARE(gauge.value(),20.); QCOMPARE(gauge.targetValue(),20.);
+        gauge.setTargetValue(std::numeric_limits<double>::infinity()); QVERIFY(!gauge.hasTargetValue());
+        QVERIFY(gauge.setRange(0,100));
+        QVERIFY(gauge.setRanges({{0,70,Qt::green,5,"normal"},{70,90,Qt::yellow,5,"warning"},{90,100,Qt::red,5,"danger"}}));
+        gauge.setValue(69.9); QCOMPARE(gauge.statusText(),QString("normal"));
+        gauge.setValue(70); QCOMPARE(gauge.statusText(),QString("warning"));
+        gauge.setValue(100); QCOMPARE(gauge.statusText(),QString("danger"));
+        QVERIFY(!gauge.setRanges({{0,80,Qt::green,5},{70,100,Qt::red,5}}));
+        QCOMPARE(gauge.ranges().size(),3);
+        gauge.useClassicThreeColorPercentPreset("legacy","%",0,50,50);
+        QCOMPARE(gauge.ranges().size(),2);
+        gauge.useCompletionRatePreset("completion","%");
+        QVERIFY(gauge.ranges().isEmpty()); QCOMPARE(gauge.displayMode(),CircularGauge::DisplayMode::Arc);
+        gauge.setMinorTicksPerMajor(0); gauge.resize(180,210); QVERIFY(!render(gauge).isNull());
+        gauge.setMajorTickStep(std::numeric_limits<double>::denorm_min()); QVERIFY(!render(gauge).isNull());
+        QVERIFY(gauge.setRange(0,std::numeric_limits<double>::denorm_min()));
+        gauge.setValue(gauge.maximum()); QVERIFY(!render(gauge).isNull());
+    }
+    void gaugeAngleConsistency()
+    {
+        CircularGauge gauge;
+        QCOMPARE(gauge.angleForValue(0),225.); QCOMPARE(gauge.angleForValue(50),90.); QCOMPARE(gauge.angleForValue(100),-45.);
+        QVERIFY(gauge.setAngles(180,0));
+        QCOMPARE(gauge.angleForValue(0),180.); QCOMPARE(gauge.angleForValue(100),0.);
+        QVERIFY(!gauge.setAngles(0,0)); QVERIFY(!gauge.setAngles(10,45)); QVERIFY(!gauge.setAngles(360,0));
+        QCOMPARE(gauge.angleForValue(0),180.);
+        gauge.useClassicThreeColorPercentPreset();
+        QCOMPARE(gauge.angleForValue(0),225.); QCOMPARE(gauge.angleForValue(100),-45.);
+        gauge.useCompletionRatePreset();
+        QCOMPARE(gauge.angleForValue(0),225.); QCOMPARE(gauge.angleForValue(100),-45.);
+    }
+    void compassAndAttitudeConventions()
+    {
+        CompassGauge heading;
+        heading.setHeading(-90); QCOMPARE(heading.heading(),270.);
+        heading.setHeading(450); QCOMPARE(heading.heading(),90.); const QString east=heading.directionText();
+        heading.setHeading(360); QCOMPARE(heading.heading(),0.); QVERIFY(heading.directionText()!=east);
+        heading.setHeading(std::numeric_limits<double>::infinity()); QVERIFY(!heading.valueAvailable());
+        heading.setHeading(0); QVERIFY(heading.valueAvailable());
+        AttitudeMeter attitude;
+        attitude.setAttitude(120,450); QCOMPARE(attitude.pitch(),90.); QCOMPARE(attitude.roll(),90.);
+        attitude.setAttitude(-120,-540); QCOMPARE(attitude.pitch(),-90.); QCOMPARE(attitude.roll(),-180.);
+        attitude.setAttitude(0,0); attitude.resize(300,300);
+        const QImage level=render(attitude);
+        // Center is at (150,146), aperture radius=96. Sky is blue, ground is brown.
+        QVERIFY(level.pixelColor(195,110).blue()>level.pixelColor(195,110).red());
+        QVERIFY(level.pixelColor(195,180).red()>level.pixelColor(195,180).blue());
+        attitude.setAttitude(30,0); const QImage noseUp=render(attitude);
+        QVERIFY(noseUp.pixelColor(195,180).blue()>noseUp.pixelColor(195,180).red());
+        attitude.setAttitude(std::numeric_limits<double>::quiet_NaN(),0); QVERIFY(!attitude.valueAvailable());
+    }
+    void gaugeRenderMatrix()
+    {
+        QWidget gallery; QGridLayout layout(&gallery);
+        CircularGauge completion,temperature,needle,missing;
+        CompassGauge heading; AttitudeMeter attitude;
+        completion.useCompletionRatePreset("Completion","%"); completion.setValue(68); completion.setTargetValue(80);
+        temperature.setTitle("Temperature"); temperature.setUnit("°C"); temperature.setRange(-20,120);
+        temperature.setMajorTickStep(20); temperature.setLabelPrecision(1); temperature.setValue(76); temperature.setTargetValue(65);
+        temperature.setRanges({{-20,70,QColor("#67C23A"),5,"Normal"},{70,90,QColor("#E6A23C"),5,"Warning"},{90,120,QColor("#F56C6C"),5,"High"}});
+        needle.setTitle("Motor speed"); needle.setUnit("rpm"); needle.setRange(0,8000); needle.setValue(3200);
+        needle.setDisplayMode(CircularGauge::DisplayMode::Needle); needle.setTickCount(4);
+        needle.setRanges({{0,6000,QColor("#67C23A"),5,"Normal"},{6000,8000,QColor("#F56C6C"),5,"High"}});
+        needle.setTargetValue(6000); heading.setHeading(72); attitude.setAttitude(8,18);
+        missing.setTitle("No data / long sensor name"); missing.setUnit("bar"); missing.setValueAvailable(false);
+        QWidget* widgets[]={&completion,&temperature,&needle,&heading,&attitude,&missing};
+        for(int i=0;i<6;++i) layout.addWidget(widgets[i],i/3,i%3);
+        const QString capture=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        auto* manager=StyleManagerAdapter::instance();
+        for(const QString theme:{QString("dark"),QString("light")}) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for (const QSize size : {QSize(300,300),QSize(180,210),QSize(420,240)}) {
+                for(auto* widget:widgets) widget->setFixedSize(size);
+                gallery.adjustSize(); gallery.show(); QApplication::processEvents();
+                for(auto* widget:widgets) QVERIFY(!render(*widget).isNull());
+                if(!capture.isEmpty()) {
+                    QDir().mkpath(capture);
+                    QVERIFY(gallery.grab().save(capture+QString("/gauges-%1-%2x%3.png").arg(theme).arg(size.width()).arg(size.height())));
+                }
+            }
+            needle.setValue(0); QVERIFY(!render(needle).isNull()); needle.setValue(8000); QVERIFY(!render(needle).isNull());
+            completion.setEnabled(false); QVERIFY(!render(completion).isNull()); completion.setEnabled(true);
+        }
+        QVERIFY(manager->setCurrentTheme("dark")); QVERIFY(manager->updateTheme());
+    }
+    void gaugeDemoTimerStopsWhenHidden()
+    {
+        GaugesPage page;
+        auto* timer=page.findChild<QTimer*>("GaugeDemoTimer"); QVERIFY(timer);
+        auto* enabled=page.findChild<QCheckBox*>("GaugeDemoAnimate"); QVERIFY(enabled);
+        QVERIFY(!timer->isActive()); enabled->setChecked(true); QVERIFY(!timer->isActive());
+        page.show(); QTest::qWait(20); QVERIFY(timer->isActive());
+        page.hide(); QVERIFY(!timer->isActive());
+        page.show(); QTest::qWait(20); QVERIFY(timer->isActive());
+        enabled->setChecked(false); QVERIFY(!timer->isActive());
+    }
+    void acousticFftNormalization()
+    {
+        constexpr int n=1024; const double pi=std::acos(-1.);
+        QVector<double> samples(n);
+        for(int i=0;i<n;++i) samples[i]=.5*std::sin(2*pi*64*i/n);
+        AcousticSpectrumFrame frame;
+        QVERIFY(AcousticAnalysis::spectrum(samples,1024,&frame,AcousticUnit::FullScale,SpectrumScaling::Power,AcousticWindow::Rectangular));
+        QVERIFY(frame.isValid()); QCOMPARE(frame.levelsDb.size(),513);
+        QVERIFY(std::abs(frame.linearPower[64]-.125)<1e-12);
+        QVERIFY(std::abs(frame.levelsDb[64]-10*std::log10(.125))<1e-9);
+        for(auto window:{AcousticWindow::Rectangular,AcousticWindow::Hann}) {
+            QVERIFY(AcousticAnalysis::spectrum(samples,1024,&frame,AcousticUnit::FullScale,SpectrumScaling::PowerSpectralDensity,window));
+            QVERIFY(std::abs(AcousticAnalysis::bandPowerDb(frame,0,512)-10*std::log10(.125))<1e-9);
+        }
+        // A different FFT/bin width changes PSD bin heights but not integrated tone power.
+        samples.resize(512); for(int i=0;i<512;++i) samples[i]=.5*std::sin(2*pi*64*i/1024);
+        QVERIFY(AcousticAnalysis::spectrum(samples,1024,&frame));
+        QVERIFY(std::abs(AcousticAnalysis::bandPowerDb(frame,0,512)-10*std::log10(.125))<1e-9);
+        samples.fill(.5,1024);
+        QVERIFY(AcousticAnalysis::spectrum(samples,1024,&frame,AcousticUnit::FullScale,SpectrumScaling::Power,AcousticWindow::Rectangular,false));
+        QVERIFY(std::abs(frame.linearPower[0]-.25)<1e-12); // DC is not doubled
+        for(int i=0;i<1024;++i) samples[i]=(i%2 ? -.5 : .5);
+        QVERIFY(AcousticAnalysis::spectrum(samples,1024,&frame,AcousticUnit::FullScale,SpectrumScaling::Power,AcousticWindow::Rectangular,false));
+        QVERIFY(std::abs(frame.linearPower[512]-.25)<1e-12); // Nyquist is not doubled
+        const AcousticSpectrumFrame saved=frame;
+        samples[0]=std::numeric_limits<double>::quiet_NaN(); QString error;
+        QVERIFY(!AcousticAnalysis::spectrum(samples,1024,&frame,AcousticUnit::FullScale,SpectrumScaling::Power,AcousticWindow::Hann,true,-160,&error));
+        QVERIFY(!error.isEmpty()); QCOMPARE(frame.linearPower,saved.linearPower);
+        QVERIFY(!AcousticAnalysis::spectrum(QVector<double>(1000,0),1024,&frame));
+        QVERIFY(!AcousticAnalysis::spectrum(QVector<double>(1024,0),0,&frame));
+    }
+    void acousticCalibrationAndStatistics()
+    {
+        QVector<double> samples(1024); const double pi=std::acos(-1.);
+        for(int i=0;i<samples.size();++i) samples[i]=.5*std::sin(2*pi*64*i/1024);
+        QVector<double> pressure;
+        QVERIFY(AcousticAnalysis::scaleToMicroPascals(samples,100000,&pressure));
+        AcousticSpectrumFrame normalized,calibrated;
+        QVERIFY(AcousticAnalysis::spectrum(samples,1024,&normalized));
+        QVERIFY(AcousticAnalysis::spectrum(pressure,1024,&calibrated,AcousticUnit::MicroPascal));
+        QVERIFY(std::abs(AcousticAnalysis::bandPowerDb(calibrated,0,512)-AcousticAnalysis::bandPowerDb(normalized,0,512)-100)<1e-9);
+        QVERIFY(calibrated.levelLabel().contains("μPa²/Hz")); QVERIFY(normalized.levelLabel().contains("dBFS/Hz"));
+        const auto prior=pressure; QVERIFY(!AcousticAnalysis::scaleToMicroPascals(samples,0,&pressure)); QCOMPARE(pressure,prior);
+        const auto stats=AcousticAnalysis::statistics({-1,-.5,0,.5,1,std::numeric_limits<double>::quiet_NaN()});
+        QCOMPARE(stats.validCount,5); QCOMPARE(stats.invalidCount,1); QCOMPARE(stats.clippedCount,2);
+        QCOMPARE(stats.mean,0.); QVERIFY(std::abs(stats.rms-std::sqrt(.5))<1e-12);
+        const auto silence=AcousticAnalysis::statistics({0,0,0}); QVERIFY(silence.valid()); QVERIFY(std::isinf(silence.rmsDb) && silence.rmsDb<0);
+        QVERIFY(!AcousticAnalysis::statistics({std::numeric_limits<double>::infinity()}).valid());
+        const auto huge=AcousticAnalysis::statistics({1e300,-1e300}); QVERIFY(std::isfinite(huge.rms)); QCOMPARE(huge.mean,0.);
+    }
+    void waveformCapacityGapsAndCursors()
+    {
+        AcousticWaveformPlot plot; QVERIFY(plot.configure(8,16)); const int channel=plot.addChannel("CH1"); QCOMPARE(channel,0);
+        QVector<double> block(8,.25);
+        QVERIFY(plot.appendSamples(channel,0,block)); QVERIFY(plot.appendSamples(channel,1,block)); QCOMPARE(plot.storedPointCount(channel),16);
+        QVERIFY(!plot.appendSamples(channel,1,block)); QCOMPARE(plot.storedPointCount(channel),16);
+        QVERIFY(plot.appendSamples(channel,3,block)); QVERIFY(plot.storedPointCount(channel)<=16);
+        bool hasGap=false; for(auto it=plot.graph(0)->data()->constBegin();it!=plot.graph(0)->data()->constEnd();++it) if(std::isnan(it->value)) hasGap=true;
+        QVERIFY(hasGap); QVERIFY(!plot.appendSamples(channel,4,{std::numeric_limits<double>::infinity()}));
+        plot.setFollowLatest(false); const auto range=plot.xAxis->range(); QVERIFY(plot.appendSamples(channel,4,block));
+        QCOMPARE(plot.xAxis->range().upper,range.upper);
+        QSignalSpy cursors(&plot,&AcousticWaveformPlot::cursorsChanged); QVERIFY(plot.setCursors(1.25,1.5));
+        QCOMPARE(plot.cursorDeltaSeconds(),.25); QCOMPARE(cursors.count(),1);
+        QVERIFY(plot.fitAmplitude()); plot.clearSamples(); QCOMPARE(plot.storedPointCount(0),0);
+        QVERIFY(!plot.fitAmplitude()); QVERIFY(!plot.configure(0,16));
+    }
+    void spectrumHoldAndBandPower()
+    {
+        QVector<double> samples(1024); for(int i=0;i<1024;++i) samples[i]=.5*std::sin(2*std::acos(-1.)*64*i/1024);
+        AcousticSpectrumFrame frame; QVERIFY(AcousticAnalysis::spectrum(samples,1024,&frame));
+        AcousticSpectrumPlot plot; QVERIFY(plot.setFrame(frame)); QCOMPARE(plot.peakFrequencyHz(),64.);
+        plot.setPeakHoldEnabled(true); const double high=plot.peakHoldLevels()[64];
+        for(auto& value:samples) value*=.5; QVERIFY(AcousticAnalysis::spectrum(samples,1024,&frame)); QVERIFY(plot.setFrame(frame));
+        QCOMPARE(plot.peakHoldLevels()[64],high); QVERIFY(frame.levelsDb[64]<high);
+        plot.resetPeakHold(); QCOMPARE(plot.peakHoldLevels()[64],frame.levelsDb[64]);
+        QVERIFY(plot.setLogFrequency(true)); QVERIFY(plot.xAxis->range().lower>0); QVERIFY(!plot.setFrequencyRange(0,100));
+        QVERIFY(plot.setLogFrequency(false)); QVERIFY(plot.setFrequencyRange(0,512));
+        QVERIFY(std::abs(plot.bandPowerDb(0,512)-10*std::log10(.03125))<1e-9);
+        frame.scaling=SpectrumScaling::Power; QVERIFY(plot.setFrame(frame)); QVERIFY(std::isnan(plot.bandPowerDb(0,512)));
+    }
+    void spectrogramRingAndGaps()
+    {
+        AcousticSpectrumFrame frame; QVERIFY(AcousticAnalysis::spectrum(QVector<double>(16,.25),16,&frame));
+        AcousticSpectrogramPlot plot; QVERIFY(plot.configure(frame,4,.5));
+        QVERIFY(plot.appendFrame(1,frame)); QVERIFY(plot.appendFrame(1.5,frame)); QVERIFY(plot.appendFrame(2.5,frame));
+        QCOMPARE(plot.storedFrameCount(),3); QCOMPARE(plot.timeAt(0),1.); QCOMPARE(plot.timeAt(3),2.5);
+        QVERIFY(std::isnan(plot.levelAt(0,2))); QCOMPARE(plot.levelAt(0,3),frame.levelsDb[0]);
+        plot.replot(QCustomPlot::rpImmediateRefresh);
+        QCOMPARE(plot.colorMap()->data()->alpha(0,2),static_cast<unsigned char>(0));
+        QCOMPARE(plot.colorMap()->data()->alpha(0,3),static_cast<unsigned char>(255));
+        QVERIFY(!plot.appendFrame(2.5,frame)); QVERIFY(!plot.appendFrame(2.7,frame));
+        AcousticSpectrumFrame other=frame; other.unit=AcousticUnit::MicroPascal; QVERIFY(!plot.appendFrame(3,other));
+        QVERIFY(plot.appendFrame(20,frame)); QCOMPARE(plot.storedFrameCount(),1); QVERIFY(std::isnan(plot.levelAt(0,0)));
+        QVERIFY(plot.setLevelRange(-100,-10)); plot.replot(QCustomPlot::rpImmediateRefresh);
+        QCOMPARE(plot.colorMap()->dataRange().lower,-100.); QCOMPARE(plot.levelAt(0,3),frame.levelsDb[0]);
+        plot.clearHistory(); QCOMPARE(plot.storedFrameCount(),0); QVERIFY(std::isnan(plot.timeAt(0)));
+    }
+    void recordingTimelineValidationAndSelection()
+    {
+        RecordingTimelinePlot plot;
+        QVector<RecordingInterval> records{{"a","CH1","one.wav",0,10,RecordingState::Ready},{"b","CH2","two.wav",5,15,RecordingState::Flagged}};
+        QVERIFY(plot.setRecords(records)); QVERIFY(plot.selectRecord("b")); QCOMPARE(plot.selectedRecordId(),QString("b"));
+        auto invalid=records; invalid[1].id="a"; QVERIFY(!plot.setRecords(invalid)); QCOMPARE(plot.records().size(),2);
+        plot.resize(700,300); plot.show(); plot.replot(QCustomPlot::rpImmediateRefresh);
+        QSignalSpy selected(&plot,&RecordingTimelinePlot::recordSelected);
+        QTest::mouseClick(&plot,Qt::LeftButton,Qt::NoModifier,QPoint(qRound(plot.xAxis->coordToPixel(7)),qRound(plot.yAxis->coordToPixel(1))));
+        QCOMPARE(selected.count(),1); QCOMPARE(selected.first().first().toString(),QString("a"));
+        plot.setUtcTimeAxis(true); QVERIFY(plot.xAxis->label().contains("UTC"));
+        QVERIFY(plot.setRecords({})); QCOMPARE(plot.itemCount(),0); QVERIFY(plot.selectedRecordId().isEmpty());
+    }
+    void acquisitionAndQualityMetrics()
+    {
+        AcquisitionStatusPanel status; QVERIFY(std::isnan(status.lossPercent())); QVERIFY(std::isnan(status.remainingSeconds()));
+        AcquisitionStatus value; value.state=AcquisitionState::Recording; value.sampleRate=48000; value.channels=4;
+        value.receivedSamples=900; value.lostSamples=100; value.totalBytes=1000; value.freeBytes=250; value.writeBytesPerSecond=10;
+        QVERIFY(status.setStatus(value)); QCOMPARE(status.lossPercent(),10.); QCOMPARE(status.remainingSeconds(),25.);
+        value.freeBytes=2000; QVERIFY(!status.setStatus(value)); QCOMPARE(status.status().freeBytes,quint64(250));
+        SignalQualityMeter quality; quality.setSamples({1,-1,.5,-.5,0,std::numeric_limits<double>::quiet_NaN()});
+        QCOMPARE(quality.statistics().clippedCount,2); QCOMPARE(quality.statistics().invalidCount,1);
+        auto invalid=quality.statistics(); invalid.validCount=100; QVERIFY(!quality.setStatistics(invalid));
+        quality.setSamples({0,0}); QVERIFY(std::isinf(quality.statistics().rmsDb));
+        quality.resize(360,230); QVERIFY(!render(quality).isNull());
+    }
+    void acousticDemoRenderingAndPause()
+    {
+        AcousticPage page; page.resize(1000,760); page.show(); QApplication::processEvents();
+        auto* timer=page.findChild<QTimer*>("AcousticDemoTimer"); QVERIFY(timer); QVERIFY(!timer->isActive());
+        auto* run=page.findChild<QCheckBox*>("AcousticDemoRun"); QVERIFY(run);
+        auto* waveform=page.findChild<AcousticWaveformPlot*>(); QVERIFY(waveform); QCOMPARE(waveform->channelCount(),2);
+        auto* spectrum=page.findChild<AcousticSpectrumPlot*>(); QVERIFY(spectrum); QVERIFY(spectrum->frame().isValid());
+        auto* spectrogram=page.findChild<AcousticSpectrogramPlot*>(); QVERIFY(spectrogram);
+        QVERIFY(spectrogram->storedFrameCount()>80); QVERIFY(spectrogram->storedFrameCount()<spectrogram->historyCapacity());
+        run->setChecked(true); QVERIFY(timer->isActive()); page.hide(); QVERIFY(!timer->isActive()); page.show(); QVERIFY(timer->isActive());
+        run->setChecked(false); QVERIFY(!timer->isActive());
+        const QString capture=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        auto* manager=StyleManagerAdapter::instance();
+        for(const QString theme:{QString("dark"),QString("light")}) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for(auto* plot:page.findChildren<StyledPlot*>()) {
+                plot->replot(QCustomPlot::rpImmediateRefresh);
+                QCOMPARE(plot->xAxis->tickLabelColor(),ThemeTokens::instance()->textSecondary());
+                if(!capture.isEmpty()) { QDir().mkpath(capture); QVERIFY(plot->toPixmap(900,320,1.0).save(capture+"/"+plot->objectName()+"-"+theme+".png")); }
+            }
+        }
+        QVERIFY(manager->setCurrentTheme("dark")); QVERIFY(manager->updateTheme());
+    }
+    void sharedPlotNavigationAndMenu()
+    {
+        StyledPlot plot; plot.resize(680,360); plot.setPlotTitle("Navigation");
+        plot.setViewRanges(QCPRange(0,10),QCPRange(0,10)); plot.captureResetView(); plot.show(); plot.setFocus();
+        plot.replot(QCustomPlot::rpImmediateRefresh);
+        auto point=[&](double x,double y) { return QPoint(qRound(plot.xAxis->coordToPixel(x)),qRound(plot.yAxis->coordToPixel(y))); };
+        QSignalSpy selections(&plot,&StyledPlot::selectionMade);
+        plot.setInteractionMode(StyledPlot::InteractionMode::RectangleZoom);
+        QTest::mousePress(plot.windowHandle(),Qt::LeftButton,Qt::NoModifier,point(2,8));
+        QTest::mouseMove(plot.windowHandle(),point(8,2));
+        QTest::mouseRelease(plot.windowHandle(),Qt::LeftButton,Qt::NoModifier,point(8,2));
+        QCOMPARE(selections.count(),1); QVERIFY(plot.xAxis->range().size()<7); QVERIFY(plot.yAxis->range().size()<7);
+        plot.setInteractionMode(StyledPlot::InteractionMode::Pan);
+        QTest::mouseDClick(plot.windowHandle(),Qt::LeftButton,Qt::NoModifier,point(5,5));
+        QCOMPARE(plot.xAxis->range().lower,0.); QCOMPARE(plot.xAxis->range().upper,10.);
+        plot.setInteractionMode(StyledPlot::InteractionMode::RectangleSelect);
+        QTest::mousePress(plot.windowHandle(),Qt::LeftButton,Qt::NoModifier,point(1,9));
+        QTest::mouseMove(plot.windowHandle(),point(4,6));
+        QTest::mouseRelease(plot.windowHandle(),Qt::LeftButton,Qt::NoModifier,point(4,6));
+        QCOMPARE(selections.count(),2); QCOMPARE(plot.xAxis->range().size(),10.);
+        plot.setInteractionMode(StyledPlot::InteractionMode::Pan);
+        QTest::mousePress(plot.windowHandle(),Qt::LeftButton,Qt::ShiftModifier,point(2,8));
+        QTest::mouseMove(plot.windowHandle(),point(8,2));
+        QTest::mouseRelease(plot.windowHandle(),Qt::LeftButton,Qt::ShiftModifier,point(8,2));
+        QVERIFY(plot.xAxis->range().size()<7); QCOMPARE(plot.interactionMode(),StyledPlot::InteractionMode::Pan);
+        QTest::keyClick(&plot,Qt::Key_Home); QCOMPARE(plot.xAxis->range().size(),10.);
+        plot.setInteractionMode(StyledPlot::InteractionMode::RectangleZoom);
+        QTest::mousePress(plot.windowHandle(),Qt::LeftButton,Qt::NoModifier,point(1,9)); QTest::mouseMove(plot.windowHandle(),point(4,6));
+        QTest::keyClick(&plot,Qt::Key_Escape); QVERIFY(!plot.selectionRect()->isActive());
+        QTest::mouseRelease(plot.windowHandle(),Qt::LeftButton,Qt::NoModifier,point(4,6)); QCOMPARE(plot.xAxis->range().size(),10.);
+        bool actionTriggered=false; int clicks=0;
+        connect(&plot,&StyledPlot::coordinateClicked,&plot,[&](double,double,Qt::KeyboardModifiers){ ++clicks; });
+        connect(&plot,&StyledPlot::prepareContextMenu,&plot,[&](QMenu* menu,const QPointF& coordinate) {
+            QVERIFY(coordinate.x()>0); auto* action=menu->addAction("Custom task"); action->setObjectName("custom.task");
+            connect(action,&QAction::triggered,&plot,[&] { actionTriggered=true; });
+        });
+        QScopedPointer<QMenu> menu(plot.createContextMenu(point(5,5)));
+        QVERIFY(menu->findChild<QAction*>("plot.reset")); QVERIFY(menu->findChild<QAction*>("plot.exportPng"));
+        menu->findChild<QAction*>("custom.task")->trigger(); QVERIFY(actionTriggered);
+        menu->findChild<QAction*>("plot.mode.3")->trigger(); QCOMPARE(plot.interactionMode(),StyledPlot::InteractionMode::Inspect);
+        QTest::mouseClick(plot.windowHandle(),Qt::LeftButton,Qt::NoModifier,point(5,5)); QCOMPARE(clicks,1);
+    }
+    void plotPopupLifetime()
+    {
+        auto* plot=new StyledPlot; plot->resize(600,300); plot->show(); plot->replot(QCustomPlot::rpImmediateRefresh);
+        plot->customContextMenuRequested(plot->axisRect()->rect().center()); QApplication::processEvents();
+        QPointer<QMenu> menu=qobject_cast<QMenu*>(QApplication::activePopupWidget()); QVERIFY(menu);
+        delete plot; QApplication::processEvents(); QVERIFY(menu.isNull());
+    }
+    void historyThresholdAndFrozenViewport()
+    {
+        BearingHistoryPlot plot; QVERIFY(plot.configure(-90,90,3,4,1));
+        QVERIFY(!plot.setLevelRange(0,-60));
+        QVERIFY(plot.appendFrame(10,{-50,-20,-5})); QVERIFY(plot.setLevelRange(-60,0)); QVERIFY(plot.setDisplayThreshold(-10));
+        plot.replot(QCustomPlot::rpImmediateRefresh);
+        QCOMPARE(plot.levelAt(0,3),-50.); QCOMPARE(plot.colorMap()->data()->alpha(0,3),static_cast<unsigned char>(0));
+        QCOMPARE(plot.colorMap()->data()->alpha(2,3),static_cast<unsigned char>(255));
+        plot.clearDisplayThreshold(); plot.replot(QCustomPlot::rpImmediateRefresh);
+        QCOMPARE(plot.colorMap()->data()->alpha(0,3),static_cast<unsigned char>(255));
+        plot.notifyUserNavigation(); QVERIFY(!plot.followsLatest());
+        QVERIFY(plot.setViewRanges(QCPRange(-30,30),QCPRange(8,9))); QVERIFY(plot.appendFrame(11,{-45,-15,-3}));
+        QCOMPARE(plot.yAxis->range().lower,8.); QCOMPARE(plot.xAxis->range().upper,30.);
+        plot.resetView(); QVERIFY(plot.followsLatest()); QCOMPARE(plot.yAxis->range().upper,11.5); QCOMPARE(plot.xAxis->range().lower,-90.);
+        QScopedPointer<QMenu> menu(plot.createContextMenu(QPoint(100,100)));
+        QVERIFY(menu->findChild<QAction*>("history.colors")); QVERIFY(menu->findChild<QAction*>("history.follow"));
+        QTemporaryDir capture; QVERIFY(plot.saveSnapshot(capture.filePath("history.png"),600,300));
+        QVERIFY(QFileInfo(capture.filePath("history.png")).size()>0);
+    }
+    void multiBeamPickingAndVisibility()
+    {
+        BeamPatternPlot plot; const QVector<double> angles{0,90,180,270,360};
+        QVERIFY(plot.setBeam("A","Array A",angles,{-50,-3,-40,-20,-50}));
+        QVERIFY(plot.setBeam("B","Array B",angles,{-45,-12,-30,-8,-45})); QCOMPARE(plot.beamCount(),2);
+        QVERIFY(!plot.setBeam("bad","bad",{0,90,80},{1,2,3})); QCOMPARE(plot.beamCount(),2);
+        plot.resize(700,320); plot.show(); plot.replot(QCustomPlot::rpImmediateRefresh);
+        QSignalSpy picked(&plot,&BeamPatternPlot::beamPicked);
+        const QPoint at(qRound(plot.xAxis->coordToPixel(90)),qRound(plot.yAxis->coordToPixel(-3)));
+        QTest::mouseClick(&plot,Qt::LeftButton,Qt::NoModifier,at); QCOMPARE(picked.count(),1); QCOMPARE(picked.first().at(0).toString(),QString("A"));
+        QVERIFY(plot.setBeamVisible("A",false)); QVERIFY(!plot.graph(0)->visible());
+        QVERIFY(plot.removeBeam("A")); QCOMPARE(plot.beamCount(),1);
+        QVERIFY(!plot.setBearingRange(-90,90)); plot.clearBeams(); QVERIFY(plot.setBearingRange(-90,90));
+    }
+    void demonKnownAMAndAntiAlias()
+    {
+        const int n=4096; const double rate=8192,pi=std::acos(-1.); QVector<double> samples(n);
+        for(int i=0;i<n;++i) { const double time=i/rate; samples[i]=(1+.5*std::cos(2*pi*32*time)+.2*std::cos(2*pi*320*time))*std::cos(2*pi*2048*time); }
+        DemonSettings settings; settings.carrierLowerHz=1500; settings.carrierUpperHz=2600; settings.maximumModulationHz=100; settings.decimation=16;
+        DemonResult result; QString error; QVERIFY2(DemonAnalysis::analyze(samples,rate,settings,&result,&error),qPrintable(error)); QVERIFY(result.isValid());
+        QCOMPARE(result.spectrum.sampleRate,512.); QCOMPARE(result.normalizedEnvelope.size(),256);
+        QVERIFY(std::abs(result.meanEnvelope-1)<1e-10);
+        DemonSpectrumPlot plot; QVERIFY(plot.setResult(result)); QCOMPARE(plot.peakFrequencyHz(),32.);
+        DemonResult external=result; external.normalizedEnvelope.clear(); external.meanEnvelope=std::numeric_limits<double>::quiet_NaN();
+        QVERIFY(external.isValid()); QVERIFY(plot.setResult(external)); QCOMPARE(plot.peakFrequencyHz(),32.);
+        QVERIFY(std::abs(AcousticAnalysis::bandPowerDb(result.spectrum,0,256)-10*std::log10(.125))<1e-8);
+        QVERIFY(result.spectrum.linearPower[96]<1e-15); // 320 Hz must not alias to 192 Hz after decimation
+        QVERIFY(result.spectrum.levelLabel().contains("包络")); QVERIFY(!result.spectrum.levelLabel().contains("dBFS"));
+        QVector<double> amplified=samples; for(auto& value:amplified)value*=3;
+        DemonResult gainInvariant; QVERIFY(DemonAnalysis::analyze(amplified,rate,settings,&gainInvariant));
+        QVERIFY(std::abs(gainInvariant.meanEnvelope/result.meanEnvelope-3)<1e-10);
+        for(int i=0;i<result.spectrum.linearPower.size();++i)
+            QVERIFY(std::abs(result.spectrum.linearPower[i]-gainInvariant.spectrum.linearPower[i])<1e-10);
+        const auto original=result.spectrum.linearPower;
+        auto invalid=settings; invalid.decimation=3; QVERIFY(!DemonAnalysis::analyze(samples,rate,invalid,&result)); QCOMPARE(result.spectrum.linearPower,original);
+        invalid=settings; invalid.maximumModulationHz=300; QVERIFY(!DemonAnalysis::analyze(samples,rate,invalid,&result));
+        QVERIFY(!DemonAnalysis::analyze(QVector<double>(n,0),rate,settings,&result));
+        QVector<double> outside(n); for(int i=0;i<n;++i) outside[i]=std::sin(2*pi*100*i/rate);
+        QVERIFY(!DemonAnalysis::analyze(outside,rate,settings,&result));
+        DemonHistoryPlot history; QVERIFY(history.configure(result,4,.5)); QVERIFY(history.appendResult(0,result));
+        DemonResult changed=result; changed.settings.carrierLowerHz=1600; QVERIFY(!history.appendResult(.5,changed));
+        LofarPlot lofar; QVERIFY(!lofar.configure(result.spectrum,4,.5,0,100));
+        AcousticSpectrumFrame raw; QVERIFY(AcousticAnalysis::spectrum(samples,rate,&raw)); QVERIFY(lofar.configure(raw,4,.5,0,400)); QVERIFY(lofar.appendFrame(0,raw));
+    }
+    void rateCounterResetAndUnits()
+    {
+        TransferRateMeter meter; QSignalSpy resets(&meter,&TransferRateMeter::baselineReset);
+        QVERIFY(meter.addCounters(0,100,200)); QVERIFY(!meter.hasRates());
+        QVERIFY(meter.addCounters(2,2100,1200)); QCOMPARE(meter.receiveBytesPerSecond(),1000.); QCOMPARE(meter.sendBytesPerSecond(),500.);
+        QVERIFY(!meter.addCounters(1,2200,1300)); QCOMPARE(meter.receiveBytesPerSecond(),1000.);
+        QVERIFY(meter.addCounters(3,5,7)); QVERIFY(!meter.hasRates()); QCOMPARE(resets.count(),2);
+        QVERIFY(meter.addCounters(4,1005,507)); QCOMPARE(meter.receiveBytesPerSecond(),1000.);
+        meter.setStale(true); QVERIFY(std::isnan(meter.receiveBytesPerSecond())); meter.setStale(false); QVERIFY(meter.hasRates());
+        QVERIFY(meter.addCounters(40,9999,9999)); QVERIFY(!meter.hasRates());
+        QVERIFY(meter.setRates(41,1048576,2097152)); QCOMPARE(meter.receiveBytesPerSecond(),1048576.);
+        meter.setDisplayUnit(TransferRateMeter::DisplayUnit::BinaryMiBPerSecond); QCOMPARE(meter.displayUnit(),TransferRateMeter::DisplayUnit::BinaryMiBPerSecond);
+        QVERIFY(!meter.setLinkCapacity(-1)); QVERIFY(meter.setLinkCapacity(1e9));
+        QVERIFY(meter.addCounters(42,12000,12000)); QVERIFY(!meter.hasRates());
+    }
+    void storageCapacityValidationAndClicks()
+    {
+        StorageCapacityMeter meter; QVERIFY(meter.setCapacity(1024,{{"raw",256,{}},{"processed",256,{}}})); QCOMPARE(meter.usedBytes(),quint64(512)); QCOMPARE(meter.freeBytes(),quint64(512));
+        QVERIFY(!meter.setCapacity(100,{{"bad",101,{}}})); QCOMPARE(meter.totalBytes(),quint64(1024));
+        const quint64 largest=std::numeric_limits<quint64>::max(); QVERIFY(!meter.setCapacity(largest,{{"a",largest-10,{}},{"b",11,{}}}));
+        meter.resize(400,230); meter.show(); QSignalSpy selected(&meter,&StorageCapacityMeter::segmentSelected);
+        QTest::mouseClick(&meter,Qt::LeftButton,Qt::NoModifier,QPoint(40,95)); QCOMPARE(selected.count(),1); QCOMPARE(selected.first().at(0).toInt(),0);
+        QTest::mouseClick(&meter,Qt::LeftButton,Qt::NoModifier,QPoint(370,95)); QCOMPARE(selected.last().at(0).toInt(),-1);
+        QVERIFY(!meter.setWarningPercent(101)); QVERIFY(meter.setWarningPercent(80));
+    }
+    void rateHistoryBoundsAndReset()
+    {
+        RateHistoryPlot plot; QVERIFY(plot.configure(4,10,"MiB/s",2)); plot.addSeries("rx"); plot.addSeries("tx");
+        QVERIFY(plot.appendValues(1,{1,2})); QVERIFY(plot.appendValues(2,{2,3})); QVERIFY(plot.appendValues(3,{3,4})); QVERIFY(plot.appendValues(10,{10,20}));
+        QCOMPARE(plot.storedPointCount(),4); bool gap=false;
+        for(auto it=plot.graph(0)->data()->constBegin();it!=plot.graph(0)->data()->constEnd();++it) if(std::isnan(it->value))gap=true;
+        QVERIFY(gap); QVERIFY(!plot.appendValues(10,{1,2}));
+        plot.notifyUserNavigation(); plot.setViewRanges(QCPRange(2,3),QCPRange(0,10)); QVERIFY(plot.appendValues(11,{11,21}));
+        QCOMPARE(plot.xAxis->range().lower,2.); plot.resetView(); QCOMPARE(plot.xAxis->range().upper,11.); QVERIFY(plot.followsLatest());
+    }
+    void taskQueueDashboardValidationAndInteraction()
+    {
+        TaskQueueDashboard tasks; tasks.resize(420,380);
+        QVERIFY(tasks.setQueues({{"import","导入",10,2,90,3},{"index","索引",20,4,70,1}}));
+        QVERIFY(!tasks.setQueues({{"dup","A",0,0,0,0},{"dup","B",0,0,0,0}}));
+        QVERIFY(!tasks.setQueues({{"overflow","Overflow",std::numeric_limits<quint64>::max(),1,0,0}}));
+        QCOMPARE(tasks.queues().size(),2); QCOMPARE(tasks.queues().first().id,QString("import"));
+        QSignalSpy activated(&tasks,&TaskQueueDashboard::stateActivated);
+        tasks.show(); tasks.activateWindow(); tasks.setFocus(); QTest::qWait(10);
+        QTest::mouseClick(&tasks,Qt::LeftButton,Qt::NoModifier,QPoint(360,105));
+        QCOMPARE(activated.count(),1); QCOMPARE(activated.last().at(0).toString(),QString("import"));
+        QCOMPARE(qvariant_cast<TaskQueueDashboard::State>(activated.last().at(1)),TaskQueueDashboard::State::Failed);
+        // Reordering a snapshot preserves keyboard focus on the stable business ID.
+        QVERIFY(tasks.setQueues({{"index","索引",20,4,70,1},{"import","导入",10,2,90,3}}));
+        QTest::keyClick(&tasks,Qt::Key_Left); QTest::keyClick(&tasks,Qt::Key_Return);
+        QCOMPARE(activated.last().at(0).toString(),QString("import"));
+        QCOMPARE(qvariant_cast<TaskQueueDashboard::State>(activated.last().at(1)),TaskQueueDashboard::State::Succeeded);
+        QPointer<QMenu> opened;
+        connect(&tasks,&TaskQueueDashboard::prepareContextMenu,&tasks,[&](QMenu* menu,const QString& id,TaskQueueDashboard::State state) {
+            opened=menu; QCOMPARE(id,QString("import")); QCOMPARE(state,TaskQueueDashboard::State::Succeeded); menu->addAction("Inspect task");
+        });
+        QContextMenuEvent event(QContextMenuEvent::Keyboard,QPoint(),QPoint()); QApplication::sendEvent(&tasks,&event);
+        QVERIFY(opened); opened->close();
+        QVERIFY(tasks.setQueues({})); QVERIFY(tasks.sizeHint().height()<200);
+    }
+    void qualityDashboardValidationAndInteraction()
+    {
+        DataQualityDashboard quality; quality.resize(420,380);
+        QVERIFY(!quality.hasSnapshot()); QVERIFY(std::isnan(quality.coveragePercent())); QVERIFY(std::isnan(quality.passPercent()));
+        DataQualitySnapshot snapshot; snapshot.total=1000; snapshot.valid=700; snapshot.missing=20; snapshot.corrupt=10; snapshot.duplicate=30;
+        QVERIFY(quality.setSnapshot(snapshot)); QCOMPARE(quality.checkedRecords(),quint64(760)); QCOMPARE(quality.uncheckedRecords(),quint64(240));
+        QCOMPARE(quality.coveragePercent(),76.); QVERIFY(qAbs(quality.passPercent()-70000./760)<1e-10);
+        auto invalid=snapshot; invalid.valid=1000; QVERIFY(!quality.setSnapshot(invalid)); QCOMPARE(quality.snapshot().valid,quint64(700));
+        QSignalSpy activated(&quality,&DataQualityDashboard::categoryActivated);
+        quality.show(); quality.activateWindow(); quality.setFocus(); QTest::qWait(10);
+        QTest::mouseClick(&quality,Qt::LeftButton,Qt::NoModifier,QPoint(100,252));
+        QCOMPARE(activated.count(),1); QCOMPARE(qvariant_cast<DataQualityDashboard::Category>(activated.last().first()),DataQualityDashboard::Category::Corrupt);
+        QTest::keyClick(&quality,Qt::Key_Down); QTest::keyClick(&quality,Qt::Key_Space);
+        QCOMPARE(qvariant_cast<DataQualityDashboard::Category>(activated.last().first()),DataQualityDashboard::Category::Duplicate);
+        QPointer<QMenu> opened;
+        connect(&quality,&DataQualityDashboard::prepareContextMenu,&quality,[&](QMenu* menu,DataQualityDashboard::Category category) {
+            opened=menu; QCOMPARE(category,DataQualityDashboard::Category::Duplicate); menu->addAction("Inspect records");
+        });
+        QContextMenuEvent event(QContextMenuEvent::Keyboard,QPoint(),QPoint()); QApplication::sendEvent(&quality,&event);
+        QVERIFY(opened); opened->close();
+        snapshot={}; snapshot.total=std::numeric_limits<quint64>::max(); snapshot.valid=snapshot.total-2; snapshot.corrupt=2;
+        QVERIFY(quality.setSnapshot(snapshot)); QCOMPARE(quality.uncheckedRecords(),quint64(0)); QCOMPARE(quality.coveragePercent(),100.);
+        snapshot.missing=1; QVERIFY(!quality.setSnapshot(snapshot));
+        QVERIFY(quality.setSnapshot({})); QVERIFY(quality.hasSnapshot()); QVERIFY(std::isnan(quality.passPercent()));
+        quality.clear(); QVERIFY(!quality.hasSnapshot());
+    }
+    void dashboardRendering()
+    {
+        auto* manager=StyleManagerAdapter::instance();
+        TaskQueueDashboard queues; DataQualityDashboard quality;
+        queues.setQueues({{"import","录音导入",12,3,280,5},{"index","索引构建",24,4,240,2},{"archive","归档迁移",60,2,120,0}});
+        DataQualitySnapshot snapshot; snapshot.total=10000; snapshot.valid=7800; snapshot.missing=12; snapshot.corrupt=5; snapshot.duplicate=80;
+        quality.setSnapshot(snapshot);
+        const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        for(const QString theme:{QString("dark"),QString("light")}) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for(int width:{280,440}) {
+                queues.resize(width,queues.sizeHint().height()); quality.resize(width,quality.sizeHint().height());
+                const auto a=render(queues),b=render(quality); QVERIFY(!a.isNull()); QVERIFY(!b.isNull());
+                if(!directory.isEmpty()) {
+                    QDir().mkpath(directory);
+                    QVERIFY(a.save(QString("%1/TaskQueues-%2-%3.png").arg(directory,theme).arg(width)));
+                    QVERIFY(b.save(QString("%1/DataQuality-%2-%3.png").arg(directory,theme).arg(width)));
+                }
+            }
+        }
+        queues.setEnabled(false); quality.setEnabled(false); QVERIFY(!render(queues).isNull()); QVERIFY(!render(quality).isNull());
+    }
+    void extendedBusinessDemoRender()
+    {
+        DirectionAnalysisPage direction; DataManagementPage management;
+        direction.resize(1000,760); management.resize(1000,760);
+        auto* demon=direction.findChild<DemonSpectrumPlot*>(); QVERIFY(demon); QCOMPARE(demon->peakFrequencyHz(),32.);
+        auto* bearing=direction.findChild<BearingHistoryPlot*>(); QVERIFY(bearing); QVERIFY(bearing->storedFrameCount()>50);
+        auto verifyPause=[](QWidget& page,const char* timerName,const char* runName) {
+            auto* timer=page.findChild<QTimer*>(timerName); auto* run=page.findChild<QCheckBox*>(runName);
+            QVERIFY(timer); QVERIFY(run); QVERIFY(!timer->isActive()); run->setChecked(true); QVERIFY(!timer->isActive());
+            page.show(); QApplication::processEvents(); QVERIFY(timer->isActive()); page.hide(); QVERIFY(!timer->isActive()); run->setChecked(false);
+        };
+        verifyPause(direction,"DirectionDemoTimer","DirectionDemoRun"); verifyPause(management,"DataManagementTimer","DataManagementRun");
+        const QString capture=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR"); auto* manager=StyleManagerAdapter::instance();
+        for(const QString theme:{QString("dark"),QString("light")}) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for(QWidget* page:{static_cast<QWidget*>(&direction),static_cast<QWidget*>(&management)}) {
+                page->show(); QApplication::processEvents();
+                for(auto* plot:page->findChildren<StyledPlot*>()) {
+                    QScopedPointer<QMenu> menu(plot->createContextMenu(QPoint(100,100))); QVERIFY(menu->findChild<QAction*>("plot.reset"));
+                    if(!capture.isEmpty()) { QDir().mkpath(capture); QVERIFY(plot->saveSnapshot(capture+"/"+plot->objectName()+"-"+theme+".png",900,320)); }
+                }
+                page->hide();
+            }
+            if(!capture.isEmpty()) {
+                auto* capacity=management.findChild<StorageCapacityMeter*>(); auto* rate=management.findChild<TransferRateMeter*>();
+                capacity->resize(420,240); rate->resize(420,240);
+                QVERIFY(render(*capacity).save(capture+"/Capacity-"+theme+".png")); QVERIFY(render(*rate).save(capture+"/TransferRate-"+theme+".png"));
+            }
+        }
+        QVERIFY(manager->setCurrentTheme("dark")); QVERIFY(manager->updateTheme());
     }
     void renderGallery()
     {

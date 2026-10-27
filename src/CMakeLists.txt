@@ -12,6 +12,7 @@ set(UI_PUBLIC_HEADERS
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/StyledWidget.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/FramelessDialog.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/CustomTitleBar.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/WindowPlacement.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/FramelessWidgetWindow.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/BaseWidgetInterface.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/PushButton.h
@@ -55,16 +56,26 @@ set(UI_PUBLIC_HEADERS
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Views/AdvancedTable.h
 
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/CircularGauge.h
-    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/QcGaugeWidget.h
-    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/BasicGauge.h
-    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/SpeedGauge.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/CompassGauge.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/AttitudeMeter.h
 
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Acoustics/AcousticAnalysis.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Acoustics/DemonAnalysis.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/BeamPlots.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/RateHistoryPlot.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/DataManagementDashboards.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/StorageCapacityMeter.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/TransferRateMeter.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/LofarDemonPlots.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/SignalQualityMeter.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/AcquisitionStatusPanel.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/AcousticWaveformPlot.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/AcousticSpectrumPlot.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/HistoryHeatmapPlot.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/AcousticSpectrogramPlot.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/RecordingTimelinePlot.h
+
     # Charts
-    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/QCPBarChart.h
-    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/QCPLineChart.h
-    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/QCPWaterfallChart.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/QCustomplot.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/StyledPlot.h
 )
@@ -77,6 +88,7 @@ set(UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/StyledWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/FramelessDialog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/CustomTitleBar.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/WindowPlacement.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/FramelessWidgetWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/PushButton.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/LineEdit.cpp
@@ -124,12 +136,26 @@ set(UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Views/AdvancedTable.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Views/TreeTable.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/CircularGauge.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/QcGaugeWidget.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/CompassGauge.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/AttitudeMeter.cpp
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/Acoustics/AcousticAnalysis.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Acoustics/DemonAnalysis.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/BeamPlots.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/RateHistoryPlot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/DataManagementDashboards.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/StorageCapacityMeter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/TransferRateMeter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/LofarDemonPlots.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/SignalQualityMeter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Gauges/AcquisitionStatusPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/AcousticWaveformPlot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/AcousticSpectrumPlot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/HistoryHeatmapPlot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/AcousticSpectrogramPlot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/RecordingTimelinePlot.cpp
 
     # Charts
-    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/QCPBarChart.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/QCPLineChart.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Charts/QCPWaterfallChart.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Charts/QCustomplot.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Charts/StyledPlot.cpp
 )

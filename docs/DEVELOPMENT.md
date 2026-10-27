@@ -115,7 +115,7 @@ connect(styleManager, &acss::QtAdvancedStylesheet::themeChanged, this, [this]() 
 
 **类名**: `basewidgets::CircularGauge`
 
-**功能**: 提供高度可定制的圆形仪表盘，支持多段颜色环、动画指针、刻度细分等。
+**功能**: 提供 Arc/Needle 两种原生绘制模式，支持阈值区间、目标值、无数据状态与明暗主题；没有内部动画定时器。
 
 **常用方法**:
 *   `setRange(min, max)`: 设置量程。
@@ -131,8 +131,9 @@ auto gauge = new basewidgets::CircularGauge(this);
 gauge->setTitle("CPU 温度");
 gauge->setUnit("°C");
 gauge->setRange(0, 100);
+gauge->setDisplayMode(basewidgets::CircularGauge::DisplayMode::Needle);
 
-// 自定义分段颜色环
+// 自定义分段颜色环（单位与量程相同，可用第五个字段添加状态文字）
 QVector<basewidgets::CircularGauge::GaugeRange> ranges;
 ranges.append({0, 60, QColor("#4CAF50"), 10});   // 0-60: 绿色
 ranges.append({60, 85, QColor("#FFC107"), 10});  // 60-85: 黄色
@@ -218,22 +219,15 @@ connect(colorPicker, &basewidgets::ColorPickerWidget::colorChanged, [](const QCo
 
 ### 4.5 图表
 
-**类名**: `basewidgets::QCPLineChart`
+**类名**：`AcousticWaveformPlot`、`AcousticSpectrumPlot`、`AcousticSpectrogramPlot`、`RecordingTimelinePlot`。
 
-**功能**: 基于 `QCustomPlot` 封装的折线图，增强了对主题系统的支持（自动跟随暗色/亮色主题调整背景和坐标轴颜色）。
+水声图表继续基于 QCustomPlot，提供采样率、时间戳、有界历史、缺帧、频谱单位、峰值保持和录音 ID 选择接口。
+信号质量与采集/存储仪表使用 `SignalQualityMeter`、`AcquisitionStatusPanel`。
 
-**代码示例**:
-```cpp
-#include <basewidgets/Charts/QCPLineChart.h>
+旧 `QCPLineChart/QCPBarChart/QCPWaterfallChart` 薄封装已移除。通用曲线可用 `StyledPlot::addGraph()`，
+柱状图直接使用 `QCPBars`；不要在每条曲线上修改整个画布主题。
 
-// 创建图表
-auto chart = new basewidgets::QCPLineChart(xAxis, yAxis);
-// 设置数据
-chart->setData(xData, yData);
-
-// 启用主题同步（重要：这会让图表自动适应当前主题颜色）
-chart->installThemeSync(customPlotWidget);
-```
+计算约定、线程模型、单位与接入示例见 [水声控件说明](underwater-acoustics-controls.md)。
 
 ## 5. 目录结构说明
 
@@ -376,3 +370,12 @@ target_link_libraries(package_consumer_demo PRIVATE BaseWidgets::BaseWidgets)
 *   `cmake/package/` 下的 Node 打包辅助脚本，供外部工具链消费。
 
 标准组件库发布应优先使用当前的 `install()/CPack` 路径；兼容入口需要保留，但不应作为默认主流程。
+
+## 高级表格、多屏与数据管理新增能力
+
+请以 [高级表格、多屏窗口与数据管理仪表](tables-multiscreen-and-data-dashboards.md) 的当前 API 为准：
+
+- `AdvancedTable` 可切换 Basic/Standard/Paged，按源记录固定顶部/底部、右键扩展、保留可见选择，并使用原子 CSV 文件写入。
+- `WindowPlacement` 为各顶层窗口提供独立持久化、断屏回退、父屏定位和跨屏请求；主窗口与对话框自动观察屏幕拓扑变化。
+- `TaskQueueDashboard` 与 `DataQualityDashboard` 只展示业务快照，明确失败、空数据和未核验状态，鼠标/键盘/菜单信号由业务接入。
+- 所有演示与可选检查留在 `examples/widgets_demo`，不引入单独 test 工程。

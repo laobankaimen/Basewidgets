@@ -11,6 +11,7 @@
 #include <QHoverEvent>
 
 #include <basewidgets/Core/FramelessWidgetWindow.h>
+#include <basewidgets/Core/WindowPlacement.h>
 #include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
 
@@ -49,6 +50,7 @@ FramelessWidgetWindow::FramelessWidgetWindow(QWidget* parent)
 
     // Persistence belongs to the application, which can choose a unique settings key.
     resize(1100, 760);
+    WindowPlacement::watch(this);
 }
 
 void FramelessWidgetWindow::setResizeableAreaWidth(int width)
@@ -86,14 +88,14 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
                 return true;
             }
 
-            const LONG border_width = m_borderWidth;
+            const LONG border_width = qMax(1,qRound(m_borderWidth*devicePixelRatioF()));
             RECT winrect;
             GetWindowRect(HWND(winId()), &winrect);
 
             long x = GET_X_LPARAM(msg->lParam);
             long y = GET_Y_LPARAM(msg->lParam);
 
-            if(m_bResizeable)
+            if(m_bResizeable && !isMaximized())
             {
                 bool resizeWidth = minimumWidth() != maximumWidth();
                 bool resizeHeight = minimumHeight() != maximumHeight();
@@ -155,8 +157,11 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
             if (0!=*result) return true;
 
             if (m_titleBar) {
-                double dpr = this->devicePixelRatioF();
-                QPoint titlePos = m_titleBar->mapFromGlobal(QPoint(x/dpr,y/dpr));
+                // Convert native global -> native client -> Qt local. Dividing a global
+                // desktop origin by DPR breaks on negative/mixed-scale secondary screens.
+                POINT clientPoint{x,y}; ScreenToClient(msg->hwnd,&clientPoint);
+                const qreal dpr=devicePixelRatioF();
+                const QPoint titlePos=m_titleBar->mapFrom(this,QPoint(qRound(clientPoint.x/dpr),qRound(clientPoint.y/dpr)));
 
                 QWidget* child = m_titleBar->childAt(titlePos);
                 //鼠标标题栏的子控件，让子控件接收事件（过滤掉其他不需要鼠标交互的控件）

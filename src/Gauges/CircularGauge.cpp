@@ -1,466 +1,243 @@
-/*
- * Author: zhoutao@zkhx.com
- * Date: 2025-12-25
- */
 #include <basewidgets/Gauges/CircularGauge.h>
-#include <QPainter>
-#include <QtMath>
+#include <basewidgets/Core/ThemeTokens.h>
+#include "GaugePainting_p.h"
+#include <QPaintEvent>
+#include <algorithm>
+#include <limits>
 
 namespace basewidgets {
-
-CircularGauge::CircularGauge(QWidget* parent)
-    : StyledWidget(parent)
+using namespace gaugePainting;
+CircularGauge::CircularGauge(QWidget* parent) : CircularGauge(nullptr,parent) {}
+CircularGauge::CircularGauge(acss::QtAdvancedStylesheet* manager,QWidget* parent) : StyledWidget(manager,parent)
 {
-    setMinimumSize(160, 160);
+    setMinimumSize(minimumSizeHint());
+    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
+    connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,this,[this] { update(); });
+    refreshDescription();
 }
-
-CircularGauge::CircularGauge(acss::QtAdvancedStylesheet* manager, QWidget* parent)
-    : StyledWidget(manager, parent)
+CircularGauge::~CircularGauge()=default;
+bool CircularGauge::setRange(double minimum,double maximum)
 {
-    setMinimumSize(160, 160);
+    if (!std::isfinite(minimum) || !std::isfinite(maximum) || minimum>=maximum || !std::isfinite(maximum-minimum)) return false;
+    m_min=minimum; m_max=maximum;
+    const double old=m_value; m_value=qBound(m_min,m_value,m_max); m_target=qBound(m_min,m_target,m_max);
+    const auto oldRanges=m_ranges; setRanges(oldRanges);
+    refreshDescription(); update();
+    if (old!=m_value) emit valueChanged(m_value);
+    return true;
 }
-
-CircularGauge::~CircularGauge() = default;
-
-void CircularGauge::setRange(double min, double max)
+void CircularGauge::setValue(double value)
 {
-    m_min = min; m_max = max; update();
+    if (!std::isfinite(value)) { setValueAvailable(false); return; }
+    value=qBound(m_min,value,m_max);
+    const bool changed=value!=m_value;
+    m_value=value; setValueAvailable(true); refreshDescription(); update();
+    if (changed) emit valueChanged(m_value);
 }
-
-void CircularGauge::setValue(double v)
+void CircularGauge::setValueAvailable(bool available)
 {
-    m_value = qBound(m_min, v, m_max);
-    update();
+    if (m_available==available) return;
+    m_available=available; refreshDescription(); update(); emit availabilityChanged(available);
 }
-
-void CircularGauge::setStartAngle(double deg) { m_startDeg = deg; update(); }
-void CircularGauge::setEndAngle(double deg)   { m_endDeg = deg;   update(); }
-void CircularGauge::setTickCount(int count)   { m_tickCount = qMax(1, count); update(); }
-void CircularGauge::setUnit(const QString& unit) { m_unit = unit; update(); }
-void CircularGauge::setTitle(const QString& title) { m_title = title; update(); }
-
-void CircularGauge::setRanges(const QVector<GaugeRange>& ranges)
+QString CircularGauge::number(double value) const
 {
-    m_ranges = ranges; update();
+    const double magnitude=std::abs(value);
+    return locale().toString(value,(magnitude>=1e6 || (magnitude>0 && magnitude<.001)) ? 'g' : 'f',
+                             (magnitude>=1e6 || (magnitude>0 && magnitude<.001)) ? qMax(3,m_precision) : m_precision);
 }
-
-void CircularGauge::setShowTickLabels(bool on) { m_showTickLabels = on; update(); }
-void CircularGauge::setMinorTicksAsDots(bool on) { m_minorTicksAsDots = on; update(); }
-void CircularGauge::setMinorTickDotAtInner(bool on) { m_minorDotAtInner = on; update(); }
-void CircularGauge::setRingWidth(int w) { m_ringWidth = qMax(2, w); update(); }
-void CircularGauge::setShowValueArc(bool on) { m_showValueArc = on; update(); }
-void CircularGauge::setNeedleWidth(int w) { m_needleWidth = qMax(2, w); update(); }
-void CircularGauge::setNeedleWrapRing(bool on) { m_needleWrapRing = on; update(); }
-void CircularGauge::setTickInset(int px) { m_tickInset = qMax(0, px); update(); }
-void CircularGauge::setShowLabelInValue(bool on) { m_showLabelInValue = on; update(); }
-void CircularGauge::setTickLabelFontScale(double s) { m_tickLabelFontScale = qMax(0.5, s); update(); }
-
-void CircularGauge::setMajorTickStep(double step) { m_majorStep = qMax(0.0, step); update(); }
-void CircularGauge::setMinorTicksPerMajor(int count) { m_minorPerMajor = qMax(0, count); update(); }
-void CircularGauge::setTickMajorWidth(int w) { m_tickMajorWidth = qMax(1, w); update(); }
-void CircularGauge::setTickMinorWidth(int w) { m_tickMinorWidth = qMax(1, w); update(); }
-void CircularGauge::setTickMajorLength(int len) { m_tickMajorLength = qMax(1, len); update(); }
-void CircularGauge::setTickMinorLength(int len) { m_tickMinorLength = qMax(1, len); update(); }
-void CircularGauge::setMinorTickAngleRange(double startDeg, double endDeg) { m_minorStartDeg = startDeg; m_minorEndDeg = endDeg; update(); }
-
-static qreal toRadians(qreal deg) { return qDegreesToRadians(deg); }
-
-void CircularGauge::paintEvent(QPaintEvent* e)
+QString CircularGauge::formattedValue() const { return m_available ? number(m_value) : QString::fromUtf8("—"); }
+const CircularGauge::GaugeRange* CircularGauge::activeRange() const
 {
-    Q_UNUSED(e);
-    QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing, true);
-
-    // Calculate dimensions and center point
-    const int w = width();
-    const int h = height();
-    const int size = qMin(w, h);
-    const QPointF c(w/2.0, h/2.0);
-    const qreal outerR = size/2.0 - 6;
-
-    // 1. Draw Dial Background
-    // Use a radial gradient to give a 3D convex look to the dial face
-    // 暗色表盘背景（径向渐变），作为基础底层，提高对比度
-    {
-        QRadialGradient g(c, outerR, c + QPointF(outerR*0.35, outerR*0.35));
-        QColor base = m_dialColor.isValid() ? m_dialColor : QColor(60,60,60);
-        QColor light = base.lighter(120);
-        QColor dark  = base.darker(140);
-        g.setColorAt(0.0, light);
-        g.setColorAt(0.6, base);
-        g.setColorAt(1.0, dark);
-        p.setPen(Qt::NoPen);
-        p.setBrush(g);
-        QRectF dialRect(c.x()-outerR+1, c.y()-outerR+1, outerR*2-2, outerR*2-2);
-        p.drawEllipse(dialRect);
+    for (const auto& band:m_ranges)
+        if (m_value>=band.start && (m_value<band.end || (m_value==m_max && band.end==m_max))) return &band;
+    return nullptr;
+}
+QString CircularGauge::statusText() const
+{
+    if (!m_available) return tr("无数据");
+    if (const auto* range=activeRange()) return range->label;
+    return QString();
+}
+void CircularGauge::refreshDescription()
+{
+    setAccessibleName(m_title);
+    setAccessibleDescription(QString("%1 %2; %3–%4; %5").arg(formattedValue(),m_unit,number(m_min),number(m_max),statusText()));
+    setToolTip(QString("%1\n%2 %3\n%4").arg(m_title,formattedValue(),m_unit,statusText()).trimmed());
+}
+void CircularGauge::setDisplayMode(DisplayMode mode) { m_mode=mode; update(); }
+void CircularGauge::setTitle(const QString& title) { m_title=title; refreshDescription(); update(); }
+void CircularGauge::setUnit(const QString& unit) { m_unit=unit; refreshDescription(); update(); }
+void CircularGauge::setLabelPrecision(int precision) { m_precision=qBound(0,precision,6); refreshDescription(); update(); }
+bool CircularGauge::setRanges(const QVector<GaugeRange>& ranges)
+{
+    if (ranges.size()>64) return false;
+    QVector<GaugeRange> normalized;
+    for (auto band:ranges) {
+        if (!std::isfinite(band.start) || !std::isfinite(band.end) || band.start>=band.end) return false;
+        band.start=qMax(m_min,band.start); band.end=qMin(m_max,band.end);
+        band.width=qBound(2,band.width,16);
+        if (band.start<band.end) normalized.append(band);
     }
-    
-    // Calculate radii for ticks and needle
-    const qreal tickOuterR = outerR - m_ringWidth + m_tickInset;
-    const qreal tickInnerRMajor = outerR - m_tickMajorLength;
-    const qreal tickInnerRMinor = outerR - m_tickMinorLength;
-    const qreal needleLen = outerR - 22;
+    std::sort(normalized.begin(),normalized.end(),[](const GaugeRange& a,const GaugeRange& b) { return a.start<b.start; });
+    for (int i=1;i<normalized.size();++i) if (normalized[i].start<normalized[i-1].end) return false;
+    m_ranges=normalized; refreshDescription(); update(); return true;
+}
+void CircularGauge::setTargetValue(double value)
+{
+    if (!std::isfinite(value)) { clearTargetValue(); return; }
+    m_target=qBound(m_min,value,m_max); m_hasTarget=true; update();
+}
+void CircularGauge::clearTargetValue() { m_hasTarget=false; update(); }
+bool CircularGauge::setAngles(double start,double end)
+{
+    if (!std::isfinite(start) || !std::isfinite(end)) return false;
+    const double sweep=start-end;
+    if (!std::isfinite(sweep) || sweep<30 || sweep>330) return false;
+    m_start=std::fmod(start,360.); m_end=m_start-sweep; update(); return true;
+}
+void CircularGauge::setStartAngle(double angle) { setAngles(angle,m_end); }
+void CircularGauge::setEndAngle(double angle) { setAngles(m_start,angle); }
+double CircularGauge::angleForValue(double value) const
+{
+    if (!std::isfinite(value)) return m_start;
+    const double fraction=(qBound(m_min,value,m_max)-m_min)/(m_max-m_min);
+    return m_start-(m_start-m_end)*fraction;
+}
+void CircularGauge::setTickCount(int count) { m_intervals=qBound(1,count,20); m_majorStep=0; update(); }
+void CircularGauge::setMajorTickStep(double step) { if (std::isfinite(step) && step>=0) { m_majorStep=step; update(); } }
+void CircularGauge::setMinorTicksPerMajor(int count) { m_minorTicks=qBound(0,count,5); update(); }
+void CircularGauge::setShowTickLabels(bool visible) { m_showTickLabels=visible; update(); }
+void CircularGauge::setRingWidth(int width) { m_ringWidth=qBound(4,width,24); update(); }
+void CircularGauge::setShowValueArc(bool visible) { m_showValueArc=visible; update(); }
+void CircularGauge::setDialColor(const QColor& color) { m_dialColor=color; update(); }
+void CircularGauge::setNeedleColor(const QColor& color) { m_needleColor=color; update(); }
+void CircularGauge::setTickColor(const QColor& color) { m_tickColor=color; update(); }
+void CircularGauge::setBaseRingColor(const QColor& color) { m_baseRingColor=color; update(); }
+void CircularGauge::setValueArcColor(const QColor& color) { m_valueArcColor=color; update(); }
 
-    // Total angle span (e.g., 240 degrees for a standard gauge)
-    // 基础量程角度
-    const qreal spanDeg = m_startDeg - m_endDeg; // e.g. 240
-    QRectF arcRect(c.x()-outerR, c.y()-outerR, outerR*2, outerR*2);
-    // 边缘阴影：模拟 SpeedGauge 外圈的暗亮过渡，提升立体感
-    {
-        // 外侧阴影（深色半透明，线宽随半径缩放）
-        QPen outerShadowPen(QColor(0,0,0,90));
-        outerShadowPen.setWidthF(qMax<qreal>(2.0, outerR/35.0));
-        outerShadowPen.setCapStyle(Qt::FlatCap);
-        p.setPen(outerShadowPen);
-        p.setBrush(Qt::NoBrush);
-        p.drawArc(arcRect, int(m_startDeg*16), int((m_endDeg - m_startDeg)*16));
-
-        // 内侧高光（白色半透明，略细，靠内圈）
-        QPen innerHighlightPen(QColor(255,255,255,80));
-        innerHighlightPen.setWidthF(qMax<qreal>(1.5, outerR/60.0));
-        innerHighlightPen.setCapStyle(Qt::FlatCap);
-        p.setPen(innerHighlightPen);
-        // 通过缩小矩形，让高光更靠近内圈位置
-        const qreal shrink = qMax<qreal>(1.0, m_ringWidth*0.35);
-        QRectF innerRect = arcRect.adjusted(shrink, shrink, -shrink, -shrink);
-        p.drawArc(innerRect, int(m_startDeg*16), int((m_endDeg - m_startDeg)*16));
+void CircularGauge::paintEvent(QPaintEvent*)
+{
+    QPainter painter(this); painter.setRenderHint(QPainter::Antialiasing);
+    const auto* tokens=ThemeTokens::instance();
+    const QColor foreground=isEnabled() ? tokens->textPrimary() : tokens->textDisabled();
+    const QColor secondary=isEnabled() ? tokens->textSecondary() : tokens->textDisabled();
+    QColor accent=m_valueArcColor.isValid() ? m_valueArcColor : tokens->primary();
+    if (const auto* band=activeRange()) if (band->color.isValid()) accent=band->color;
+    if (!isEnabled() || !m_available) accent=tokens->textDisabled();
+    const qreal diameter=qMax(1,qMin(width()-24,height()-80));
+    const qreal outer=diameter/2;
+    // At compact sizes dense labels/needles obscure the reading. Keep the same data
+    // as an arc + number + explicit endpoints, instead of painting overlapping text.
+    const bool compact=diameter<180;
+    const bool needleMode=m_mode==DisplayMode::Needle && !compact;
+    const QPointF center(width()/2.,36+outer);
+    const QFont caption=sizedFont(font(),qBound(10.,QFontMetricsF(font()).height()*.9,16.));
+    text(painter,QRectF(12,8,width()-24,22),m_title,caption,secondary);
+    if (m_dialColor.isValid()) { painter.setBrush(m_dialColor); painter.setPen(Qt::NoPen); painter.drawEllipse(center,outer,outer); }
+    const qreal radius=qMax(1.,outer-9);
+    const qreal ringWidth=qMin(qreal(m_ringWidth),qMax(4.,radius*.12));
+    const qreal bandRadius=radius;
+    const qreal trackRadius=m_ranges.isEmpty() ? radius : qMax(1.,radius-12);
+    const QColor track=m_baseRingColor.isValid() ? m_baseRingColor : tokens->borderLight();
+    arc(painter,center,trackRadius,m_start,m_end,track,ringWidth,Qt::RoundCap);
+    // Threshold context has its own outer band; the value arc never overwrites it.
+    for (const auto& band:m_ranges) {
+        const QColor color=isEnabled() ? (band.color.isValid() ? band.color : tokens->primary()) : tokens->border();
+        arc(painter,center,bandRadius,angleForValue(band.start),angleForValue(band.end),color,qMin(qreal(band.width),qMax(2.,radius*.09)));
     }
-    // 如果采用经典三色百分比模式：按百分比绘制三段环；否则绘制基础环与自定义区间
-    if (m_useClassicThreeColor) {
-        // 完全按参考代码方式绘制三段环：使用本地坐标和 270 度参考系
-        p.save();
-        p.translate(c);
-        int r = int(outerR);
-        QPen pen; pen.setCapStyle(Qt::FlatCap); pen.setWidth(qMax(2, m_ringWidth));
-        r = r - m_ringWidth;
-        QRectF rect(-r, -r, r*2, r*2);
-        double angleAll = spanDeg;
-        double angleStart = angleAll * (double)m_percentStart / 100.0;
-        double angleMid   = angleAll * (double)m_percentMid   / 100.0;
-        double angleEnd   = angleAll * (double)m_percentEnd   / 100.0;
-        // 第一段
-        pen.setColor(isEnabled() ? m_colorStart : m_tickColor); p.setPen(pen);
-        p.drawArc(rect, int((270 - m_startDeg - angleStart) * 16), int(angleStart * 16));
-        // 第二段
-        pen.setColor(isEnabled() ? m_colorMid : m_tickColor); p.setPen(pen);
-        p.drawArc(rect, int((270 - m_startDeg - angleStart - angleMid) * 16), int(angleMid * 16));
-        // 第三段
-        pen.setColor(isEnabled() ? m_colorEnd : m_tickColor); p.setPen(pen);
-        p.drawArc(rect, int((270 - m_startDeg - angleStart - angleMid - angleEnd) * 16), int(angleEnd * 16));
-        p.restore();
-    } else {
-        QPen basePen(m_baseRingColor, m_ringWidth, Qt::SolidLine, Qt::FlatCap);
-        p.setPen(basePen);
-        p.setBrush(Qt::NoBrush);
-        p.drawArc(arcRect, int(m_startDeg*16), int((m_endDeg - m_startDeg)*16));
-    }
-
-    // 计算角度
-    const qreal valueRatio = (m_value - m_min) / (m_max - m_min + 0.0001);
-    const qreal valueDeg = m_startDeg - spanDeg * valueRatio;
-
-    // 非经典模式下，按 ranges 提供的区间绘制彩色环
-    if (!m_useClassicThreeColor && !m_ranges.isEmpty()) {
-        for (const auto& r : m_ranges) {
-            double sRatio = (r.start - m_min) / (m_max - m_min + 0.0001);
-            double eRatio = (r.end   - m_min) / (m_max - m_min + 0.0001);
-            qreal sDeg = m_startDeg - spanDeg * sRatio;
-            qreal eDeg = m_startDeg - spanDeg * eRatio;
-            QPen pen(r.color, qMax(2, r.width), Qt::SolidLine, Qt::FlatCap);
-            p.setPen(pen);
-            p.drawArc(arcRect, int(sDeg*16), int((eDeg - sDeg)*16));
+    if (m_available && m_showValueArc && !needleMode)
+        arc(painter,center,trackRadius,m_start,angleForValue(m_value),accent,ringWidth,Qt::RoundCap);
+    const qreal tickRadius=trackRadius-ringWidth/2-5;
+    QVector<double> ticks;
+    if (m_majorStep>0) {
+        const double raw=(m_max-m_min)/m_majorStep;
+        if (std::isfinite(raw) && raw<=20) {
+            for (int i=0;i<=int(std::floor(raw));++i) ticks.append(m_min+i*m_majorStep);
+        } else {
+            // Overdense/underflowing steps switch to bounded uniform intervals.
+            for (int i=0;i<=m_intervals;++i) ticks.append(m_min+(m_max-m_min)*(double(i)/m_intervals));
+        }
+        if (ticks.isEmpty() || ticks.last()<m_max) ticks.append(m_max);
+    } else for (int i=0;i<=m_intervals;++i) ticks.append(m_min+(m_max-m_min)*(double(i)/m_intervals));
+    const QColor tickColor=isEnabled() && m_tickColor.isValid() ? m_tickColor : secondary;
+    const QFont tickFont=sizedFont(font(),qBound(9.,diameter*.047,13.));
+    const QFontMetricsF tickMetrics(tickFont);
+    const qreal labelRadius=qMax(1.,tickRadius-17);
+    const qreal valueWidth=qMax(40.,compact ? radius*1.5 : labelRadius*(needleMode ? .95 : 1.5));
+    const qreal readingY=needleMode ? center.y()+outer*.22 : center.y()-18;
+    const qreal readingHeight=needleMode ? 32 : 42;
+    const QRectF readingRect(center.x()-valueWidth/2,readingY,valueWidth,readingHeight);
+    const QRectF unitRect(center.x()-valueWidth/2,readingY+readingHeight-3,valueWidth,18);
+    QVector<QRectF> occupied{readingRect,unitRect};
+    // Prioritize endpoints, then remaining labels. Reject collisions instead of shrinking forever.
+    QVector<int> labelOrder{0,ticks.size()-1};
+    for (int i=1;i+1<ticks.size();++i) labelOrder.append(i);
+    for (int i=0;i<ticks.size();++i) {
+        const double angle=angleForValue(ticks[i]);
+        painter.setPen(QPen(tickColor,1.2));
+        painter.drawLine(polar(center,tickRadius,angle),polar(center,qMax(1.,tickRadius-5),angle));
+        if (diameter>=180 && i+1<ticks.size()) for (int j=1;j<=m_minorTicks;++j) {
+            const double value=ticks[i]+(ticks[i+1]-ticks[i])*double(j)/(m_minorTicks+1);
+            const double minor=angleForValue(value);
+            painter.setPen(QPen(tokens->border(),1));
+            painter.drawLine(polar(center,tickRadius,minor),polar(center,qMax(1.,tickRadius-2.5),minor));
         }
     }
-
-    // 值弧线（当前值高亮，可关闭）
-    if (m_showValueArc) {
-        QPen valPen(m_valueArcColor, qMax(2, m_ringWidth-2), Qt::SolidLine, Qt::FlatCap);
-        p.setPen(valPen);
-        p.drawArc(arcRect, int(m_startDeg*16), int((valueDeg - m_startDeg)*16));
+    bool firstLabel=false,lastLabel=false;
+    if (m_showTickLabels && !compact) for (int i:labelOrder) {
+        const QString label=number(ticks[i]); const QPointF position=polar(center,labelRadius,angleForValue(ticks[i]));
+        const qreal w=tickMetrics.horizontalAdvance(label)+4,h=tickMetrics.height()+2;
+        const QRectF box(position.x()-w/2,position.y()-h/2,w,h);
+        if (!QRectF(4,32,width()-8,diameter+8).contains(box)) continue;
+        bool overlaps=false; for (const QRectF& prior:occupied) if (prior.adjusted(-3,-2,3,2).intersects(box)) overlaps=true;
+        if (overlaps) continue;
+        occupied.append(box); text(painter,box,label,tickFont,tickColor);
+        if (i==0) firstLabel=true;
+        if (i==ticks.size()-1) lastLabel=true;
     }
-
-    // 刻度（经典模式：主刻度按段变色；次刻度线型并圆头）
-    int majorCount = qMax(2, m_tickCount);
-    // 若设置了步长，则根据步长计算主刻度数量
-    if (m_majorStep > 0.0) {
-        majorCount = qMax(1, int((m_max - m_min) / m_majorStep));
+    if (m_hasTarget) {
+        const double angle=angleForValue(m_target);
+        painter.setPen(QPen(foreground,2));
+        painter.drawLine(polar(center,bandRadius+5,angle),polar(center,trackRadius-ringWidth/2-3,angle));
     }
-    const int minorPerMajor = m_minorPerMajor;
-    if (m_useClassicThreeColor) {
-        // 采用与你提供的算法一致的“旋转+步进”绘制，并按常量比例缩放
-        int steps = majorCount * minorPerMajor;
-        double angleStep = spanDeg / steps;
-        // 将半径常量（100/94/70/62）按外半径比例缩放
-        double k = outerR / 100.0;          // 缩放系数
-        double scaleRadius = 94.0 * k;      // 刻度半径
-        double majorInner = (94.0 - 13.0) * k; // 主刻度内端
-        double minorInner = (94.0 - 5.0) * k;  // 次刻度内端
-
-        // 计算三段范围对应索引
-        int indexStart = int(steps * (double)m_percentStart / 100.0) + 1;
-        int indexMid   = int(steps * (double)m_percentMid   / 100.0) - 1;
-        int indexEnd   = int(steps * (double)m_percentEnd   / 100.0) + 1;
-        int index = 0;
-
-        p.save();
-        p.translate(c);
-        p.rotate(m_startDeg);
-        QPen pen; pen.setCapStyle(Qt::RoundCap);
-
-        for (int i = 0; i <= steps; ++i) {
-            if (i % minorPerMajor == 0) {
-                // 主刻度颜色随分段变化
-                QColor col = m_colorEnd;
-                if (index < indexStart) col = m_colorStart;
-                else if (index < (indexStart + indexMid)) col = m_colorMid;
-                index++;
-                if (!isEnabled()) col = m_tickColor;
-                pen.setColor(col); pen.setWidthF(1.5);
-                p.setPen(pen);
-                p.drawLine(QPointF(0, majorInner), QPointF(0, scaleRadius));
-            } else {
-                pen.setColor(m_tickColor); pen.setWidthF(0.9);
-                p.setPen(pen);
-                p.drawLine(QPointF(0, minorInner), QPointF(0, scaleRadius));
-            }
-            p.rotate(angleStep);
-        }
-        p.restore();
-
-        // 主刻度数字（半径 70，经比例缩放）
-        if (m_showTickLabels) {
-            double labelR = 68.0 * k; // 标签半径略缩小，避免覆盖圆环
-            double startRad = (360 - m_startDeg - 90) * (M_PI / 180.0);
-            double deltaRad = spanDeg * (M_PI / 180.0) / majorCount;
-            QFont lf = font(); qreal lb = lf.pointSizeF(); if (lb <= 0) lb = 12.0; lf.setPointSizeF(lb * m_tickLabelFontScale);
-            p.setFont(lf); p.setPen(QPen(m_tickColor));
-            for (int i = 0; i <= majorCount; ++i) {
-                double sina = qSin(startRad - i * deltaRad);
-                double cosa = qCos(startRad - i * deltaRad);
-                double vMajor = m_min + i * ((m_max - m_min) / majorCount);
-                QString txt = QString("%1%2").arg(vMajor, 0, 'f', m_labelPrecision).arg(m_unit);
-#if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
-                double textWidth = p.fontMetrics().horizontalAdvance(txt);
-#else
-                double textWidth = p.fontMetrics().width(txt);
-#endif
-                double textHeight = p.fontMetrics().height();
-                int x = int(c.x() + labelR * cosa - textWidth / 2.0);
-                int y = int(c.y() - labelR * sina + textHeight / 4.0);
-                p.drawText(x, y, txt);
-            }
-        }
-    } else {
-        // 原有余弦/正弦算法（非经典模式）
-        for (int i=0; i<=majorCount; ++i) {
-            qreal tMajor = i / qreal(majorCount);
-            qreal degMajor = m_startDeg - spanDeg * tMajor;
-            qreal radMajor = toRadians(-degMajor);
-            QPointF m1 = c + QPointF(qCos(radMajor)*tickInnerRMajor, qSin(radMajor)*tickInnerRMajor);
-            QPointF m2 = c + QPointF(qCos(radMajor)*tickOuterR,      qSin(radMajor)*tickOuterR);
-            p.setPen(QPen(m_tickColor, m_tickMajorWidth));
-            p.drawLine(m1, m2);
-            if (m_showTickLabels) {
-                double vMajor = m_min + tMajor * (m_max - m_min);
-                QString txt = QString::number(vMajor, 'f', m_labelPrecision);
-                QPointF lbl = c + QPointF(qCos(radMajor)*(tickOuterR+m_tickLabelOffset), qSin(radMajor)*(tickOuterR+m_tickLabelOffset));
-                QFont lf = font(); qreal lb = lf.pointSizeF(); if (lb <= 0) lb = 10.0; lf.setPointSizeF(lb * m_tickLabelFontScale);
-                p.setFont(lf); p.setPen(QPen(m_tickColor));
-                qreal rectW = 28.0 * m_tickLabelFontScale; qreal rectH = 20.0 * m_tickLabelFontScale;
-                p.drawText(QRectF(lbl.x()-rectW/2.0, lbl.y()-rectH/2.0, rectW, rectH), Qt::AlignCenter, txt);
-            }
-            if (i < majorCount) {
-                for (int j=1; j<minorPerMajor; ++j) {
-                    qreal tMinor = (i + j/qreal(minorPerMajor)) / qreal(majorCount);
-                    qreal degMinor = m_startDeg - spanDeg * tMinor;
-                    qreal radMinor = toRadians(-degMinor);
-                    if (!std::isnan(m_minorStartDeg) && !std::isnan(m_minorEndDeg)) {
-                        if (!(degMinor <= m_minorStartDeg && degMinor >= m_minorEndDeg)) continue;
-                    }
-                    QPointF s1 = c + QPointF(qCos(radMinor)*tickInnerRMinor, qSin(radMinor)*tickInnerRMinor);
-                    QPointF s2 = c + QPointF(qCos(radMinor)*tickOuterR,      qSin(radMinor)*tickOuterR);
-                    if (m_minorTicksAsDots) { p.setPen(Qt::NoPen); p.setBrush(m_tickColor); QPointF dotPos = m_minorDotAtInner ? s1 : s2; p.drawEllipse(dotPos, 2.2, 2.2); }
-                    else { p.setPen(QPen(m_tickColor, m_tickMinorWidth)); p.drawLine(s1, s2); }
-                }
-            }
-        }
+    if (m_available && needleMode) {
+        const qreal angle=angleForValue(m_value);
+        const QPointF tip=polar(center,qMax(1.,tickRadius-10),angle);
+        const QPointF side=polar(QPointF(),3,angle+90);
+        painter.setPen(Qt::NoPen); painter.setBrush(isEnabled() && m_needleColor.isValid() ? m_needleColor : accent);
+        painter.drawPolygon(QPolygonF(QVector<QPointF>{center+side,tip,center-side,polar(center,8,angle+180)}));
+        painter.setBrush(tokens->bg1()); painter.setPen(QPen(accent,2)); painter.drawEllipse(center,4,4);
     }
-
-    // 玻璃质感盖层（与 SpeedGauge 的 QcGlassItem 一致）：
-    // 顶部半圆线性渐变 + 次级半圆高光，覆盖完整圆形，增强“玻璃感”
-    {
-        // 盖层相对外圈略微内缩，避免越界
-        const qreal glassInset = qMax<qreal>(m_ringWidth*0.2, 4.0);
-        QRectF glassRect1 = arcRect.adjusted(glassInset, glassInset, -glassInset, -glassInset);
-        QRectF glassRect2 = glassRect1;
-        qreal r = qMin(glassRect1.width(), glassRect1.height())/2.0;
-        glassRect2.setHeight(r/2.0);
-        glassRect2.moveCenter(arcRect.center());
-
-        p.setPen(Qt::NoPen);
-        QColor clr1 = Qt::gray;  clr1.setAlphaF(0.20);
-        QColor clr2 = Qt::white; clr2.setAlphaF(0.40);
-
-        // 线性渐变方向与 QcGlassItem 保持一致（左上到右下）
-        QLinearGradient g1(glassRect1.topLeft(), glassRect1.bottomRight());
-        g1.setColorAt(0.10, clr1);
-        g1.setColorAt(0.50, clr2);
-        p.setBrush(g1);
-        // 顶部半圆（完整圆形区域上的半圆光泽）
-        p.drawPie(glassRect1, 0, 16*180);
-        // 次级高光（更窄的半圆，增强顶部亮度层次）
-        p.drawPie(glassRect2, 0, -16*180);
+    const QString reading=formattedValue();
+    const QFont valueFont=fittedFont(font(),reading,qBound(18.,diameter*(needleMode ? .12 : .15),needleMode ? 32. : 42.),valueWidth);
+    text(painter,readingRect,reading,valueFont,foreground);
+    text(painter,unitRect,m_unit,caption,secondary);
+    if (m_showTickLabels && (!firstLabel || !lastLabel)) {
+        text(painter,QRectF(12,height()-64,width()-24,18),number(m_min)+" – "+number(m_max),sizedFont(font(),10),secondary);
     }
-
-    // 指针
-    // 保持与圆环绘制一致的角度方向
-    qreal radVal = toRadians(-valueDeg);
-    QPointF dir(qCos(radVal), qSin(radVal));
-    QPointF ortho(-dir.y(), dir.x());
-    if (m_useClassicThreeColor) {
-        // 经典三角指针
-        double k = outerR / 100.0;
-        int radiusPtr = int(62.0 * k);
-        int w1 = int(5.0 * k);
-        int w2 = int(8.0 * k);
-        QPolygon pts; pts.setPoints(4, -w1, 0, 0, -w2, w1, 0, 0, radiusPtr);
-        p.save(); p.translate(c); p.rotate(m_startDeg);
-        double degRotate = spanDeg / (m_max - m_min) * (m_value - m_min);
-        p.rotate(degRotate);
-        p.setPen(Qt::NoPen); p.setBrush(m_needleColor);
-        p.drawConvexPolygon(pts);
-        p.restore();
-    } else {
-        // 非对称楔形
-        QPointF baseCenter = m_needleWrapRing ? (c + dir * (outerR - m_ringWidth/2.0)) : c;
-        QPointF tip = c + QPointF(qCos(radVal)*(outerR - m_ringWidth + 1), qSin(radVal)*(outerR - m_ringWidth + 1));
-        qreal baseHalf = m_needleWidth/2.0;
-        qreal tipHalf  = qMax(1.5, m_needleWidth*0.22/2.0);
-        QPointF baseL = baseCenter + ortho * baseHalf;
-        QPointF baseR = baseCenter - ortho * baseHalf;
-        QPointF tipL  = tip + ortho * (-tipHalf);
-        QPointF tipR  = tip + ortho * ( tipHalf);
-        QPolygonF needle; needle << baseL << tipL << tip << tipR << baseR;
-        p.setPen(Qt::NoPen); p.setBrush(m_needleColor);
-        p.drawPolygon(needle);
-        // 圆孔
-        qreal holeR = 3.5;
-        QPointF holeCenter = baseCenter + dir * 8.0;
-        p.setBrush(QColor(245,245,245)); p.setPen(Qt::NoPen);
-        p.drawEllipse(holeCenter, holeR, holeR);
-    }
-
-    // 文本（标题与数值）
-    p.setPen(QPen(QColor(220,220,220)));
-    QFont f = font();
-    // 如果 pointSizeF 不可用（可能为 -1），给一个安全默认值
-    qreal base = f.pointSizeF(); if (base <= 0) base = 12.0;
-    // 数值（经典分支下继续缩小三分之一，并进一步下移）
-    qreal valInc = m_useClassicThreeColor ? 2.0 : 2.0;
-    qreal valYOffset = m_useClassicThreeColor ? 22.0 : 16.0; // 继续下移
-    qreal valSize = base + valInc;
-    if (m_useClassicThreeColor) valSize *= (2.0/3.0); // 缩小三分之一
-    QFont valF = f; valF.setPointSizeF(valSize); valF.setBold(true);
-    p.setFont(valF);
-    QString valText = QString::number(m_value, 'f', 0) + (m_unit.isEmpty()?"":" "+m_unit);
-    QString valueLine = m_showLabelInValue && !m_title.isEmpty() ? (m_title + " " + valText) : valText;
-    p.drawText(QRectF(c.x()-outerR, c.y()+valYOffset, outerR*2, 40), Qt::AlignCenter, valueLine);
-    // 标题在数值下方：根据数值下移同步下移，保持间距
-    if (!m_title.isEmpty()) {
-        qreal titleInc = m_useClassicThreeColor ? -2.0 : -2.0; // 经典分支下略微缩小字号
-        qreal titleYOffset = m_useClassicThreeColor ? (valYOffset + 40.0) : 22.0; // 跟随数值下移
-        QFont tF = f; tF.setPointSizeF(base + titleInc);
-        p.setFont(tF);
-        p.drawText(QRectF(c.x()-outerR, c.y()+titleYOffset, outerR*2, 24), Qt::AlignCenter, m_title);
-    }
+    const QString status=statusText();
+    text(painter,QRectF(12,height()-42,width()-24,20),status,caption,m_available ? foreground : secondary);
+    const QString target=m_hasTarget ? tr("目标 %1 %2").arg(number(m_target),m_unit) : QString();
+    text(painter,QRectF(12,height()-22,width()-24,18),target,sizedFont(font(),11),secondary);
 }
-
-// 应用完成率风格预设，最小化外部设置逻辑
-void CircularGauge::useCompletionRatePreset(const QString& title, const QString& unit)
+void CircularGauge::useCompletionRatePreset(const QString& title,const QString& unit)
 {
-    // 基本范围与文本
-    setRange(0, 100);
-    setUnit(unit.isEmpty() ? "%" : unit);
-    setTitle(title);
-    setShowLabelInValue(false);
-
-    // 角度范围：在原基础上顺时针平移 30°（缺口中心约 300°）
-    setStartAngle(60);
-    setEndAngle(-180);
-
-    // 刻度：主刻度 10 步长；每段 5 个次刻度（4 个间隔）
-    setShowTickLabels(true);
-    setMinorTicksAsDots(false);
-    setTickCount(10);
-    setMajorTickStep(10);
-    setMinorTicksPerMajor(5);
-    setTickMajorWidth(3);
-    setTickMinorWidth(2);
-    setTickMajorLength(16);
-    setTickMinorLength(10);
-    setTickInset(0);
-    setTickLabelOffset(24);        // 标签在刻度线外侧，更接近示例
-    setTickLabelFontScale(0.75);
-    setLabelPrecision(0);
-
-    // 环与配色
-    setRingWidth(16);
-    setBaseRingColor(QColor(230,235,242));
-    setShowValueArc(false);
-
-    // 分段彩色环
-    setRanges({
-        {0, 30, QColor(162, 208, 190), 20},   // 绿
-        {30, 80, QColor(103, 133, 160), 20},  // 蓝灰
-        {80, 100, QColor(203, 80, 80), 20}    // 红
-    });
-
-    // 指针形态（非对称楔形，尾端贴环中线）
-    setNeedleWidth(12);
-    setNeedleWrapRing(true);
-
-    // 表盘暗色基色（用于渐变）
-    setDialColor(QColor(60,60,60));
+    setRange(0,100); setRanges({}); setAngles(225,-45); setDisplayMode(DisplayMode::Arc);
+    setTickCount(5); setMinorTicksPerMajor(0); setShowValueArc(true); setShowTickLabels(true);
+    setRingWidth(12); setDialColor(QColor()); setBaseRingColor(QColor()); setNeedleColor(QColor());
+    setTickColor(QColor()); setValueArcColor(QColor()); clearTargetValue(); setTitle(title); setUnit(unit); setLabelPrecision(0);
 }
-
-void CircularGauge::applyStylesheet()
+void CircularGauge::useClassicThreeColorPercentPreset(const QString& title,const QString& unit,
+    int first,int middle,int last,const QColor& firstColor,const QColor& middleColor,const QColor& lastColor)
 {
-    // 组件级样式应用已统一移除，改为应用级统一管理
+    if (first<0 || middle<0 || last<0 || double(first)+middle+last<=0) return;
+    useCompletionRatePreset(title,unit); setDisplayMode(DisplayMode::Needle);
+    const double total=double(first)+middle+last;
+    const double a=100.*first/total,b=100.*(double(first)+middle)/total;
+    QVector<GaugeRange> bands;
+    if (first) bands.append({0,a,firstColor,6,tr("区间一")});
+    if (middle) bands.append({a,b,middleColor,6,tr("区间二")});
+    if (last) bands.append({b,100,lastColor,6,tr("区间三")});
+    setRanges(bands);
 }
-
-void CircularGauge::useClassicThreeColorPercentPreset(const QString& title, const QString& unit,
-                                                      int percentStart, int percentMid, int percentEnd,
-                                                      const QColor& colorStart, const QColor& colorMid, const QColor& colorEnd)
-{
-    setRange(0, 100);
-    setUnit(unit.isEmpty()? "%" : unit);
-    setTitle(title);
-    setShowLabelInValue(false);
-    // 统一顺时针平移 30°（缺口中心约 300°）
-    setStartAngle(60);
-    setEndAngle(-180);
-    setTickCount(10);
-    setMajorTickStep(10);
-    setMinorTicksPerMajor(5);
-    setMinorTicksAsDots(false);
-    setTickMajorWidth(1.5); // 与参考代码接近
-    setTickMinorWidth(0.8);
-    setTickMajorLength(13);
-    setTickMinorLength(5);
-    setTickInset(0);
-    setTickLabelOffset(22);
-    setTickLabelFontScale(0.70);
-    setLabelPrecision(0);
-    setRingWidth(14);
-    setBaseRingColor(QColor(230,235,242));
-    setShowValueArc(false);
-    setDialColor(QColor(60,60,60));
-    // 经典模式参数
-    m_percentStart = percentStart; m_percentMid = percentMid; m_percentEnd = percentEnd;
-    m_colorStart = colorStart; m_colorMid = colorMid; m_colorEnd = colorEnd;
-    m_useClassicThreeColor = true;
-    update();
 }
-
-} // namespace basewidgets
-

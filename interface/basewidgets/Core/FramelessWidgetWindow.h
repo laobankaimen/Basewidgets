@@ -27,7 +27,8 @@ namespace basewidgets {
 class CustomTitleBar;
 /** 无边框主窗口：标题/菜单在顶部，工具栏/状态栏由 QMainWindow 原生区域管理。
  * 使用 setContentWidget 设置业务内容；不要绕过它替换 centralWidget/menuWidget。
- * 不自动保存几何设置；应用可自行调用 saveGeometry/restoreGeometry。
+ * 自动恢复热插拔后不可达窗口；应用使用 WindowPlacement::save/restore 分别持久化各窗口。
+ * 可用 WindowPlacement::watch(this)->setRecoveryEnabled(false) 禁用自动位置恢复。
  */
 class ACSS_UI_EXPORT FramelessWidgetWindow : public QMainWindow , public BaseWidgetInterface
 {

@@ -1,138 +1,105 @@
-﻿/*
- * Author: zhoutao@zkhx.com
- * Date: 2025-12-25
- */
 #ifndef BASEWIDGETS_CIRCULARGAUGE_H
 #define BASEWIDGETS_CIRCULARGAUGE_H
 
 #include <basewidgets/Core/StyledWidget.h>
-#include <basewidgets/QtAdvancedUIExport.h>
+#include <QColor>
+#include <QVector>
 
 namespace basewidgets {
-//角度坐标约定
-// - 0° 指向右（3 点钟方向）， 90° 向上（12 点）， 180° 向左（9 点）， 270° 向下（6 点）。
-// - 代码内部按顺时针增加值进行绘制，所以“值从最小到最大”会从 startAngle 顺时针扫到 endAngle
-// 圆形刻度与指针仪表盘
+/** 通用数值仪表：Arc 突出完成量，Needle 展示量程位置；只负责显示，不解释业务告警。
+ * 紧凑尺寸自动退化为数值/弧/量程摘要，隐藏会遮挡读数的指针与刻度文字。
+ * 所有几何使用逻辑像素。GUI 线程调用；无内部动画/轮询计时器，数据更新时按需重绘。
+ * 角度：0°=右，90°=上；数值沿顺时针方向从 startAngle 到 endAngle。
+ */
 class ACSS_UI_EXPORT CircularGauge : public StyledWidget {
     Q_OBJECT
+    Q_PROPERTY(double value READ value WRITE setValue NOTIFY valueChanged)
+    Q_PROPERTY(bool valueAvailable READ valueAvailable WRITE setValueAvailable NOTIFY availabilityChanged)
 public:
+    enum class DisplayMode { Arc, Needle };
+    Q_ENUM(DisplayMode)
+    struct GaugeRange {
+        double start = 0;
+        double end = 0;
+        QColor color;
+        int width = 6; ///< 阈值带宽，限制为 2–16 逻辑像素；不覆盖当前值弧。
+        QString label; ///< 阈值文字，例如“注意”；不要仅靠颜色表达状态。
+    };
     explicit CircularGauge(QWidget* parent = nullptr);
     explicit CircularGauge(acss::QtAdvancedStylesheet* manager, QWidget* parent = nullptr);
     ~CircularGauge() override;
 
-    struct GaugeRange {
-        double start = 0.0; // 区间起始值
-        double end = 0.0;   // 区间结束值
-        QColor color = QColor(200,200,200);
-        int width = 10;     // 该区间环形粗细
-    };
-
-    void setRange(double min, double max);
-    void setValue(double v);
+    /** 拒绝非有限、反向或零跨度量程；失败保持原状态。成功时夹取当前值/目标值。 */
+    bool setRange(double minimum, double maximum);
+    double minimum() const { return m_min; }
+    double maximum() const { return m_max; }
+    /** 有限输入夹取到量程；NaN/Inf 表示无数据，保留最后有限值但不显示指针/填充。 */
+    void setValue(double value);
     double value() const { return m_value; }
-
-    void setStartAngle(double deg); // 默认 225 度
-    void setEndAngle(double deg);   // 默认 -45 度
-    void setTickCount(int count);   // 默认 10
-    void setUnit(const QString& unit);
+    void setValueAvailable(bool available);
+    bool valueAvailable() const { return m_available; }
+    QString formattedValue() const;
+    QString statusText() const;
+    void setDisplayMode(DisplayMode mode);
+    DisplayMode displayMode() const { return m_mode; }
     void setTitle(const QString& title);
+    QString title() const { return m_title; }
+    void setUnit(const QString& unit);
+    QString unit() const { return m_unit; }
+    void setLabelPrecision(int precision); ///< 数字和刻度精度，限制为 0–6。
 
-    void setDialColor(const QColor& c) { m_dialColor = c; }
-    void setNeedleColor(const QColor& c) { m_needleColor = c; }
-    void setTickColor(const QColor& c) { m_tickColor = c; }
+    /** 阈值为实际量程单位，最多 64 段。排序/夹取到量程；重叠或无效输入整组拒绝。
+     * 相邻区间按 [start,end) 解释，量程最大值属于末段；空列表清除阈值。
+     */
+    bool setRanges(const QVector<GaugeRange>& ranges);
+    QVector<GaugeRange> ranges() const { return m_ranges; }
+    void setTargetValue(double value); ///< 目标夹取到量程；NaN/Inf 清除目标。
+    void clearTargetValue();
+    bool hasTargetValue() const { return m_hasTarget; }
+    double targetValue() const { return m_target; }
 
-    // 优化能力：分段彩色环、刻度标签、点状次刻度、环厚度
-    void setRanges(const QVector<GaugeRange>& ranges); // 设置彩色区间
-    void setShowTickLabels(bool on);                   // 显示主刻度数值
-    void setMinorTicksAsDots(bool on);                 // 次刻度以点显示
-    void setMinorTickDotAtInner(bool on);              // 点显示在内圈（true）或外圈
-    void setRingWidth(int w);                          // 基础环厚度
-    void setBaseRingColor(const QColor& c) { m_baseRingColor = c; }
-    void setValueArcColor(const QColor& c) { m_valueArcColor = c; }
-    void setLabelPrecision(int p) { m_labelPrecision = qMax(0, p); }
-    void setTickLabelOffset(int px) { m_tickLabelOffset = px; }
-    void setShowValueArc(bool on);                      // 是否显示当前值高亮弧线
-    void setNeedleWidth(int w);                        // 三角指针宽度
-    void setNeedleWrapRing(bool on);                   // 指针大端贴住圆环内侧
-    void setTickInset(int px);                         // 刻度靠近圆环内侧的间隙（0=紧贴）
-    void setShowLabelInValue(bool on);                 // 下行数值是否包含标题（温度 11℃）
-    void setTickLabelFontScale(double s);              // 刻度值字体缩放（默认 1.0）
-
-    // 刻度详细配置
-    void setMajorTickStep(double step);                // 主刻度步长（如 10）
-    void setMinorTicksPerMajor(int count);             // 每个主刻度之间次刻度数量
-    void setTickMajorWidth(int w);                     // 主刻度线宽
-    void setTickMinorWidth(int w);                     // 次刻度线宽
-    void setTickMajorLength(int len);                  // 主刻度长度
-    void setTickMinorLength(int len);                  // 次刻度长度
-    void setMinorTickAngleRange(double startDeg, double endDeg); // 限制次刻度显示角度范围（可选）
-
-    // 预设样式：最小化demo代码，直接应用参考风格
-    // 完成率（深色仪表盘，0-100，分段彩色环，线型次刻度，楔形指针）
+    /** 起止角要求顺时针扫角为 30–330°，默认 225→-45；两个角度原子设置避免中间无效状态。 */
+    bool setAngles(double start, double end);
+    void setStartAngle(double angle);
+    void setEndAngle(double angle);
+    double angleForValue(double value) const;
+    void setTickCount(int intervals); ///< 主刻度区间数限制为 1–20，拥挤时自动减少文字。
+    void setMajorTickStep(double step); ///< 0 恢复均分；正值使用真实步长，过密时自动稀疏。
+    void setMinorTicksPerMajor(int count); ///< 每段次刻度数 0–5，0 合法且不除零。
+    void setShowTickLabels(bool visible);
+    void setRingWidth(int width); ///< 当前值弧宽度，限制为 4–24。
+    void setShowValueArc(bool visible);
+    /** QColor() 清除显式覆盖，恢复主题色。所有 setter 自动触发重绘。 */
+    void setDialColor(const QColor& color);
+    void setNeedleColor(const QColor& color);
+    void setTickColor(const QColor& color);
+    void setBaseRingColor(const QColor& color);
+    void setValueArcColor(const QColor& color);
     void useCompletionRatePreset(const QString& title = QString(), const QString& unit = QString("%"));
-
-    // 经典三色百分比预设（参考 GaugeSpeed 绘制逻辑）
+    /** 兼容预设：非负权重归一化到 100，0 权重段省略。已去除旧玻璃高光和重复角度算法。 */
     void useClassicThreeColorPercentPreset(const QString& title = QString(), const QString& unit = QString("%"),
-                                           int percentStart = 30, int percentMid = 50, int percentEnd = 20,
-                                           const QColor& colorStart = QColor(162, 208, 190),
-                                           const QColor& colorMid   = QColor(103, 133, 160),
-                                           const QColor& colorEnd   = QColor(203, 80, 80));
-
+        int first = 30, int middle = 50, int last = 20,
+        const QColor& firstColor = QColor("#67C23A"), const QColor& middleColor = QColor("#E6A23C"),
+        const QColor& lastColor = QColor("#F56C6C"));
+    QSize sizeHint() const override { return QSize(300,300); }
+    QSize minimumSizeHint() const override { return QSize(180,210); }
+signals:
+    void valueChanged(double value);
+    void availabilityChanged(bool available);
 protected:
-    void paintEvent(QPaintEvent* e) override;
-    void applyStylesheet();
-
+    void paintEvent(QPaintEvent* event) override;
 private:
-    double m_min = 0.0;
-    double m_max = 100.0;
-    double m_value = 0.0;
-    double m_startDeg = 225.0;
-    double m_endDeg = -45.0;
-    int m_tickCount = 10;
-    QString m_unit;
-    QString m_title;
-
-    QColor m_dialColor = QColor(60,60,60);
-    QColor m_needleColor = QColor(220, 0, 0);
-    QColor m_tickColor = QColor(160,160,160);
-
-    // 新增配置
+    void refreshDescription();
+    QString number(double value) const;
+    const GaugeRange* activeRange() const;
+    double m_min=0, m_max=100, m_value=0, m_target=0;
+    double m_start=225, m_end=-45, m_majorStep=0;
+    int m_intervals=5, m_minorTicks=3, m_precision=0, m_ringWidth=10;
+    bool m_available=true, m_hasTarget=false, m_showTickLabels=true, m_showValueArc=true;
+    DisplayMode m_mode=DisplayMode::Arc;
+    QString m_title, m_unit;
     QVector<GaugeRange> m_ranges;
-    bool m_showTickLabels = true;
-    bool m_minorTicksAsDots = true;
-    bool m_minorDotAtInner = true;
-    int m_ringWidth = 12;
-    QColor m_baseRingColor = QColor(210,210,210);
-    QColor m_valueArcColor = QColor(76, 217, 100);
-    int m_labelPrecision = 0;
-    int m_tickLabelOffset = 12;
-    bool m_showValueArc = false;
-    int m_needleWidth = 10;
-    bool m_needleWrapRing = true;
-    int m_tickInset = 2;
-    bool m_showLabelInValue = true;
-    double m_tickLabelFontScale = 1.0;
-
-    // 刻度样式
-    double m_majorStep = 0.0;      // 0 表示按 m_tickCount 计算
-    int m_minorPerMajor = 4;
-    int m_tickMajorWidth = 3;
-    int m_tickMinorWidth = 2;
-    int m_tickMajorLength = 12;
-    int m_tickMinorLength = 8;
-    double m_minorStartDeg = std::numeric_limits<double>::quiet_NaN();
-    double m_minorEndDeg   = std::numeric_limits<double>::quiet_NaN();
-    // 经典三色百分比模式参数
-    bool m_useClassicThreeColor = false;
-    int m_percentStart = 30;
-    int m_percentMid   = 50;
-    int m_percentEnd   = 20; // 三段之和约等于 100
-    QColor m_colorStart = QColor(162, 208, 190);
-    QColor m_colorMid   = QColor(103, 133, 160);
-    QColor m_colorEnd   = QColor(203, 80, 80);
+    QColor m_dialColor, m_needleColor, m_tickColor, m_baseRingColor, m_valueArcColor;
 };
-
-} // namespace basewidgets
-
-#endif // BASEWIDGETS_CIRCULARGAUGE_H
-
+}
+#endif

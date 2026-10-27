@@ -16,14 +16,15 @@
 ## 主要特性
 
 - **Inputs**：丰富的输入类控件，包括按钮、文本框、滑块、开关、日期/时间选择器、多选下拉框等。
-- **Views**：增强型视图控件，包括树状视图、列表视图、表格视图以及分页代理模型。
-- **Charts**：基于 QCustomPlot 封装的基础图表库，支持折线图、柱状图、瀑布图等。
+- **Views**：高级表格统一支持基础/筛选/分页模式、排序时固定源记录、可扩展右键菜单、选择映射和 CSV 导出；另提供树形与列表视图。
+- **Charts**：基于 QCustomPlot 的波形/频谱/时频、波束/测向历程、LOFAR/DEMON 与速率监控，支持可扩展菜单、框选放大和双击恢复。
 - **Dialogs**：
   - **File Browser**：重构的仿 Ubuntu 风格文件浏览器，支持侧边栏快捷导航、图标/列表多视图切换、面包屑地址栏及暗色模式优化。
   - **Color Picker**：专业级颜色选择器，支持 HSV/RGB/Hex 调节、屏幕取色，并内置库级静态存储以记忆历史颜色。
   - 其他常用对话框（字体选择等）。
+- **Multi-screen**：窗口位置按实际屏幕逻辑坐标保存/恢复，支持断屏回退、父屏弹窗和独立监控窗口。
 - **Containers**：分组框、工具栏、状态栏、侧边栏容器等布局组件。
-- **Gauges**：独立的仪表盘组件库，包含圆形仪表 (`CircularGauge`)、速度表 (`SpeedGauge`)、姿态仪 (`AttitudeMeter`) 等，支持高度可配置的外观与动画。
+- **Gauges**：原生 QPainter 仪表：`CircularGauge`（弧形/指针）、`CompassGauge`（航向）、`AttitudeMeter`（姿态），支持明暗主题、阈值、目标与无数据状态；另有容量、双向速率、任务队列、数据核验质量仪表。
 - **Styles**：运行时使用 `NativeStyle`（QProxyStyle + QPainter）和主题调色板替代 QSS，支持明暗切换、SVG 图标着色与 DPI 适配；资源随库自动生成和嵌入，旧 QSS 解析和导出已删除。
 
 ## 目录结构
@@ -147,7 +148,7 @@ cmake --build build/package_consumer -j 8
 
 ### 仪表盘 (Gauges)
 仪表盘控件已模块化，位于 `interface/basewidgets/Gauges/`。
-- **CircularGauge**：通用圆形仪表，支持多段颜色环、刻度标签定制及玻璃质感盖层。
+- **CircularGauge**：通用弧形/指针仪表，突出数值，分离阈值带与当前值轨道，支持目标值和无数据状态。
 - **使用示例**：
   ```cpp
   auto gauge = new CircularGauge(parent);
@@ -180,3 +181,25 @@ cmake --build build/package_consumer -j 8
 - **File Browser**：全新仿 Ubuntu 风格文件浏览器，集成侧边栏与多视图支持。
 - **Color Picker**：优化颜色记忆机制，实现跨会话的库级状态持久化。
 - **Gauges**：新增多种仪表盘控件，统一视觉风格（阴影、高光、动态线宽）。
+
+### 仪表盘迁移
+
+重复的 `BasicGauge`、`SpeedGauge` 与旧 `QcGaugeWidget` 引擎已移除。
+速度/压力类场景统一使用 `CircularGauge::DisplayMode::Needle`；详情与移除接口见
+[仪表盘重构与迁移](docs/gauges-native-redesign.md)。示例集中在 `widgets_demo/pages/GaugesPage.cpp`。
+
+### 水声处理与数据管理
+
+新增 `AcousticWaveformPlot`、`AcousticSpectrumPlot`、`AcousticSpectrogramPlot`、`RecordingTimelinePlot`，
+以及 `SignalQualityMeter`、`AcquisitionStatusPanel`。图表继续基于 QCustomPlot；DSP 辅助计算与 GUI 分开。
+详见 [单位、算法约定与迁移说明](docs/underwater-acoustics-controls.md)，demo 位于 `widgets_demo/pages/AcousticPage.cpp`。
+旧 QCPLineChart/QCPBarChart/QCPWaterfallChart 薄封装已删除，通用图形仍可直接使用 StyledPlot + QCPGraph/QCPBars。
+
+### 测向、解调与监控扩展
+
+新增多波束 `BeamPatternPlot`、测向历程 `BearingHistoryPlot`、`LofarPlot`、`DemonSpectrumPlot/DemonHistoryPlot`，
+以及容量 `StorageCapacityMeter`、双向网速 `TransferRateMeter`、指标历程 `RateHistoryPlot`。
+所有 StyledPlot 图表统一支持右键扩展、双击/Home 恢复、Shift 框选缩放、选区和坐标信号。
+详见 [交互、DEMON 算法边界与监控 API](docs/advanced-acoustic-and-monitoring-controls.md)。
+
+高级表格固定行、多屏窗口和新增数据管理仪表的接入约定见 [接口与示例说明](docs/tables-multiscreen-and-data-dashboards.md)。

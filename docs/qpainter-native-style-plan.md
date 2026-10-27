@@ -109,7 +109,7 @@ NativeStyle
 - AdvancedTable 分页栏分两行，消除单行最小宽度约 1153 像素对整个窗口的约束；同步跳转框，复制 CSV 正确经过分页和筛选两层代理，并转义字段。
 - DateRangePicker 统一构造、两列布局，初始化今天，时间控件参与 setRange/range，时区选择解释显示的当地时间，批量设置只发出一次通知。
 - NavigationList 发出原来声明但未触发的点击信号，clear/takeItem 后不保留悬空 ID 指针，使用字体感知的行高。
-- BasicGauge 刻度随主题切换；demo 的预设改用真正实现这些接口的 CircularGauge。SpeedGauge 的旧空实现接口保留但标记弃用，避免继续误用。
+- 仪表盘后续已重构：删除 BasicGauge/SpeedGauge/QcGaugeWidget；统一 CircularGauge 弧/针两种模式，并重绘 CompassGauge/AttitudeMeter。见 gauges-native-redesign.md。
 
 ## 7. 可复现验证
 
@@ -181,3 +181,14 @@ cmake --build cmake-build-debug --target basewidgets_resources
 菜单按钮大字号/RTL 图集、明暗对话框边框和标准按钮截图已检查。
 拖动回退测试的最终 hover/click 通过 QWindow 事件分发验证，避免 offscreen 光标移动在分数缩放下缺失 enter/leave 的干扰。
 真实 Wayland 系统拖动交接只完成代码修正，未声称已在桌面合成器上复现并验证。
+
+## 11. 高级表格、多屏与业务仪表（2026-10-27）
+
+- AdvancedTable 删除隐藏的重复分页控件，同一类提供 Basic/Standard/Paged；固定源记录置顶/置底并遵守筛选、可扩展右键菜单、选择映射、有效正则保护及原子 CSV 导出。
+- PagedProxyModel 转发普通 dataChanged，结构改变时重建投影并收敛页码；Qt 模型检查器覆盖排序、插入、删除、销毁/更换源模型。
+- Core 新增 WindowPlacement；按各屏逻辑坐标恢复、保护断屏后的普通窗口、父屏弹窗、独立监控窗口。Windows 标题栏命中改用原生客户区局部换算。
+- 新增 QPainter 的 TaskQueueDashboard / DataQualityDashboard：失败与成功分开、覆盖率与通过率分开、空数据不伪装为 100%，支持键盘、点击及右键业务扩展。
+- 所有演示/检查继续集中在 widgets_demo；代码和接口说明见 [接入文档](tables-multiscreen-and-data-dashboards.md)。
+
+本轮普通缩放及 1.5 倍缩放均为 68 项通过；九页 × 两主题 × 两宽度共 36 组渲染通过。
+独立监控窗口打开/复用/关闭、安装树公开 API 外部消费通过。真实双/三屏热插拔、Windows 混合 DPI 与 Wayland 定位仍需实机验收。
