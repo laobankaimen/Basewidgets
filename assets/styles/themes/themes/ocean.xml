@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 海洋色：深海蓝灰背景、低饱和青蓝强调、柔和雾白文字。
+     独立配置模式 ocean，dark="1" 只决定缺项回退，不依赖主题名称。
+     选中态与实心按钮分别配对文字色；业务告警和曲线保留辨识度。 -->
+<resources dark="1">
+  <!-- 文字与强调色 -->
+  <color name="primaryColor">#71BEC6</color>
+  <color name="primaryTextColor">#D0DEE5</color>
+  <color name="regularTextColor">#B0C7D4</color>
+  <color name="secondaryTextColor">#A5BDCB</color>
+  <color name="placeholderTextColor">#9BB4C4</color>
+  <color name="disabledTextColor">#718B9C</color>
+  <!-- 边框层级 -->
+  <color name="darkerBorderColor">#567383</color>
+  <color name="darkBorderColor">#4C6878</color>
+  <color name="baseBorderColor">#445E6E</color>
+  <color name="lightBorderColor">#3A5364</color>
+  <color name="lighterBorderColor">#2F4554</color>
+  <!-- 背景与交互表面 -->
+  <color name="baseBackgroundColor">#20313D</color>
+  <color name="pageBackgroundColor">#1C2B36</color>
+  <color name="overlayBackgroundColor">#243642</color>
+  <color name="baseFillColor">#2C414E</color>
+  <color name="darkFillColor">#3A5362</color>
+  <color name="darkerFillColor">#324957</color>
+  <color name="lightFillColor">#293D4A</color>
+  <color name="lighterFillColor">#223440</color>
+  <color name="pressedFillColor">#436070</color>
+  <color name="basicBlackColor">#000000</color>
+  <color name="basicWhiteColor">#FFFFFF</color>
+  <!-- 业务状态色 -->
+  <color name="danger">#F4797F</color>
+  <color name="warning">#D7B573</color>
+  <color name="success">#8CC4A4</color>
+  <!-- 选中态与按钮 -->
+  <color name="selectionColor">#4F8FA3</color>
+  <color name="selectionTextColor">#101F2B</color>
+  <color name="primaryButtonColor">#316A80</color>
+  <color name="dangerButtonColor">#9D4E57</color>
+  <color name="buttonTextColor">#EDF3F6</color>
+  <color name="switchKnobColor">#CCDDE5</color>
+  <color name="plotCursorColor">#D7B573</color>
+  <!-- 六色图表序列；业务显式 QColor 优先 -->
+  <color name="seriesColor1">#71BEC6</color>
+  <color name="seriesColor2">#D7B573</color>
+  <color name="seriesColor3">#8CC4A4</color>
+  <color name="seriesColor4">#A9A3D9</color>
+  <color name="seriesColor5">#DB9AB4</color>
+  <color name="seriesColor6">#80AFDB</color>
+</resources>

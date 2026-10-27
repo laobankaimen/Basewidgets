@@ -1,6 +1,7 @@
 #pragma once
 #include <basewidgets/Charts/QCustomplot.h>
 #include <QMenu>
+#include <QPointer>
 namespace basewidgets {
 /** 全部业务图表的交互基类（GUI 线程）。平移、滚轮、Shift 框选缩放、双击/Home 复位、
  * 菜单扩展、坐标拾取、区域选择及 PNG 导出共用同一入口，不修改 QCustomPlot 源码。
@@ -15,6 +16,12 @@ public:
     void setPlotTitle(const QString& title);
     QString plotTitle() const;
     void refreshTheme();
+    /** 绑定本图曲线的默认主题序列色（paletteIndex >= 0，循环取色）。
+     * overrideColor 有效时改为固定业务颜色；传无效 QColor 可恢复主题跟随。
+     * 保留线宽/线型，不改变数据或视口；空指针、外部图曲线或负下标返回 false。
+     * 直接 setPen 改成其他颜色也会退出主题跟随，建议用本接口明确控制。
+     */
+    bool setSeriesColor(QCPGraph* graph, int paletteIndex, const QColor& overrideColor=QColor());
     void setInteractionMode(InteractionMode mode);
     InteractionMode interactionMode() const { return m_mode; }
     void setNavigationAxes(Qt::Orientations axes); ///< 同时控制拖动、滚轮和框选缩放的轴。
@@ -51,6 +58,8 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
     QCPTextElement* m_title=nullptr;
 private:
+    struct ThemedSeries { QPointer<QCPGraph> graph; int paletteIndex; QColor appliedColor; };
+    QVector<ThemedSeries> m_themedSeries;
     void applyMode();
     void acceptRectangle(const QRect& rectangle);
     InteractionMode m_mode=InteractionMode::Pan;

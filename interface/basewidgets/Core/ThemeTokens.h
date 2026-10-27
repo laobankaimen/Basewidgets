@@ -8,6 +8,7 @@
 #include <QColor>
 #include <QObject>
 #include <QPalette>
+#include <QVector>
 #include <basewidgets/QtAdvancedUIExport.h>
 
 namespace basewidgets {
@@ -22,7 +23,7 @@ public:
     static ThemeTokens* instance();
 
     // 背景层
-    QColor bg0() const { return m_bg0; }            // 最深背景（窗口）
+    QColor bg0() const { return m_bg0; }            // 窗口/页面背景（明暗主题均适用）
     QColor bg1() const { return m_bg1; }            // 弹出层/菜单
     QColor bg2() const { return m_bg2; }            // 表面/面板
     QColor bgCtrl() const { return m_bgCtrl; }      // 控件背景
@@ -31,7 +32,10 @@ public:
 
     // 文本
     QColor textPrimary() const { return m_textPrimary; }
+    /** 辅助说明、单位与刻度；不要用禁用色承载仍需阅读的信息。 */
     QColor textSecondary() const { return m_textSecondary; }
+    /** 可编辑输入框的占位文字；独立于不可操作控件的禁用文字色。 */
+    QColor textPlaceholder() const { return m_textPlaceholder; }
     QColor textDisabled() const { return m_textDisabled; }
 
     // 边框
@@ -44,9 +48,24 @@ public:
     QColor warning() const { return m_warning; }
     QColor success() const { return m_success; }
 
+    /** 主题默认图表序列色，index >= 0 时循环取六色；负数返回无效颜色。
+     * 仅用于未指定业务颜色的曲线/容量分段，显式 QColor 优先。
+     */
+    QColor seriesColor(int index) const;
+    /** A/B 和测向游标色，与告警语义分开配置。 */
+    QColor plotCursor() const { return m_plotCursor; }
+    /** 实心按钮的原始背景；NativeStyle 会按文字色进一步确保可读性。 */
+    QColor primaryButton() const { return m_primaryButton; }
+    QColor dangerButton() const { return m_dangerButton; }
+    /** 开关圆点默认色；业务调用 setKnobColor 仍可覆盖。 */
+    QColor switchKnob() const { return m_switchKnob; }
+
     // 从 StyleManagerAdapter 重新加载色板；若未初始化则回退到内置暗色值。
     void reload();
-    /** 返回 Active/Inactive/Disabled 三组完整调色板；不直接修改 QApplication。 */
+    /** 返回 Active/Inactive/Disabled 三组完整调色板；不直接修改 QApplication。
+     * HighlightedText 默认按选中背景取深/浅文字；可由 selectionTextColor 覆盖。
+     * BrightText 来自 buttonTextColor，用于经过对比度调整的实心按钮。
+     */
     QPalette palette() const;
 
 signals:
@@ -64,6 +83,7 @@ private:
     QColor m_bgPressed;
     QColor m_textPrimary;
     QColor m_textSecondary;
+    QColor m_textPlaceholder;
     QColor m_textDisabled;
     QColor m_border;
     QColor m_borderLight;
@@ -71,6 +91,9 @@ private:
     QColor m_danger;
     QColor m_warning;
     QColor m_success;
+    QColor m_selection, m_selectionText, m_buttonText;
+    QColor m_primaryButton, m_dangerButton, m_plotCursor, m_switchKnob;
+    QVector<QColor> m_seriesColors;
 };
 
 } // namespace basewidgets

@@ -34,9 +34,28 @@ StyledPlot::StyledPlot(QWidget* parent) : QCustomPlot(parent)
 }
 void StyledPlot::setPlotTitle(const QString& title) { m_title->setText(title); replot(); }
 QString StyledPlot::plotTitle() const { return m_title->text(); }
+bool StyledPlot::setSeriesColor(QCPGraph* graph, int paletteIndex, const QColor& overrideColor)
+{
+    if (!graph || graph->parentPlot() != this || paletteIndex < 0) return false;
+    for (int i = m_themedSeries.size() - 1; i >= 0; --i)
+        if (!m_themedSeries[i].graph || m_themedSeries[i].graph == graph) m_themedSeries.removeAt(i);
+    const QColor color = overrideColor.isValid() ? overrideColor : ThemeTokens::instance()->seriesColor(paletteIndex);
+    QPen pen = graph->pen(); pen.setColor(color); graph->setPen(pen);
+    if (!overrideColor.isValid()) m_themedSeries.append({graph, paletteIndex, color});
+    replot(); return true;
+}
 void StyledPlot::refreshTheme()
 {
     auto* tokens=ThemeTokens::instance();
+    // Weak references tolerate removeGraph/clearGraphs; explicit business colors win.
+    for (int i = m_themedSeries.size() - 1; i >= 0; --i) {
+        auto& series = m_themedSeries[i];
+        if (!series.graph || series.graph->pen().color() != series.appliedColor) {
+            m_themedSeries.removeAt(i); continue;
+        }
+        series.appliedColor = tokens->seriesColor(series.paletteIndex);
+        QPen pen = series.graph->pen(); pen.setColor(series.appliedColor); series.graph->setPen(pen);
+    }
     setBackground(tokens->bg0());
     m_title->setTextColor(tokens->textPrimary());
     for(auto* rect:axisRects()) {

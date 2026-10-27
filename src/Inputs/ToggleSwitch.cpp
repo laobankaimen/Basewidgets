@@ -35,7 +35,7 @@ void ToggleSwitch::updateColors() {
     auto* tokens = ThemeTokens::instance();
     setOnColor(tokens->primary());
     setOffColor(tokens->border());
-    setKnobColor(Qt::white);
+    setKnobColor(tokens->switchKnob());
 }
 
 void ToggleSwitch::setAnimationDuration(int ms)

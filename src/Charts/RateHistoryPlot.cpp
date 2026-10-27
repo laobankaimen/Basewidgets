@@ -15,8 +15,7 @@ bool RateHistoryPlot::configure(int capacity,double window,const QString& unit,d
 int RateHistoryPlot::addSeries(const QString& name,const QColor& color)
 {
     if(name.isEmpty()||m_series.size()>=16||m_hasData) return -1;
-    static const QColor colors[]={QColor("#409EFF"),QColor("#67C23A"),QColor("#E6A23C"),QColor("#C084FC")};
-    auto* curve=addGraph(); curve->setName(name); curve->setPen(QPen(color.isValid()?color:colors[m_series.size()%4],1.5));
+    auto* curve=addGraph(); curve->setName(name); curve->setPen(QPen(Qt::black,1.5)); setSeriesColor(curve,m_series.size(),color);
     m_series.append(curve); replot(); return m_series.size()-1;
 }
 bool RateHistoryPlot::appendValues(double time,const QVector<double>& values)

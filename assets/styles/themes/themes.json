@@ -7,10 +7,10 @@
         "font_family" : "\"Microsoft YaHei\", \"Noto Sans CJK SC\",Roboto, Arial, sans-serif",
         "font_size" : "12px",
         "line_height" : "1.5",
-        "danger" :  "#F56C6C",
-        "warning" : "#E6A23C",
-        "success" : "#67C23A",
-        "info" : "#909399"
+        "danger" :  "#E47175",
+        "warning" : "#D6AD64",
+        "success" : "#86BD9A",
+        "info" : "#A2ACB9"
     },
 
     "resources" : {

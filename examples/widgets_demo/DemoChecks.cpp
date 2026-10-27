@@ -77,6 +77,7 @@
 #include <basewidgets/Core/StyleManagerAdapter.h>
 #include <basewidgets/Core/ThemeTokens.h>
 #include <basewidgets/Inputs/CheckBox.h>
+#include <basewidgets/Inputs/LineEdit.h>
 #include <basewidgets/Inputs/BusyIndicator.h>
 #include <basewidgets/Inputs/PushButton.h>
 #include <basewidgets/Inputs/ToolButton.h>
@@ -110,6 +111,26 @@ static QImage render(QWidget& widget)
     return image;
 }
 
+// Validate rendered theme combinations, not just individual RGB constants.
+static double contrastRatio(const QColor& first, const QColor& second)
+{
+    auto luminance = [](const QColor& color) {
+        auto linear = [](double value) {
+            return value <= .04045 ? value / 12.92 : std::pow((value + .055) / 1.055, 2.4);
+        };
+        return .2126 * linear(color.redF()) + .7152 * linear(color.greenF()) + .0722 * linear(color.blueF());
+    };
+    const double a = luminance(first), b = luminance(second);
+    return (qMax(a, b) + .05) / (qMin(a, b) + .05);
+}
+
+static bool writeThemeFixture(const QString& fileName, const QByteArray& data)
+{
+    if (!QDir().mkpath(QFileInfo(fileName).absolutePath())) return false;
+    QFile file(fileName);
+    return file.open(QIODevice::WriteOnly) && file.write(data) == data.size();
+}
+
 class NativeStyleTests : public QObject {
     Q_OBJECT
     QTemporaryDir output;
@@ -139,6 +160,174 @@ private slots:
         }
         QDirIterator css(output.path(), {"*.css"}, QDir::Files, QDirIterator::Subdirectories);
         QVERIFY(!css.hasNext());
+    }
+    void builtInThemeTextContrast()
+    {
+        auto* manager = StyleManagerAdapter::instance();
+        for (const QString theme : manager->themes()) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            auto* tokens = ThemeTokens::instance();
+            const QPalette palette = tokens->palette();
+            for (const QColor& background : {tokens->bg0(), tokens->bg1(), tokens->bg2(),
+                                            tokens->bgCtrl(), tokens->bgHover(), tokens->bgPressed()})
+                QVERIFY2(contrastRatio(tokens->textPrimary(), background) >= 4.5, qPrintable(theme));
+            for (const QColor& background : {tokens->bg0(), tokens->bg1(), tokens->bg2(), tokens->bgCtrl(), tokens->bgHover()})
+                QVERIFY2(contrastRatio(tokens->textSecondary(), background) >= 4.5, qPrintable(theme));
+            // Gauge state labels and chart annotations must stay readable in both themes.
+            for (const QColor& foreground : {tokens->primary(), tokens->danger(), tokens->warning(), tokens->success()})
+                for (const QColor& background : {tokens->bg0(), tokens->bg1()})
+                    QVERIFY2(contrastRatio(foreground, background) >= 4.5, qPrintable(theme + " " + foreground.name()));
+            QVERIFY(contrastRatio(tokens->textPlaceholder(), tokens->bg1()) >= 4.5);
+            QVERIFY(tokens->textPlaceholder() != tokens->textDisabled());
+            QCOMPARE(tokens->textPlaceholder(), manager->themeColor("placeholderTextColor"));
+            for (QPalette::ColorGroup group : {QPalette::Active, QPalette::Inactive}) {
+                QCOMPARE(palette.color(group, QPalette::PlaceholderText), tokens->textPlaceholder());
+                QVERIFY(contrastRatio(palette.color(group, QPalette::Highlight),
+                                      palette.color(group, QPalette::HighlightedText)) >= 4.5);
+            }
+            QCOMPARE(palette.color(QPalette::Disabled, QPalette::PlaceholderText), tokens->textDisabled());
+            LineEdit input; input.setPlaceholderText("输入录音名称");
+            QCOMPARE(input.palette().color(QPalette::PlaceholderText), tokens->textPlaceholder());
+            input.setText("录音样本"); input.selectAll();
+            QVERIFY(contrastRatio(input.palette().highlight().color(), input.palette().highlightedText().color()) >= 4.5);
+        }
+    }
+    void filledButtonsUseReadableText()
+    {
+        auto* manager = StyleManagerAdapter::instance();
+        for (const QString theme : manager->themes()) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for (ButtonAppearance appearance : {ButtonAppearance::Primary, ButtonAppearance::Danger}) {
+                PushButton button("Action"); button.setAppearance(appearance);
+                ToolButton tool; tool.setAppearance(appearance);
+                for (QStyle::State state : {QStyle::State(QStyle::State_Enabled),
+                                           QStyle::State(QStyle::State_Enabled | QStyle::State_MouseOver),
+                                           QStyle::State(QStyle::State_Enabled | QStyle::State_Sunken)}) {
+                    QStyleOptionButton option;
+                    option.initFrom(&button); option.rect = QRect(0, 0, 140, 40); option.state = state;
+                    QImage surface(option.rect.size(), QImage::Format_ARGB32_Premultiplied);
+                    surface.fill(option.palette.window().color());
+                    { QPainter painter(&surface); button.style()->drawPrimitive(QStyle::PE_PanelButtonCommand, &option, &painter, &button); }
+                    const QColor ink = option.palette.color(QPalette::BrightText);
+                    QVERIFY(contrastRatio(ink, surface.pixelColor(70, 20)) >= 4.5);
+                    // Selection text may be dark on the brighter indicator blue; filled
+                    // buttons keep their independently readable light caption and arrow.
+                    auto containsInk = [&](const QImage& image) {
+                        for (int y = 0; y < image.height(); ++y)
+                            for (int x = 0; x < image.width(); ++x) {
+                                const QColor pixel = image.pixelColor(x, y);
+                                if (pixel.alpha() > 220 && qAbs(pixel.red() - ink.red()) < 4
+                                    && qAbs(pixel.green() - ink.green()) < 4 && qAbs(pixel.blue() - ink.blue()) < 4) return true;
+                            }
+                        return false;
+                    };
+                    QImage label(surface.size(), QImage::Format_ARGB32_Premultiplied); label.fill(Qt::transparent);
+                    option.text = "Action";
+                    { QPainter painter(&label); button.style()->drawControl(QStyle::CE_PushButtonLabel, &option, &painter, &button); }
+                    QVERIFY(containsInk(label));
+                    QStyleOptionToolButton toolOption; toolOption.initFrom(&tool);
+                    toolOption.rect = option.rect; toolOption.state = state;
+                    toolOption.toolButtonStyle = Qt::ToolButtonTextOnly; toolOption.text = "Action"; toolOption.font = tool.font();
+                    label.fill(Qt::transparent);
+                    { QPainter painter(&label); tool.style()->drawControl(QStyle::CE_ToolButtonLabel, &toolOption, &painter, &tool); }
+                    QVERIFY(containsInk(label));
+                }
+            }
+        }
+    }
+    void themeConfigurationRejectsPartialUpdates()
+    {
+        QTemporaryDir directory; QVERIFY(directory.isValid());
+        const QString style=directory.path()+"/themes";
+        QVERIFY(writeThemeFixture(style+"/themes.json", R"({"name":"themes","default_theme":"ocean","resources":{"primary":{"#0000ff":"primaryColor"}}})"));
+        QVERIFY(writeThemeFixture(style+"/themes/ocean.xml", R"(<resources dark="1"><color name="primaryColor">#69B5A5</color></resources>)"));
+        acss::QtAdvancedStylesheet manager;
+        manager.setStylesDirPath(directory.path()); QVERIFY(manager.setCurrentStyle("themes"));
+        QVERIFY(manager.themes().contains("ocean")); QVERIFY(manager.setCurrentTheme("ocean"));
+        const auto colors=manager.themeColorVariables();
+        QSignalSpy changed(&manager,&acss::QtAdvancedStylesheet::currentThemeChanged);
+        const QList<QByteArray> invalid{
+            R"(<resources dark="0"><color name="primaryColor">#123456</color>)",
+            R"(<resources><color name="primaryColor">not-a-color</color></resources>)",
+            R"(<resources><color name="primaryColor">#123456</color><color name="primaryColor">#654321</color></resources>)",
+            R"(<resources><color name="primaryColor">#123456</color><unknown/></resources>)",
+            R"(<resources><color name="primaryColor"><nested/>#123456</color></resources>)",
+            R"(<resources/><resources/>)"};
+        for(const auto& xml:invalid) {
+            QVERIFY(writeThemeFixture(style+"/themes/broken.xml",xml));
+            QVERIFY(!manager.setCurrentTheme("broken"));
+            QCOMPARE(manager.currentTheme(),QString("ocean")); QVERIFY(manager.isCurrentThemeDark());
+            QCOMPARE(manager.themeColorVariables(),colors);
+            QCOMPARE(manager.themeVariableValue("primaryColor"),QString("#69B5A5"));
+            QVERIFY(!manager.errorString().isEmpty());
+        }
+        QVERIFY(!manager.setCurrentTheme("missing")); QCOMPARE(changed.count(),0);
+    }
+    void externalThemeControlsPaletteAndSeries()
+    {
+        QTemporaryDir directory; QVERIFY(directory.isValid());
+        const QString style=directory.path()+"/themes";
+        QVERIFY(writeThemeFixture(style+"/themes.json", R"({"name":"themes","default_theme":"ocean","resources":{"primary":{"#0000ff":"primaryColor"}}})"));
+        QVERIFY(writeThemeFixture(style+"/themes/ocean.xml", R"(<resources dark="1">
+            <color name="primaryColor">#69B5A5</color>
+            <color name="selectionColor">#294F65</color><color name="selectionTextColor">#D4E3EC</color>
+            <color name="buttonTextColor">#20342C</color><color name="primaryButtonColor">#B8DCCF</color>
+            <color name="dangerButtonColor">#EDBCBC</color><color name="plotCursorColor">#A5B4C3</color>
+            <color name="seriesColor1">#77C4AC</color><color name="seriesColor2">#D0AF73</color>
+            <color name="switchKnobColor">#CFD9D7</color></resources>)"));
+        QVERIFY(writeThemeFixture(style+"/themes/paper.xml", R"(<resources><color name="primaryColor">#326CAA</color></resources>)"));
+        auto* manager=StyleManagerAdapter::instance();
+        struct RestoreTheme {
+            QString path,style,theme,output;
+            ~RestoreTheme() { StyleManagerAdapter::initialize(path,style,theme); StyleManagerAdapter::instance()->setOutputDirPath(output); }
+        } restore{manager->stylesDirPath(),manager->currentStyle(),manager->currentTheme(),manager->outputDirPath()};
+        StyleManagerAdapter::initialize(directory.path(),"themes","ocean");
+        manager->setOutputDirPath(directory.path()+"/generated");
+        QVERIFY(manager->themes().contains("ocean")); QVERIFY(manager->updateTheme());
+        auto* tokens=ThemeTokens::instance();
+        QCOMPARE(tokens->primary(),QColor("#69B5A5")); QCOMPARE(tokens->bg0(),QColor("#202327"));
+        QCOMPARE(qApp->palette().highlight().color(),QColor("#294F65"));
+        QCOMPARE(qApp->palette().highlightedText().color(),QColor("#D4E3EC"));
+        QCOMPARE(qApp->palette().brightText().color(),QColor("#20342C"));
+        QCOMPARE(tokens->primaryButton(),QColor("#B8DCCF")); QCOMPARE(tokens->dangerButton(),QColor("#EDBCBC"));
+        QCOMPARE(tokens->plotCursor(),QColor("#A5B4C3")); QCOMPARE(tokens->switchKnob(),QColor("#CFD9D7"));
+        QCOMPARE(tokens->seriesColor(0),QColor("#77C4AC")); QCOMPARE(tokens->seriesColor(6),tokens->seriesColor(0));
+        QVERIFY(!tokens->seriesColor(-1).isValid());
+        AcousticWaveformPlot waveform; waveform.addChannel("Default"); waveform.addChannel("Fixed",QColor("#EC7F91"));
+        AcousticSpectrumPlot spectrum;
+        RateHistoryPlot rates; rates.addSeries("Default"); rates.addSeries("Fixed",QColor("#EC7F91"));
+        BeamPatternPlot beams; QVERIFY(beams.setBeam("a","Default",{0,90},{-5,-10}));
+        QVERIFY(beams.setBeam("b","Fixed",{0,90},{-5,-10},QColor("#EC7F91")));
+        QCOMPARE(waveform.graph(0)->pen().color(),tokens->seriesColor(0));
+        QCOMPARE(spectrum.graph(1)->pen().color(),tokens->seriesColor(1));
+        for(ButtonAppearance appearance:{ButtonAppearance::Primary,ButtonAppearance::Danger}) {
+            PushButton button("Configured"); button.setAppearance(appearance);
+            for(QStyle::State state:{QStyle::State(QStyle::State_Enabled),QStyle::State(QStyle::State_Enabled|QStyle::State_MouseOver),QStyle::State(QStyle::State_Enabled|QStyle::State_Sunken)}) {
+                QStyleOptionButton option; option.initFrom(&button); option.rect=QRect(0,0,120,40); option.state=state;
+                QImage image(option.rect.size(),QImage::Format_ARGB32_Premultiplied); image.fill(Qt::transparent);
+                { QPainter painter(&image); button.style()->drawPrimitive(QStyle::PE_PanelButtonCommand,&option,&painter,&button); }
+                QVERIFY(contrastRatio(image.pixelColor(60,20),option.palette.brightText().color())>=4.5);
+            }
+        }
+        QVERIFY(manager->setCurrentTheme("paper")); QVERIFY(manager->updateTheme());
+        QVERIFY(!manager->isCurrentThemeDark()); QCOMPARE(tokens->bg0(),QColor("#E9EDF2"));
+        for(StyledPlot* plot:{static_cast<StyledPlot*>(&waveform),static_cast<StyledPlot*>(&rates),static_cast<StyledPlot*>(&beams)}) {
+            QCOMPARE(plot->graph(0)->pen().color(),tokens->seriesColor(0));
+            QCOMPARE(plot->graph(1)->pen().color(),QColor("#EC7F91"));
+        }
+        QCOMPARE(spectrum.graph(0)->pen().color(),tokens->seriesColor(0));
+        QCOMPARE(spectrum.graph(1)->pen().style(),Qt::DashLine);
+        QVERIFY(waveform.setSeriesColor(waveform.graph(1),1)); // restore automatic theme color
+        QVERIFY(!waveform.setSeriesColor(rates.graph(0),0)); QVERIFY(!waveform.setSeriesColor(nullptr,0));
+        QVERIFY(!waveform.setSeriesColor(waveform.graph(0),-1));
+        QPen custom=waveform.graph(0)->pen(); custom.setColor(QColor("#AABBCC")); custom.setWidthF(2.5); waveform.graph(0)->setPen(custom);
+        QVERIFY(beams.setBeam("a","Fixed later",{0,90},{-5,-10},QColor("#778899")));
+        rates.removeGraph(rates.graph(0)); // deleted graph must not leave a theme callback dangling
+        QVERIFY(manager->setCurrentTheme("ocean")); QVERIFY(manager->updateTheme());
+        QCOMPARE(waveform.graph(0)->pen().color(),QColor("#AABBCC")); QCOMPARE(waveform.graph(0)->pen().widthF(),2.5);
+        QCOMPARE(waveform.graph(1)->pen().color(),tokens->seriesColor(1));
+        QCOMPARE(beams.graph(0)->pen().color(),QColor("#778899"));
+        QVERIFY(qApp->styleSheet().isEmpty());
     }
     void checkboxAndRadioInteraction()
     {
@@ -180,7 +369,7 @@ private slots:
         QImage checked(16,16,QImage::Format_ARGB32_Premultiplied); checked.fill(Qt::transparent);
         { QPainter p(&checked); qApp->style()->drawPrimitive(QStyle::PE_IndicatorCheckBox, &opt, &p); }
         QVERIFY(partial != checked);
-        QVERIFY(partial.pixelColor(8,7).lightness() > partial.pixelColor(8,4).lightness());
+        QVERIFY(contrastRatio(partial.pixelColor(8,7), partial.pixelColor(8,4)) >= 3.0);
     }
     void buttonAndSwitchKeyboard()
     {

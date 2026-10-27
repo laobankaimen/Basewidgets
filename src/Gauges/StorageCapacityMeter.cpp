@@ -42,11 +42,10 @@ void StorageCapacityMeter::paintEvent(QPaintEvent*)
     const double percent=m_total?100.*double(m_used)/m_total:0;
     text(p,QRectF(12,34,width()-24,34),m_total?QString("%1% 已用").arg(percent,0,'f',1):tr("容量未知"),sizedFont(font(),24,true),foreground,Qt::AlignLeft|Qt::AlignVCenter);
     const QRectF bar(12,86,width()-24,20); p.setPen(Qt::NoPen); p.setBrush(t->bg2()); p.drawRoundedRect(bar,4,4);
-    static const QColor colors[]={QColor("#409EFF"),QColor("#67C23A"),QColor("#E6A23C"),QColor("#C084FC"),QColor("#22B8B0")};
     double x=bar.left();
     for(int i=0;i<m_segments.size();++i) {
         const auto& segment=m_segments[i]; const double width=m_total?bar.width()*double(segment.bytes)/m_total:0;
-        const QColor color=isEnabled()?(segment.color.isValid()?segment.color:colors[i%5]):t->textDisabled();
+        const QColor color=isEnabled()?(segment.color.isValid()?segment.color:t->seriesColor(i)):t->textDisabled();
         p.fillRect(QRectF(x,bar.top(),width,bar.height()),color); x+=width;
         const int col=i%2,row=i/2; const qreal columnWidth=(this->width()-24)/2.;
         p.fillRect(QRectF(12+col*columnWidth,148+row*24,8,8),color);

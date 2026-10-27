@@ -1,24 +1,38 @@
 <!--?xml version="1.0" encoding="UTF-8"?-->
+<!-- Low-glare surfaces; keep readable text distinct from disabled content. -->
 <resources>
-  <color name="primaryColor">#409EFF</color>
-  <color name="primaryTextColor">#303133</color>
-  <color name="regularTextColor">#606266</color>
-  <color name="secondaryTextColor">#909399</color>
-  <color name="placeholderTextColor">#A8ABB2</color>
-  <color name="disabledTextColor">#C0C4CC</color>
-  <color name="darkerBorderColor">#CDD0D6</color>
-  <color name="darkBorderColor">#D4D7DE</color>
-  <color name="baseBorderColor">#DCDFE6</color>
-  <color name="lightBorderColor">#E4E7ED</color>
-  <color name="lighterBorderColor">#EBEEF5</color>
-  <color name="baseBackgroundColor">#FFFFFF</color>
-  <color name="pageBackgroundColor">#F2F3F5</color>
-  <color name="overlayBackgroundColor">#FFFFFF</color>
-  <color name="baseFillColor">#F0F2F5</color>
-  <color name="darkFillColor">#EBEDF0</color>
-  <color name="darkerFillColor">#E6E8EB</color>
-  <color name="lightFillColor">#F5F7FA</color>
-  <color name="lighterFillColor">#FAFAFA</color>
+  <color name="primaryColor">#326CAA</color>
+  <color name="primaryTextColor">#363F4B</color>
+  <color name="regularTextColor">#536170</color>
+  <color name="secondaryTextColor">#5D6A79</color>
+  <color name="placeholderTextColor">#606D7D</color>
+  <color name="disabledTextColor">#8A95A3</color>
+  <color name="darkerBorderColor">#A6B1BF</color>
+  <color name="darkBorderColor">#B2BCC9</color>
+  <color name="baseBorderColor">#BEC7D3</color>
+  <color name="lightBorderColor">#C9D1DC</color>
+  <color name="lighterBorderColor">#D6DDE5</color>
+  <color name="baseBackgroundColor">#F2F4F7</color>
+  <color name="pageBackgroundColor">#E9EDF2</color>
+  <color name="overlayBackgroundColor">#F7F8FA</color>
+  <color name="baseFillColor">#E2E7ED</color>
+  <color name="darkFillColor">#D9E1EA</color>
+  <color name="darkerFillColor">#E1E6EC</color>
+  <color name="lightFillColor">#ECF0F4</color>
+  <color name="lighterFillColor">#F0F3F6</color>
   <color name="basicBlackColor">#000000</color>
   <color name="basicWhiteColor">#FFFFFF</color>
+  <color name="pressedFillColor">#CBD5E1</color>
+  <color name="danger">#B4474D</color>
+  <color name="warning">#8B620E</color>
+  <color name="success">#31774E</color>
+  <!-- Optional graph/indicator roles; absent entries inherit semantic defaults. -->
+  <color name="buttonTextColor">#F1F4F8</color>
+  <color name="switchKnobColor">#F7F8FA</color>
+  <color name="seriesColor1">#326CAA</color>
+  <color name="seriesColor2">#8B620E</color>
+  <color name="seriesColor3">#31774E</color>
+  <color name="seriesColor4">#8053AB</color>
+  <color name="seriesColor5">#A84874</color>
+  <color name="seriesColor6">#287D78</color>
 </resources>

@@ -61,3 +61,16 @@ connect(plot, &basewidgets::StyledPlot::selectionMade, this,
 - [容量、速率与数据管理仪表](monitoring.md)
 
 菜单、鼠标框选与流式视口检查见[验证指南](../development/validation.md)。
+
+## 主题序列色与业务颜色
+
+波形、频谱、测向波束和速率历程的默认曲线使用主题 `seriesColor1` 至 `seriesColor6`，亮暗切换时实时更新。API 中显式传入有效 QColor 时保持业务颜色。
+
+```cpp
+// 将本图的 QCPGraph 绑定到第 1 个主题色，保留线型、线宽与已有数据。
+plot->setSeriesColor(graph, 0);
+// 固定为业务颜色；第三参数传 QColor() 可恢复主题跟随。
+plot->setSeriesColor(graph, 0, QColor("#A84874"));
+```
+
+`paletteIndex` 从 0 开始，超出 5 循环取色；负数、空指针和其他图的曲线返回 false。直接 setPen 设置其他颜色会退出跟随。删除曲线后主题回调不会继续访问该对象。热力图色标由数据含义决定，保持现有 ColorPreset/门限 API。完整配置步骤见[主题指南](../guides/themes-and-resources.md#新增配色模式只改配置)。

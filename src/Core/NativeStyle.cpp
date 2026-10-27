@@ -37,17 +37,27 @@ bool filled(const QStyleOption* option, const QWidget* widget)
 {
     return accented(option,widget) || appearance(widget)==ButtonAppearance::Danger;
 }
-// Choose a white-on-color surface with a minimum 4.5:1 contrast ratio.
+// Keep configured button text readable (4.5:1) on filled primary/danger surfaces.
 // Theme primaryColor stays unchanged for sliders/indicators; button fills are adjusted locally.
 QColor buttonFill(const QStyleOption* option, const QWidget* widget)
 {
+    const auto* tokens = ThemeTokens::instance();
     QColor color = appearance(widget)==ButtonAppearance::Danger
-        ? ThemeTokens::instance()->danger() : option->palette.color(QPalette::Highlight);
+        ? tokens->dangerButton() : tokens->primaryButton();
+    if (option->state & QStyle::State_Sunken) color = color.darker(115);
+    else if (option->state & QStyle::State_MouseOver) color = color.darker(105);
     auto linear = [](double value) { return value<=.04045 ? value/12.92 : std::pow((value+.055)/1.055,2.4); };
-    for (int i=0;i<20;++i) {
+    const QColor ink = option->palette.color(QPalette::BrightText);
+    const double inkLuminance = .2126*linear(ink.redF())+.7152*linear(ink.greenF())+.0722*linear(ink.blueF());
+    // Custom themes may choose dark button text. Move the surface toward the
+    // opposite luminance after applying hover/pressed, keeping every state readable.
+    const int target = inkLuminance > .179 ? 0 : 255;
+    for (int i=0;i<64;++i) {
         const double luminance = .2126*linear(color.redF())+.7152*linear(color.greenF())+.0722*linear(color.blueF());
-        if (1.05/(luminance+.05)>=4.5) break;
-        color=color.darker(108);
+        if ((qMax(inkLuminance,luminance)+.05)/(qMin(inkLuminance,luminance)+.05)>=4.5) break;
+        auto step = [target](int value) { return target == 0 ? qMax(0,value-qMax(1,qRound(value*.08)))
+                                                           : qMin(255,value+qMax(1,qRound((255-value)*.08))); };
+        color.setRgb(step(color.red()),step(color.green()),step(color.blue()));
     }
     return color;
 }
@@ -263,14 +273,14 @@ void NativeStyle::drawPrimitive(PrimitiveElement element, const QStyleOption* op
             // Selected controls use a quiet tinted surface; primary actions keep the strongest weight.
             fill=pal.color(QPalette::Highlight); fill.setAlpha(45);
         }
-        if (enabled && down) fill = strong ? buttonFill(option,widget).darker(115) : pal.color(QPalette::Dark);
-        else if (hover) fill = strong ? buttonFill(option,widget).darker(105) : pal.color(QPalette::Light);
+        if (enabled && down) fill = strong ? buttonFill(option,widget) : pal.color(QPalette::Dark);
+        else if (hover) fill = strong ? buttonFill(option,widget) : pal.color(QPalette::Light);
         QColor border(Qt::transparent);
         if (appearance(widget)==ButtonAppearance::Outline) border=pal.color(QPalette::Mid);
         if (checked) border=pal.color(QPalette::Highlight);
         // Mouse clicks do not leave every button outlined. Keyboard focus must remain visible.
         if (enabled && (option->state & State_HasFocus) && (option->state & State_KeyboardFocusChange))
-            border=pal.color(strong ? QPalette::HighlightedText : QPalette::Highlight);
+            border=pal.color(strong ? QPalette::BrightText : QPalette::Highlight);
         rounded(p, option->rect, fill, border);
         return;
     }
@@ -367,7 +377,7 @@ void NativeStyle::drawControl(ControlElement element, const QStyleOption* option
             const int width = pixelMetric(PM_MenuButtonIndicator, option, widget);
             QRect r(option->rect.right()-width, option->rect.top(), width, option->rect.height());
             arrow(p, visualRect(option->direction, option->rect, r), PE_IndicatorArrowDown,
-                  filled(option, widget) ? pal.color(QPalette::HighlightedText) : pal.color(QPalette::ButtonText));
+                  filled(option, widget) && (option->state & State_Enabled) ? pal.color(QPalette::BrightText) : pal.color(QPalette::ButtonText));
         }
         return;
     }
@@ -375,7 +385,7 @@ void NativeStyle::drawControl(ControlElement element, const QStyleOption* option
         if (const auto* button = qstyleoption_cast<const QStyleOptionButton*>(option)) {
             QStyleOptionButton copy(*button);
             if ((option->state & State_Enabled) && filled(option, widget))
-                copy.palette.setColor(QPalette::ButtonText, pal.color(QPalette::HighlightedText));
+                copy.palette.setColor(QPalette::ButtonText, pal.color(QPalette::BrightText));
             QProxyStyle::drawControl(element, &copy, p, widget);
             return;
         }
@@ -384,7 +394,7 @@ void NativeStyle::drawControl(ControlElement element, const QStyleOption* option
         if (const auto* button = qstyleoption_cast<const QStyleOptionToolButton*>(option)) {
             QStyleOptionToolButton copy(*button);
             if ((option->state & State_Enabled) && filled(option, widget))
-                copy.palette.setColor(QPalette::ButtonText, pal.color(QPalette::HighlightedText));
+                copy.palette.setColor(QPalette::ButtonText, pal.color(QPalette::BrightText));
             if (!copy.icon.isNull() && (copy.toolButtonStyle==Qt::ToolButtonIconOnly || copy.toolButtonStyle==Qt::ToolButtonTextBesideIcon)) {
                 // Paint vector engines into the actual painter, including fractional-DPR
                 // offscreen targets, rather than rasterizing at the widget's old screen DPR.
@@ -607,8 +617,7 @@ void NativeStyle::drawComplexControl(ComplexControl control, const QStyleOptionC
             QColor foreground=pal.color(QPalette::ButtonText);
             if (hover || down) {
                 background = close ? buttonFill(option,widget) : pal.color(down ? QPalette::Dark : QPalette::Light);
-                if (close) foreground=Qt::white;
-                if (close && down) background=background.darker(120);
+                if (close) foreground=pal.color(QPalette::BrightText);
             }
             p->save();
             p->fillRect(option->rect,background);
@@ -665,7 +674,7 @@ void NativeStyle::drawComplexControl(ComplexControl control, const QStyleOptionC
             }
             arrow(p,menuRect,PE_IndicatorArrowDown,
                   filled(option,widget) && (option->state & State_Enabled)
-                      ? pal.color(QPalette::HighlightedText) : pal.color(QPalette::ButtonText));
+                      ? pal.color(QPalette::BrightText) : pal.color(QPalette::ButtonText));
         }
         return;
     }

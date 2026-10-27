@@ -5,9 +5,9 @@ AcousticSpectrumPlot::AcousticSpectrumPlot(QWidget* parent) : StyledPlot(parent)
 {
     setPlotTitle("单边频谱 / PSD"); xAxis->setLabel("频率 (Hz)"); yAxis->setLabel("PSD (dBFS/Hz)");
     xAxis->setRange(0,24000); yAxis->setRange(-120,0); legend->setVisible(true);
-    m_spectrum=addGraph(); m_spectrum->setName("当前帧"); m_spectrum->setPen(QPen(QColor("#409EFF"),1.5));
+    m_spectrum=addGraph(); m_spectrum->setName("当前帧"); m_spectrum->setPen(QPen(Qt::black,1.5)); setSeriesColor(m_spectrum,0);
     captureResetView();
-    m_hold=addGraph(); m_hold->setName("峰值保持"); m_hold->setPen(QPen(QColor("#E6A23C"),1,Qt::DashLine)); m_hold->setVisible(false); m_hold->removeFromLegend();
+    m_hold=addGraph(); m_hold->setName("峰值保持"); m_hold->setPen(QPen(Qt::black,1,Qt::DashLine)); setSeriesColor(m_hold,1); m_hold->setVisible(false); m_hold->removeFromLegend();
 }
 bool AcousticSpectrumPlot::setFrame(const AcousticSpectrumFrame& frame)
 {

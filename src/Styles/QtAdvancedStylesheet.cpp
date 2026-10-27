@@ -428,7 +428,7 @@ bool QtAdvancedStylesheetPrivate::parseVariablesFromXml(
 			return false;
 		}
 
-		auto Value = s.readElementText(QXmlStreamReader::SkipChildElements);
+		auto Value = s.readElementText(QXmlStreamReader::ErrorOnUnexpectedElement).trimmed();
 		if (Value.isEmpty())
 		{
 			setError(QtAdvancedStylesheet::ThemeXmlError, "Malformed theme file - "
@@ -436,7 +436,12 @@ bool QtAdvancedStylesheetPrivate::parseVariablesFromXml(
 			return false;
 		}
 
-		Variables.insert(Name, Value);
+        if (s.hasError() || Variables.contains(Name) || !QColor(Value).isValid()) {
+            setError(QtAdvancedStylesheet::ThemeXmlError,
+                "Invalid or duplicate theme color: " + Name + " = " + Value);
+            return false;
+        }
+        Variables.insert(Name, Value);
 	}
 
 	return true;
@@ -446,27 +451,33 @@ bool QtAdvancedStylesheetPrivate::parseVariablesFromXml(
 //============================================================================
 bool QtAdvancedStylesheetPrivate::parseThemeFile(const QString& Theme)
 {
-	QString ThemeFileName = _this->path(QtAdvancedStylesheet::ThemesLocation) + "/" + Theme;
-	QFile ThemeFile(ThemeFileName);
-	ThemeFile.open(QIODevice::ReadOnly);
-	QXmlStreamReader s(&ThemeFile);
-        s.readNextStartElement();
-        if (s.name() != QString("resources"))
-	{
-		setError(QtAdvancedStylesheet::ThemeXmlError, "Malformed theme file - "
-                        "expected tag <resources> instead of " + s.name().toString());
-		return false;
-	}
-
-	IsDarkTheme = (s.attributes().value("dark").toInt() == 1);
-    QMap<QString, QString> ColorVariables;
-	parseVariablesFromXml(s, "color", ColorVariables);
-	this->ThemeVariables = this->StyleVariables;
-	insertIntoMap(this->ThemeVariables, ColorVariables);
-	this->ThemeColors = ColorVariables;
-	return true;
+    const QString fileName = _this->path(QtAdvancedStylesheet::ThemesLocation) + "/" + Theme;
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        setError(QtAdvancedStylesheet::ThemeXmlError, "Cannot open theme: " + fileName);
+        return false;
+    }
+    QXmlStreamReader reader(&file);
+    if (!reader.readNextStartElement() || reader.name() != QString("resources")) {
+        setError(QtAdvancedStylesheet::ThemeXmlError, "Malformed theme: expected <resources>");
+        return false;
+    }
+    const bool dark = reader.attributes().value("dark").toInt() == 1;
+    QMap<QString, QString> colors;
+    if (!parseVariablesFromXml(reader, "color", colors)) return false;
+    // Read through EOF so incomplete/trailing XML cannot partially replace the active palette.
+    while (!reader.atEnd()) reader.readNext();
+    if (reader.hasError()) {
+        setError(QtAdvancedStylesheet::ThemeXmlError, "Malformed theme: " + reader.errorString());
+        return false;
+    }
+    QMap<QString, QString> variables = StyleVariables;
+    insertIntoMap(variables, colors);
+    IsDarkTheme = dark;
+    ThemeVariables = variables;
+    ThemeColors = colors;
+    return true;
 }
-
 
 //============================================================================
 bool QtAdvancedStylesheetPrivate::parseStyleJsonFile()

@@ -7,7 +7,11 @@ AcousticWaveformPlot::AcousticWaveformPlot(QWidget* parent) : StyledPlot(parent)
     setPlotTitle("多通道时域波形"); xAxis->setLabel("时间 (s)"); yAxis->setLabel(AcousticAnalysis::amplitudeLabel(AcousticUnit::FullScale));
     xAxis->setRange(0,1); yAxis->setRange(-1.05,1.05); legend->setVisible(true);
     m_lineA=new QCPItemStraightLine(this); m_lineB=new QCPItemStraightLine(this);
-    for(auto* line:{m_lineA,m_lineB}) { line->setVisible(false); line->setPen(QPen(QColor("#E6A23C"),1,Qt::DashLine)); }
+    for(auto* line:{m_lineA,m_lineB}) { line->setVisible(false); line->setPen(QPen(ThemeTokens::instance()->plotCursor(),1,Qt::DashLine)); }
+    connect(ThemeTokens::instance(), &ThemeTokens::tokensChanged, this, [this] {
+        for (auto* line : {m_lineA, m_lineB}) { QPen pen = line->pen(); pen.setColor(ThemeTokens::instance()->plotCursor()); line->setPen(pen); }
+        replot();
+    });
     setNavigationAxes(Qt::Horizontal); captureResetView();
     connect(this,&StyledPlot::userNavigationStarted,this,[this] { setFollowLatest(false); });
     connect(this,&StyledPlot::viewReset,this,[this] { setFollowLatest(true); });
@@ -29,8 +33,7 @@ bool AcousticWaveformPlot::configure(double rate,int capacity,AcousticUnit unit)
 int AcousticWaveformPlot::addChannel(const QString& name,const QColor& color)
 {
     if(m_channels.size()>=16 || name.isEmpty()) return -1;
-    static const QColor colors[]={QColor("#409EFF"),QColor("#E6A23C"),QColor("#67C23A"),QColor("#C084FC"),QColor("#F472B6"),QColor("#22B8B0")};
-    auto* curve=addGraph(); curve->setName(name); curve->setPen(QPen(color.isValid()?color:colors[m_channels.size()%6],1.3)); curve->setAdaptiveSampling(true);
+    auto* curve=addGraph(); curve->setName(name); curve->setPen(QPen(Qt::black,1.3)); setSeriesColor(curve,m_channels.size(),color); curve->setAdaptiveSampling(true);
     m_channels.append({curve,false,0}); replot(); return m_channels.size()-1;
 }
 bool AcousticWaveformPlot::appendSamples(int channel,double start,const QVector<double>& samples)

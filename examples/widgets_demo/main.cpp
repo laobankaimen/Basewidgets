@@ -1,6 +1,7 @@
 // 完整接入示例：高 DPI 设置→QApplication→初始化主题→组合主窗口。
 // --smoke-test 遍历所有页面并退出；普通启动展示交互，--verify 开启可选回归验证。
 #include <QApplication>
+#include <QCommandLineParser>
 #include <QCloseEvent>
 #include <QSettings>
 #include <QScreen>
@@ -107,8 +108,20 @@ int main(int argc, char *argv[])
         return 2;
 #endif
     }
-    // 默认读取 UI 库内嵌主题，不依赖工作目录，也无需复制 themes.rcc。
-    StyleManagerAdapter::initialize();
+    QCommandLineParser arguments;
+    arguments.setApplicationDescription("BaseWidgets 控件与配色示例"); arguments.addHelpOption();
+    arguments.addOption({"styles-dir", "外部 styles 目录或主题 RCC；省略时使用库内嵌资源", "path"});
+    arguments.addOption({"theme", "主题 XML 文件名（不含 .xml）；省略时读取 default_theme", "name"});
+    arguments.addOption({"smoke-test", "遍历当前资源包的全部主题和页面后退出"});
+    arguments.process(app);
+    // 外部目录使用相同的配置协议。换配色只改 XML/JSON，应用无需重新编译。
+    StyleManagerAdapter::initialize(arguments.value("styles-dir"), "themes", arguments.value("theme"));
+    auto* themeManager = StyleManagerAdapter::instance();
+    if (themeManager->themes().isEmpty() || themeManager->currentTheme().isEmpty()
+        || (arguments.isSet("theme") && themeManager->currentTheme() != arguments.value("theme"))) {
+        qCritical() << "Cannot load requested theme:" << arguments.value("theme") << themeManager->errorString();
+        return 2;
+    }
 
     // 创建主窗口（使用基于 QWidget 的无边框主界面）
     auto* window = new DemoMainWindow();
@@ -166,8 +179,9 @@ int main(int argc, char *argv[])
         action->setToolTip("打开"+action->text()+"工作区");
     }
     auto* spacer=new QWidget(toolBar); spacer->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred); toolBar->addWidget(spacer);
-    auto* themeAction=new QAction(icon("theme"),"浅色主题",window);
-    themeAction->setObjectName("WorkspaceThemeAction"); themeAction->setToolTip("切换明暗主题");
+    auto* themeAction=new QAction(icon("theme"),"主题",window);
+    themeAction->setObjectName("WorkspaceThemeAction"); themeAction->setToolTip("选择配色主题");
+    auto* themeMenu=new QMenu(window); themeMenu->setObjectName("WorkspaceThemeMenu"); themeAction->setMenu(themeMenu);
     auto* moreMenu=new QMenu(toolBar);
     auto* saveLayout=moreMenu->addAction(icon("layout"),"保存窗口布局");
     moreMenu->addAction(themeAction);
@@ -177,6 +191,8 @@ int main(int argc, char *argv[])
         button->setPopupMode(QToolButton::InstantPopup); button->setToolButtonStyle(Qt::ToolButtonTextOnly);
     }
     toolBar->addAction(themeAction);
+    if (auto* button=qobject_cast<QToolButton*>(toolBar->widgetForAction(themeAction)))
+        button->setPopupMode(QToolButton::InstantPopup);
     window->setToolBar(toolBar);
 
     // 一个主控窗口 + 多个子屏业务窗口。主屏可任选，不要求等于系统 primaryScreen。
@@ -280,13 +296,33 @@ int main(int argc, char *argv[])
     QObject::connect(saveLayout,&QAction::triggered,window,[window,statusBar] {
         QSettings settings; settings.setValue("mainWindow/placement",WindowPlacement::save(window)); statusBar->showMessage("当前窗口布局已保存",4000);
     });
-    QObject::connect(themeAction,&QAction::triggered,window,[] {
-        auto* manager=StyleManagerAdapter::instance(); manager->setCurrentTheme(manager->currentTheme()=="dark"?"light":"dark"); manager->updateTheme();
-    });
-    auto refreshThemeAction=[themeAction] {
-        themeAction->setText(StyleManagerAdapter::instance()->currentTheme()=="dark"?"浅色主题":"深色主题");
+    auto themeLabel=[](const QString& name) {
+        return name=="dark" ? QString("深色主题") : name=="light" ? QString("浅色主题") : name;
     };
-    refreshThemeAction(); QObject::connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,themeAction,refreshThemeAction);
+    auto refreshThemeAction=[themeAction,themeMenu,themeLabel] {
+        const QString current=StyleManagerAdapter::instance()->currentTheme();
+        themeAction->setText(themeLabel(current));
+        themeAction->setToolTip("当前主题："+themeLabel(current));
+        for (auto* action:themeMenu->actions()) action->setChecked(action->data().toString()==current);
+    };
+    // 遍历 XML 发现的主题，新增 ocean.xml 等配置后自动出现在菜单中。
+    auto rebuildThemeMenu=[themeMenu,themeLabel,refreshThemeAction,statusBar] {
+        themeMenu->clear();
+        for (const QString& name:StyleManagerAdapter::instance()->themes()) {
+            auto* action=themeMenu->addAction(themeLabel(name)); action->setData(name); action->setCheckable(true);
+            QObject::connect(action,&QAction::triggered,themeMenu,[name,refreshThemeAction,statusBar] {
+                auto* manager=StyleManagerAdapter::instance();
+                if (!manager->setCurrentTheme(name) || !manager->updateTheme())
+                    statusBar->showMessage("主题加载失败："+manager->errorString(),8000);
+                refreshThemeAction();
+            });
+        }
+        refreshThemeAction();
+    };
+    rebuildThemeMenu();
+    QObject::connect(StyleManagerAdapter::instance(),&acss::QtAdvancedStylesheet::currentStyleChanged,
+                     themeMenu,rebuildThemeMenu);
+    QObject::connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,themeMenu,refreshThemeAction);
 
     centralLayout->addWidget(mainTabWidget);
 
@@ -392,7 +428,7 @@ int main(int argc, char *argv[])
                 window->resize(width,760);
                 QApplication::processEvents();
                 ok = window->width()==width && ok;
-                for (const QString theme : {QString("dark"), QString("light")}) {
+                for (const QString theme : StyleManagerAdapter::instance()->themes()) {
                     auto* manager = StyleManagerAdapter::instance();
                     ok = manager->setCurrentTheme(theme) && manager->updateTheme() && ok;
                     for (int i=0;i<mainTabWidget->count();++i) {
@@ -417,8 +453,16 @@ int main(int argc, char *argv[])
                 mainTabWidget->setCurrentIndex(0);
                 for(auto* action:toolbar->actions())if(action->isCheckable())require(!action->isChecked(),"unrelated page clears command selection");
                 if(auto* theme=window->findChild<QAction*>("WorkspaceThemeAction")) {
-                    const QString before=StyleManagerAdapter::instance()->currentTheme(); theme->trigger();
-                    require(StyleManagerAdapter::instance()->currentTheme()!=before,"theme command switches theme"); theme->trigger();
+                    auto* manager=StyleManagerAdapter::instance(); const QString before=manager->currentTheme();
+                    require(theme->menu()!=nullptr,"theme command provides menu");
+                    if(theme->menu()) {
+                        require(theme->menu()->actions().size()==manager->themes().size(),"all configured themes are listed");
+                        for(auto* choice:theme->menu()->actions()) {
+                            choice->trigger(); require(manager->currentTheme()==choice->data().toString(),"theme menu selects configured theme");
+                            require(choice->isChecked(),"active theme is checked");
+                        }
+                        manager->setCurrentTheme(before); manager->updateTheme();
+                    }
                 } else ok=false;
             } else ok=false;
             require(!mainTabWidget->hoverEffectEnabled() && !mainTabWidget->contentHoverEffectEnabled(),"page and tab hover default off");

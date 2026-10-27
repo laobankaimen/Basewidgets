@@ -6,7 +6,7 @@ BeamPatternPlot::BeamPatternPlot(QWidget* parent) : StyledPlot(parent)
 {
     setPlotTitle("多测向波束 · 点击拾取方位"); xAxis->setLabel("方位 (°，北=0，顺时针)"); yAxis->setLabel("波束电平 (dB)");
     xAxis->setRange(0,360); yAxis->setRange(-60,0); legend->setVisible(true); captureResetView();
-    m_cursor=new QCPItemStraightLine(this); m_cursor->setPen(QPen(QColor("#E6A23C"),1,Qt::DashLine)); m_cursor->setVisible(false);
+    m_cursor=new QCPItemStraightLine(this); m_cursor->setPen(QPen(ThemeTokens::instance()->plotCursor(),1,Qt::DashLine)); m_cursor->setVisible(false);
     connect(this,&StyledPlot::coordinateClicked,this,[this](double x,double y,Qt::KeyboardModifiers) {
         setBearingCursor(x); double best=std::numeric_limits<double>::infinity(),pickedX=0,pickedY=0; QString id;
         for(const auto& beam:m_beams) if(beam.graph->visible()) {
@@ -22,6 +22,7 @@ BeamPatternPlot::BeamPatternPlot(QWidget* parent) : StyledPlot(parent)
         if(!id.isEmpty()) emit beamPicked(id,pickedX,pickedY);
     });
     connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,this,[this] {
+        QPen pen=m_cursor->pen(); pen.setColor(ThemeTokens::instance()->plotCursor()); m_cursor->setPen(pen);
         for(const auto& beam:m_beams) if(auto* item=legend->itemWithPlottable(beam.graph))
             item->setTextColor(beam.graph->visible()?ThemeTokens::instance()->textPrimary():ThemeTokens::instance()->textDisabled());
     });
@@ -54,11 +55,10 @@ bool BeamPatternPlot::setBeam(const QString& id,const QString& name,const QVecto
     int index=-1; for(int i=0;i<m_beams.size();++i) if(m_beams[i].id==id) index=i;
     if(index<0) {
         if(m_beams.size()>=32) return false;
-        static const QColor colors[]={QColor("#409EFF"),QColor("#E6A23C"),QColor("#67C23A"),QColor("#C084FC"),QColor("#F472B6")};
-        auto* curve=addGraph(); curve->setPen(QPen(color.isValid()?color:colors[m_beams.size()%5],1.5));
+        auto* curve=addGraph(); curve->setPen(QPen(Qt::black,1.5)); setSeriesColor(curve,m_beams.size(),color);
         m_beams.append({id,curve}); index=m_beams.size()-1;
     }
-    auto* curve=m_beams[index].graph; curve->setName(name); if(color.isValid()) curve->setPen(QPen(color,1.5));
+    auto* curve=m_beams[index].graph; curve->setName(name); if(color.isValid()) setSeriesColor(curve,index,color);
     curve->setData(bearings,levels,true); replot(); return true;
 }
 bool BeamPatternPlot::setBeamVisible(const QString& id,bool visible)
