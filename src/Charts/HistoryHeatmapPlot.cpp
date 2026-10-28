@@ -13,7 +13,8 @@ HistoryHeatmapPlot::HistoryHeatmapPlot(QWidget* parent) : StyledPlot(parent)
     m_map=new QCPColorMap(xAxis,yAxis); m_map->setInterpolate(false); m_map->setTightBoundary(false); m_map->data()->fillAlpha(0);
     m_scale=new QCPColorScale(this); plotLayout()->addElement(1,1,m_scale); m_scale->setType(QCPAxis::atRight); m_map->setColorScale(m_scale);
     setColorPreset(ColorPreset::Viridis); m_map->setDataRange(QCPRange(m_lower,m_upper));
-    connect(this,&QCustomPlot::beforeReplot,this,&HistoryHeatmapPlot::synchronizeMap);
+    // Layout and export dimensions must be known before choosing the display grid.
+    connect(this,&QCustomPlot::afterLayout,this,&HistoryHeatmapPlot::synchronizeMap);
     connect(this,&StyledPlot::userNavigationStarted,this,[this] { setFollowLatest(false); });
     connect(this,&StyledPlot::viewReset,this,[this] { setFollowLatest(true); });
     connect(this,&StyledPlot::coordinateClicked,this,[this](double x,double time,Qt::KeyboardModifiers) {
@@ -32,7 +33,7 @@ bool HistoryHeatmapPlot::configureGrid(double lower,double upper,int bins,int ca
     if(upper<=lower||!QCPRange::validRange(lower,upper)||bins<2||bins>65536||capacity<2||capacity>2048||qint64(bins)*capacity>2097152
         ||!std::isfinite(period)||period<=0||period*capacity>86400*30||!QCPRange::validRange(0,period*(capacity-1))) return false;
     m_xMinimum=lower; m_xMaximum=upper; m_bins=bins; m_period=period; m_displayX=QCPRange(lower,upper);
-    m_history=QVector<QVector<double>>(capacity); m_map->data()->setSize(bins,capacity); m_scale->setLabel(unit);
+    m_history=QVector<QVector<double>>(capacity); m_sourceCells=QRect(); m_displayGrid=QSize(); m_scale->setLabel(unit);
     xAxis->setRange(m_displayX); clearHistory(); return true;
 }
 void HistoryHeatmapPlot::clearHistory()
@@ -114,15 +115,58 @@ double HistoryHeatmapPlot::coordinateAt(int bin) const
 {
     return bin>=0 && bin<m_bins && m_bins>1 ? m_xMinimum+(m_xMaximum-m_xMinimum)*double(bin)/(m_bins-1) : std::numeric_limits<double>::quiet_NaN();
 }
+QSize HistoryHeatmapPlot::displayGridSize() const { return m_map->visible()?m_displayGrid:QSize(); }
 void HistoryHeatmapPlot::synchronizeMap()
 {
-    if(!m_dirty||m_history.isEmpty()) return;
-    const double first=m_hasTime?timeAt(0):0,last=m_hasTime?m_last:(m_history.size()-1)*m_period;
-    m_map->data()->setRange(QCPRange(m_xMinimum,m_xMaximum),QCPRange(first,last));
-    for(int row=0;row<m_history.size();++row) for(int bin=0;bin<m_bins;++bin) {
-        const double value=levelAt(bin,row); const bool available=std::isfinite(value);
-        m_map->data()->setCell(bin,row,available?value:m_lower);
-        m_map->data()->setAlpha(bin,row,available && (!m_thresholdEnabled||value>=m_threshold)?255:0);
+    if(m_history.isEmpty())return;
+    const double first=m_hasTime?timeAt(0):0;
+    const double dx=(m_xMaximum-m_xMinimum)/(m_bins-1);
+    // Convert only after clamping; zoomed-out ranges may exceed integer limits.
+    auto visibleCells=[](const QCPRange& view,double origin,double step,int count) {
+        const double lo=(view.lower-origin)/step,hi=(view.upper-origin)/step;
+        if(hi<-.5||lo>count-.5)return QPair<int,int>(0,0);
+        int begin=int(qBound(0.,std::floor(lo-.5),double(count-1)));
+        int end=int(qBound(double(begin+1),std::ceil(hi+1.5),double(count)));
+        // QCPColorMap requires non-zero range, including when one cell fills the viewport.
+        if(end-begin<2) { begin=qMax(0,begin-1); end=qMin(count,begin+2); }
+        return QPair<int,int>(begin,end);
+    };
+    const auto x=visibleCells(xAxis->range(),m_xMinimum,dx,m_bins);
+    const auto y=visibleCells(yAxis->range(),first,m_period,m_history.size());
+    if(x.first==x.second||y.first==y.second) { m_map->setVisible(false); return; }
+    m_map->setVisible(true);
+    const QRect cells(x.first,y.first,x.second-x.first,y.second-y.first);
+    const QSize grid(qMin(cells.width(),qBound(2,axisRect()->width(),1024)),
+                     qMin(cells.height(),qBound(2,axisRect()->height(),512)));
+    if(!m_dirty && cells==m_sourceCells && grid==m_displayGrid)return;
+    m_sourceCells=cells; m_displayGrid=grid;
+    auto* data=m_map->data(); data->setSize(grid.width(),grid.height());
+    // Keep original cell edges while replacing each group with one display cell.
+    const double sx=dx*cells.width()/grid.width(),sy=m_period*cells.height()/grid.height();
+    const double left=m_xMinimum+(cells.left()-.5)*dx,top=first+(cells.top()-.5)*m_period;
+    data->setRange(QCPRange(left+sx/2,left+dx*cells.width()-sx/2),
+                   QCPRange(top+sy/2,top+m_period*cells.height()-sy/2));
+    QVector<double> peaks(grid.width());
+    for(int row=0;row<grid.height();++row) {
+        std::fill(peaks.begin(),peaks.end(),-std::numeric_limits<double>::infinity());
+        const int rowBegin=cells.top()+row*cells.height()/grid.height();
+        const int rowEnd=cells.top()+(row+1)*cells.height()/grid.height();
+        for(int sourceRow=rowBegin;sourceRow<rowEnd;++sourceRow) {
+            const auto& values=m_history[(m_next+sourceRow)%m_history.size()];
+            if(!m_hasTime||values.isEmpty())continue;
+            for(int col=0;col<grid.width();++col) {
+                const int begin=cells.left()+col*cells.width()/grid.width();
+                const int end=cells.left()+(col+1)*cells.width()/grid.width();
+                double peak=peaks[col];
+                for(int bin=begin;bin<end;++bin)if(std::isfinite(values[bin]))peak=qMax(peak,values[bin]);
+                peaks[col]=peak;
+            }
+        }
+        for(int col=0;col<grid.width();++col) {
+            const double value=peaks[col]; const bool available=std::isfinite(value);
+            data->setCell(col,row,available?value:m_lower);
+            data->setAlpha(col,row,available&&(!m_thresholdEnabled||value>=m_threshold)?255:0);
+        }
     }
     m_dirty=false;
 }

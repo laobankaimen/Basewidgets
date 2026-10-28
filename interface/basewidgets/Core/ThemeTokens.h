@@ -30,6 +30,13 @@ public:
     QColor bgHover() const { return m_bgHover; }
     QColor bgPressed() const { return m_bgPressed; }
 
+    /** 标题栏独立底色；XML 的 titleBarBackgroundColor，缺省沿用页面背景。 */
+    QColor titleBarBackground() const { return m_titleBarBackground; }
+
+    /** 标题栏渐变终点与装饰线；未配置时为标题底色和主题强调色。 */
+    QColor titleBarGradientEnd() const { return m_titleBarGradientEnd; }
+    QColor titleBarAccent() const { return m_titleBarAccent; }
+
     // 文本
     QColor textPrimary() const { return m_textPrimary; }
     /** 辅助说明、单位与刻度；不要用禁用色承载仍需阅读的信息。 */
@@ -75,6 +82,7 @@ signals:
 private:
     ThemeTokens();
 
+    QColor m_titleBarBackground, m_titleBarGradientEnd, m_titleBarAccent;
     QColor m_bg0;
     QColor m_bg1;
     QColor m_bg2;

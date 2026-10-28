@@ -5,7 +5,8 @@
 namespace basewidgets {
 /** 有界多通道时域图。时间输入单位秒，必须由调用方选定同一时间基准。
  * configure 清空历史；appendSamples 拒绝重叠/倒序块，跨块缺口以 NaN 断线，不伪造连续数据。
- * QCustomPlot 自适应采样只优化显示，保留容量内的原始样点；不会隐式重采样。
+ * 显示按像素保首尾/峰谷抽样，保留容量内的原始样点；测量/拟合使用原始数据。
+ * 基类默认合并至 30 FPS；数据采集频率与展示帧率独立，不隐式重采样原始信号。
  */
 class ACSS_UI_EXPORT AcousticWaveformPlot : public StyledPlot {
     Q_OBJECT

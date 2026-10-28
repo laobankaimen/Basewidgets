@@ -78,6 +78,9 @@ void ThemeTokens::reload()
         if (!value.isValid()) value = QColor(mgr->themeVariableValue(key));
         return value.isValid() ? value : fallback;
     };
+    m_titleBarBackground = optionalColor("titleBarBackgroundColor", m_bg0);
+    m_titleBarGradientEnd = optionalColor("titleBarGradientEndColor", m_titleBarBackground);
+    m_titleBarAccent = optionalColor("titleBarAccentColor", m_primary);
     m_selection = optionalColor("selectionColor", m_primary);
     m_selectionText = optionalColor("selectionTextColor", selectionText(m_selection));
     m_buttonText = optionalColor("buttonTextColor", QColor("#F1F4F8"));

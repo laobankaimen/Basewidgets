@@ -8,12 +8,41 @@
 
 | 类 | 公开头文件 | 业务含义 |
 |---|---|---|
+| DashboardPanel | `Containers/DashboardPanel.h` | 渐变面板、纯文本标题及内容布局 |
+| StorageDonutMeter | `Gauges/StorageDonutMeter.h` | 已用 / 总量的整环容量占比，IEC 或 SI 单位 |
 | StorageCapacityMeter | `Gauges/StorageCapacityMeter.h` | 容量分类、可用量与警戒线 |
 | TransferRateMeter | `Gauges/TransferRateMeter.h` | 接收/发送速率与累计计数基准 |
 | RateHistoryPlot | `Charts/RateHistoryPlot.h` | 网络、磁盘、索引等指标历程 |
 | TaskQueueDashboard | `Gauges/DataManagementDashboards.h` | 各处理阶段的任务状态 |
 | DataQualityDashboard | `Gauges/DataManagementDashboards.h` | 核验覆盖率与通过率 |
 | AcquisitionStatusPanel | `Gauges/AcquisitionStatusPanel.h` | 采集状态、丢样率与剩余可录时长 |
+
+## 数据管理首页与面板
+
+`widgets_demo --theme sg-blue --dashboard` 打开“数据首页”，参考 SG 首页的左侧导航、四张指标卡、丢包率图、双存储集群、数据类型分布及任务/最近操作分区。[宽屏效果](../images/sg-blue-dashboard.png)。宽度不足时，卡片和图表会逐级减少列数，内容纵向滚动；不靠缩小文字适配。
+
+`DashboardPanel` 提供轻量渐变背景、分隔线和内容布局，默认无整框鼠标悬停效果。示例中的统计卡由该公开容器、标签与 SVG 图标组合，没有使用整图背景，也没有要求独立图片素材。所有数据均为合成快照；左侧导航、查看记录和图表扩展菜单已接入原有 demo 页面。丢包率仍继承 `StyledPlot` 的右键扩展、Shift 框选和双击/Home 复位。
+
+```cpp
+#include <basewidgets/Containers/DashboardPanel.h>
+#include <basewidgets/Gauges/StorageDonutMeter.h>
+#include <QVBoxLayout>
+
+// parent 由调用者提供。布局拥有加入的子控件，contentLayout() 返回借用指针。
+auto* panel = new basewidgets::DashboardPanel("实时存储集群", parent);
+auto* ring = new basewidgets::StorageDonutMeter;
+ring->setUnitSystem(basewidgets::StorageDonutMeter::UnitSystem::SI);
+ring->setCapacity(200000000000000ULL, 2000000000000000ULL); // 200 TB / 2 PB = 10%
+panel->contentLayout()->addWidget(ring);
+```
+
+## StorageDonutMeter
+
+- `setCapacity(usedBytes, totalBytes)` 输入字节，先已用、后总量；与分类条形表的接口顺序不同。`used > total` 返回 false，完整保留上一快照。
+- `(0,0)` 表示未知，显示破折号；`capacityAvailable()` 为 false，`percent()` 返回 NaN。`(0,正数)` 是有效的 0%。
+- 默认 IEC（1024，KiB/MiB/TiB）；SI 使用 1000（kB/MB/TB）。单位切换只改变格式，不修改原始字节值；`usedText()/totalText()` 可供外部标签复用。
+- 最大支持 `quint64`，比值先转换再计算，不做可能溢出的整数乘法。控件没有隐式报警、动画、轮询或业务写入。
+- 首页“数据类型分布”的百分比以现有数据总量为分母，三类合计 100% 不表示存储空间已满；磁盘容量占比由上方容量环单独表达。
 
 ## StorageCapacityMeter
 

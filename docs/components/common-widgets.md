@@ -2,7 +2,7 @@
 
 [文档首页](../README.md)
 
-四个控件由 BaseWidgets 库公开提供，展示页位于 `examples/widgets_demo/pages/CommonWidgetsPage.cpp`。沿用 Qt Widgets 的事件和布局体系，使用 QPainter/NativeStyle 与 ThemeTokens，不注入 QSS；支持 dark、light、ocean 和外部主题。
+四个控件由 BaseWidgets 库公开提供，展示页位于 `examples/widgets_demo/pages/CommonWidgetsPage.cpp`。沿用 Qt Widgets 的事件和布局体系，使用 QPainter/NativeStyle 与 ThemeTokens，不注入 QSS；支持 dark、light、ocean、sg-blue 和外部主题。
 
 | 控件 | 适用场景 | 业务接入 |
 |---|---|---|
@@ -12,6 +12,12 @@
 | `Containers/EmptyState.h` | 暂无数据、无搜索结果、未连接 | `actionRequested()`、`secondaryActionRequested()` |
 
 所有 API 均在 GUI 线程调用，父对象管理所有权。提示、动作与移除操作不会直接访问数据源。
+
+## 常用组件页布局
+
+原独立的“视图控件”页已经合并至“常用组件”，六个紧凑分组依次为：导航与列表、基础表格、树形表格、视图与筛选、消息反馈、空状态。宽窗口三列，宽度不足时自动减少为两列或单列；只保留一个页面级滚动区。视图内仍可滚动浏览更多记录，保留模型所有权、导航业务 ID 和分组求和示例。
+
+减少页边距、标题留白与控件间距，不缩小正文；所有分组默认不增加鼠标悬停效果。[SG 主题效果](../images/sg-blue-common-widgets.png)。
 
 ## 分段切换
 

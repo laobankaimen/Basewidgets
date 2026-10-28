@@ -26,6 +26,17 @@ public:
     Q_ENUM(Profile)
     enum class TitleAlignment { Left, Center };
     Q_ENUM(TitleAlignment)
+    /** Leading：图标固定在左端；WithTitle：图标紧随标题组成整体，支持整体居中。 */
+    enum class IconPlacement { Leading, WithTitle };
+    Q_ENUM(IconPlacement)
+    /** Technical 为主窗口添加静态折线/短线装饰；默认 Plain，简洁 profile 忽略装饰。 */
+    enum class Decoration { Plain, Technical };
+    Q_ENUM(Decoration)
+    void setDecoration(Decoration decoration);
+    Decoration decoration() const { return m_decoration; }
+    /** 物理左/右侧，不随文本的 RTL 方向换边。窗口控制始终位于最右侧。 */
+    enum class ActionPosition { Left, Right };
+    Q_ENUM(ActionPosition)
     explicit CustomTitleBar(QWidget* parent=nullptr);
     ~CustomTitleBar() override;
     /** 不接管窗口；重绑定断开旧窗口同步，显式标题/图标覆盖保留。nullptr 恢复应用默认。 */
@@ -39,6 +50,9 @@ public:
     /** Center 优先以整个窗口中心对齐；极窄时退让到剩余标题区域，避免覆盖窗口按钮。 */
     void setTitleAlignment(TitleAlignment alignment);
     TitleAlignment titleAlignment() const { return m_alignment; }
+    /** 默认 Leading，兼容已有标题布局；WithTitle 配合 Center 可复现居中的品牌标识。 */
+    void setIconPlacement(IconPlacement placement);
+    IconPlacement iconPlacement() const { return m_iconPlacement; }
     QString title() const;
     QIcon icon() const;
     /** 恢复跟随窗口/应用标题；与图标默认设置相互独立。 */
@@ -69,6 +83,11 @@ public:
     /** QAction 仍归调用者持有，销毁时自动移除。保留顺序，空间不足进入更多菜单。
      * QAction 可带图标、菜单、checked/enabled/visible；文本始终作为 tooltip/菜单标签。 */
     void addTitleAction(QAction* action);
+    /** 指定操作位置，单参数版本等同于 Right。左侧操作位于标题之前。
+     * 同侧按添加顺序显示；重复传入已有动作只调整位置，不新建入口。
+     * 窄窗口将两侧放不下的动作收纳到右侧“更多”菜单；简洁 profile 暂时隐藏。
+     * QAction 的所有权不变，可直接复用到菜单/工具栏。 */
+    void addTitleAction(QAction* action, ActionPosition position);
     void removeTitleAction(QAction* action);
     /** Windows 命中与非 Windows 拖动共用判断；标题栏坐标，true 表示可拖动空白。 */
     bool isDraggableAt(const QPoint& position) const;
@@ -118,10 +137,12 @@ private:
     QMenu* m_moreMenu=nullptr;
     QAction *m_settingsOverflow=nullptr,*m_userOverflow=nullptr,*m_searchOverflow=nullptr;
     QShortcut* m_searchShortcut=nullptr;
-    struct TitleAction { QPointer<QAction> action; QPointer<ToolButton> button; };
+    struct TitleAction { QPointer<QAction> action; QPointer<ToolButton> button; ActionPosition position; };
     QVector<TitleAction> m_actions;
     Profile m_profile=Profile::MainWindow;
     TitleAlignment m_alignment=TitleAlignment::Left;
+    IconPlacement m_iconPlacement=IconPlacement::Leading;
+    Decoration m_decoration=Decoration::Plain;
     bool m_titleOverride=false,m_iconOverride=false,m_titleVisible=true,m_iconVisible=true;
     bool m_searchVisible=false,m_settingsVisible=false,m_userVisible=false,m_layoutActive=false;
     bool m_doubleClickToggleEnabled=true,m_showMinimize=true,m_showMaximize=true,m_showClose=true;

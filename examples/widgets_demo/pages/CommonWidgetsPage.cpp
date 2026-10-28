@@ -11,41 +11,101 @@
 #include <basewidgets/Containers/ScrollArea.h>
 #include <basewidgets/Containers/ResponsiveGridLayout.h>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QHeaderView>
+#include <QStandardItemModel>
+#include <basewidgets/Views/NavigationList.h>
+#include <basewidgets/Views/ListView.h>
+#include <basewidgets/Views/TableView.h>
+#include <basewidgets/Views/TreeTable.h>
 
 using namespace basewidgets;
+namespace {
+// 视图示例与其他常用组件共用页面布局，不再建立独立的整页滚动区。
+// 各模型以视图为 QObject 父对象，页面销毁时自动释放；选择/排序沿用 Qt API。
+void addViewExamples(ResponsiveGridLayout* cards,QWidget* content)
+{
+    auto* navigation=new GroupBox("导航与列表",content); navigation->setObjectName("CommonNavigationCard");
+    auto* navLayout=new QVBoxLayout(navigation); navLayout->setContentsMargins(8,6,8,8); navLayout->setSpacing(6);
+    auto* row=new QHBoxLayout; row->setSpacing(8);
+    auto* nav=new NavigationList(navigation); nav->setObjectName("CommonDemoNavigation");
+    nav->addButton("首页"); nav->addButton("设置"); nav->addButton("关于");
+    nav->insertButton("个人中心",1); nav->insertButton("消息",2,10); nav->addButton("帮助",11); nav->setCurrentButton(0);
+    nav->setMinimumWidth(100); nav->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Expanding);
+    auto* list=new ListView(navigation); list->setObjectName("CommonDemoList"); list->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Expanding);
+    auto* listModel=new QStandardItemModel(list);
+    for(const auto& text:{"任务 A","任务 B","任务 C"})listModel->appendRow(new QStandardItem(text));
+    list->setModel(listModel); row->addWidget(nav,1); row->addWidget(list,1); navLayout->addLayout(row,1);
+    auto* current=new Label("首页 · ID 0",navigation); current->setObjectName("CommonDemoNavigationSelection"); current->setWordWrap(true); navLayout->addWidget(current);
+    QObject::connect(nav,&QListWidget::currentItemChanged,current,[nav,current](QListWidgetItem* item,QListWidgetItem*) {
+        current->setText(item?QString("%1 · ID %2").arg(item->text()).arg(nav->getCurrentButton()):QString("未选择导航"));
+    });
+    cards->addWidget(navigation);
+
+    auto* tableCard=new GroupBox("基础表格",content); tableCard->setObjectName("CommonTableCard");
+    auto* tableLayout=new QVBoxLayout(tableCard); tableLayout->setContentsMargins(8,6,8,8);
+    auto* table=new TableView(tableCard); table->setObjectName("CommonDemoTable"); table->setMinimumWidth(0);
+    auto* tableModel=new QStandardItemModel(table); tableModel->setHorizontalHeaderLabels({"产品","区域","销量"});
+    tableModel->appendRow({new QStandardItem("A"),new QStandardItem("华北"),new QStandardItem("120")});
+    tableModel->appendRow({new QStandardItem("B"),new QStandardItem("华东"),new QStandardItem("98")});
+    tableModel->appendRow({new QStandardItem("C"),new QStandardItem("华南"),new QStandardItem("150")});
+    table->setModel(tableModel); table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    table->verticalHeader()->setDefaultSectionSize(qMax(26,table->fontMetrics().height()+8));
+    tableLayout->addWidget(table,0,Qt::AlignTop); tableLayout->addStretch(); cards->addWidget(tableCard);
+
+    auto* treeCard=new GroupBox("树形表格 · 分组汇总",content); treeCard->setObjectName("CommonTreeCard");
+    auto* treeLayout=new QVBoxLayout(treeCard); treeLayout->setContentsMargins(8,6,8,8);
+    auto* tree=new TreeTable(treeCard); tree->setObjectName("CommonDemoTree"); tree->setMinimumWidth(0);
+    auto* treeModel=new QStandardItemModel(tree); treeModel->setHorizontalHeaderLabels({"类别","项目","数值"});
+    auto* sales=new QStandardItem("销售"); auto* research=new QStandardItem("研发");
+    treeModel->appendRow({sales,new QStandardItem,new QStandardItem}); treeModel->appendRow({research,new QStandardItem,new QStandardItem});
+    const QStringList quarters{"Q1","Q2","Q3","Q4"},values{"120.5","98.0","150.3","110.0"};
+    for(int i=0;i<quarters.size();++i)sales->appendRow({new QStandardItem(quarters[i]),new QStandardItem,new QStandardItem(values[i])});
+    const QStringList projects{"平台","算法","客户端"},costs{"80.0","132.7","64.2"};
+    for(int i=0;i<projects.size();++i)research->appendRow({new QStandardItem(projects[i]),new QStandardItem,new QStandardItem(costs[i])});
+    tree->setModel(treeModel); tree->clearColumnAggregations(); tree->setColumnAggregation(2,TreeTable::Sum);
+    tree->expandAll(); tree->header()->setSectionResizeMode(QHeaderView::Stretch); treeLayout->addWidget(tree,0,Qt::AlignTop); treeLayout->addStretch(); cards->addWidget(treeCard);
+    // 保留可读字号，限制示例视口的初始高度；更多项目在视图内部滚动。
+    for(auto* view:QList<QAbstractItemView*>{nav,list,table,tree}) {
+        view->setMinimumHeight(140); view->setMaximumHeight(qMax(156,view->fontMetrics().height()*7+12)); view->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Expanding);
+    }
+    for(auto* card:{navigation,tableCard,treeCard})card->setMinimumHeight(220);
+}
+}
 CommonWidgetsPage::CommonWidgetsPage(QWidget* parent) : StyledWidget(parent)
 {
     auto* scroll=new ScrollArea(this); scroll->setWidgetResizable(true); scroll->setFrameShape(QFrame::NoFrame);
-    auto* content=new StyledWidget; auto* layout=new QVBoxLayout(content); layout->setContentsMargins(18,18,18,18); layout->setSpacing(12);
-    auto* title=new Label("筛选与反馈",content); QFont heading; heading.setBold(true); heading.setPointSize(15); title->setFont(heading);
-    layout->addWidget(title);
-    auto* intro=new Label("紧凑导航、可移除条件与就地反馈，适合录音检索、文件管理和任务页面。",content); intro->setWordWrap(true); layout->addWidget(intro);
+    scroll->setObjectName("CommonDemoScroll");
+    auto* content=new StyledWidget; auto* layout=new QVBoxLayout(content); layout->setContentsMargins(10,10,10,10); layout->setSpacing(8);
+    auto* cards=new ResponsiveGridLayout(nullptr,300,3); cards->setContentsMargins(0,0,0,0); cards->setSpacing(8); layout->addLayout(cards);
+    addViewExamples(cards,content);
+    auto* feedback=new GroupBox("消息与反馈",content); auto* feedbackLayout=new QVBoxLayout(feedback);
+    feedbackLayout->setContentsMargins(8,6,8,8); feedbackLayout->setSpacing(8);
 
     auto* banner=new MessageBanner(content); banner->setObjectName("CommonDemoBanner");
     banner->setTone(FeedbackTone::Info); banner->setTitle("数据目录已连接");
     banner->setMessage("示例数据已就绪，可调整视图与筛选条件。");
-    banner->setActionText("查看示例说明"); layout->addWidget(banner);
+    banner->setActionText("查看接线说明"); feedbackLayout->addWidget(banner); feedbackLayout->addStretch();
     connect(banner,&MessageBanner::actionRequested,this,[banner] {
         banner->setMessage("分段切换使用 currentChanged；筛选标签使用 toggled 和 removeRequested。所有状态由业务层控制。");
     });
 
-    auto* cards=new ResponsiveGridLayout(nullptr,320,2); cards->setContentsMargins(0,0,0,0); layout->addLayout(cards);
-    auto* filters=new GroupBox("视图与筛选",content); auto* left=new QVBoxLayout(filters); left->setSpacing(14);
+    auto* filters=new GroupBox("视图与筛选",content); auto* left=new QVBoxLayout(filters); left->setContentsMargins(8,6,8,8); left->setSpacing(8);
     auto* segments=new SegmentedControl(filters); segments->setObjectName("CommonDemoSegments"); segments->setAccessibleName("录音视图");
     segments->addTab("全部录音"); segments->setTabData(0,"all");
     segments->addTab("待核验"); segments->setTabData(1,"pending");
     segments->addTab("已归档"); segments->setTabData(2,"archived");
     left->addWidget(segments);
-    auto* hint=new Label("勾选启用条件；点 × 移除。聚焦标签后可用 Space 切换、Delete 移除。",filters); hint->setWordWrap(true); left->addWidget(hint);
-    auto* chipHost=new QWidget(filters); auto* chipLayout=new ResponsiveGridLayout(chipHost,140,3); chipLayout->setContentsMargins(0,0,0,0);
+    auto* hint=new Label("Space 切换条件，× / Delete 移除。",filters); hint->setWordWrap(true); left->addWidget(hint);
+    auto* chipHost=new QWidget(filters); auto* chipLayout=new ResponsiveGridLayout(chipHost,120,3); chipLayout->setContentsMargins(0,0,0,0); chipLayout->setSpacing(6);
     QList<FilterChip*> chips;
     for(const QString& text:{QString("东海站点"),QString("WAV 格式"),QString("已核验")}) {
         auto* chip=new FilterChip(text,chipHost); chip->setRemovable(true); chip->setChecked(true); chip->setToolTip(text);
         chipLayout->addWidget(chip); chips.append(chip);
     }
-    auto refreshSupportingText=[intro,hint] {
+    auto refreshSupportingText=[hint] {
         auto* tokens=ThemeTokens::instance();
-        for(auto* label:{intro,hint}) {
+        for(auto* label:{hint}) {
             auto palette=label->palette(); palette.setColor(QPalette::WindowText,tokens->textSecondary());
             palette.setColor(QPalette::Disabled,QPalette::WindowText,tokens->textDisabled()); label->setPalette(palette);
         }
@@ -69,11 +129,11 @@ CommonWidgetsPage::CommonWidgetsPage(QWidget* parent) : StyledWidget(parent)
         segments->setCurrentIndex(0); banner->setTone(FeedbackTone::Info); banner->setTitle("数据目录已连接");
         banner->setMessage("可以继续调整筛选条件，所有数据均为合成示例。"); banner->show(); updateSummary();
     });
-    updateSummary(); cards->addWidget(filters);
+    updateSummary(); cards->addWidget(filters); cards->addWidget(feedback);
 
-    auto* emptyCard=new GroupBox("空状态与下一步",content); auto* right=new QVBoxLayout(emptyCard);
+    auto* emptyCard=new GroupBox("空状态与下一步",content); auto* right=new QVBoxLayout(emptyCard); right->setContentsMargins(4,4,4,4);
     auto* empty=new EmptyState(emptyCard); empty->setObjectName("CommonDemoEmptyState");
-    empty->setTitle("没有符合条件的录音"); empty->setDescription("请清除筛选条件，或选择其他数据目录。");
+    empty->setTitle("没有符合条件的录音"); empty->setDescription("清除筛选，或选择其他目录。");
     empty->setActionText("清除筛选"); empty->setSecondaryActionText("选择数据目录"); right->addWidget(empty);
     connect(empty,&EmptyState::actionRequested,this,[chips,banner,updateSummary] {
         for(auto* chip:chips)chip->setChecked(false);

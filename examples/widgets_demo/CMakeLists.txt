@@ -10,6 +10,7 @@ add_executable(widgets_demo
     main.cpp
     pages/DialogsPage.cpp
     pages/InputsPage.cpp
+    pages/DashboardPage.cpp
     pages/CommonWidgetsPage.cpp
     pages/GaugesPage.cpp
     pages/AcousticPage.cpp
@@ -17,7 +18,6 @@ add_executable(widgets_demo
     pages/DataManagementPage.cpp
     pages/PagedTablePage.cpp
     pages/TextPage.cpp
-    pages/ViewsPage.cpp
 )
 
 target_link_libraries(widgets_demo

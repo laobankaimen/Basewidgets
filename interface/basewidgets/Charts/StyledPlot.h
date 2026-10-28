@@ -2,6 +2,8 @@
 #include <basewidgets/Charts/QCustomplot.h>
 #include <QMenu>
 #include <QPointer>
+#include <QElapsedTimer>
+class QTimer;
 namespace basewidgets {
 /** 全部业务图表的交互基类（GUI 线程）。平移、滚轮、Shift 框选缩放、双击/Home 复位、
  * 菜单扩展、坐标拾取、区域选择及 PNG 导出共用同一入口，不修改 QCustomPlot 源码。
@@ -12,7 +14,16 @@ public:
     enum class InteractionMode { Pan, RectangleZoom, RectangleSelect, Inspect };
     Q_ENUM(InteractionMode)
     explicit StyledPlot(QWidget* parent=nullptr);
-    void replot(QCustomPlot::RefreshPriority priority=QCustomPlot::rpQueuedReplot);
+    /** 默认合并数据更新/导航绘制，最多 maximumFrameRate 帧/秒。
+     * rpImmediateRefresh 等显式非 queued 请求立即绘制，用于同步导出/检查。
+     * 避免通过 QCustomPlot* 调用其同名非虚函数绕过调度。 */
+    Q_SLOT void replot(QCustomPlot::RefreshPriority priority=QCustomPlot::rpQueuedReplot);
+    /** 默认 30，允许 1..120；仅限制展示帧率，不丢弃接收数据。非法值保持旧设置。 */
+    bool setMaximumFrameRate(int framesPerSecond);
+    int maximumFrameRate() const { return m_maximumFrameRate; }
+    /** 创建 SampledGraph，归本图持有；data() 保留原始数据，显示按像素保极值抽样。
+     * 与 QCustomPlot 的同名非虚接口兼容；直接 new QCPGraph 不获得此抽样。 */
+    QCPGraph* addGraph(QCPAxis* keyAxis=nullptr,QCPAxis* valueAxis=nullptr);
     void setPlotTitle(const QString& title);
     QString plotTitle() const;
     void refreshTheme();
@@ -60,6 +71,9 @@ protected:
 private:
     struct ThemedSeries { QPointer<QCPGraph> graph; int paletteIndex; QColor appliedColor; };
     QVector<ThemedSeries> m_themedSeries;
+    QTimer* m_replotTimer=nullptr;
+    QElapsedTimer m_lastReplot;
+    int m_maximumFrameRate=30;
     void applyMode();
     void acceptRectangle(const QRect& rectangle);
     InteractionMode m_mode=InteractionMode::Pan;

@@ -11,14 +11,16 @@
 | `main.cpp` | 初始化、主题、主控/子屏、标题操作、共享录音模型 | [标题栏](../components/title-bar.md)、[多屏](../components/multi-screen.md) |
 | 输入控件 / `pages/InputsPage.cpp` | 按钮层级、选择状态、双向绑定、自适应卡片 | [基础控件](../components/basic-widgets.md) |
 | 对话框 / `pages/DialogsPage.cpp` | 文件/颜色/字体/消息、简洁标题、拖动反馈 | [基础控件](../components/basic-widgets.md#标准对话框入口) |
-| 视图控件 / `pages/ViewsPage.cpp` | 模型所有权、导航 ID、表格与树形聚合 | [基础控件](../components/basic-widgets.md#视图与布局) |
 | 文本与容器 / `pages/TextPage.cpp` | 文本编辑、容器和长标题省略 | [基础控件](../components/basic-widgets.md) |
 | 水声分析 / `pages/AcousticPage.cpp` | 波形、PSD、缺帧、时间线、信号质量、采集状态 | [水声分析](../components/acoustic-analysis.md) |
 | 测向/解调 / `pages/DirectionAnalysisPage.cpp` | 多波束、门限、LOFAR、DEMON 和业务选区 | [测向与解调](../components/direction-and-demon.md) |
 | 数据监控 / `pages/DataManagementPage.cpp` | 容量/速率、计数重置、任务队列和核验质量 | [监控仪表](../components/monitoring.md) |
 | 仪表 / `pages/GaugesPage.cpp` | 完成量、阈值、航向、姿态、未知状态 | [通用仪表](../components/gauges.md) |
 | 高级表格 / `pages/PagedTablePage.cpp` | 三种模式、固定记录、跨页勾选、菜单与导出 | [高级表格](../components/advanced-table.md) |
-| 常用组件 / `pages/CommonWidgetsPage.cpp` | 分段切换、筛选条件、就地反馈和空状态动作 | [常用交互与反馈](../components/common-widgets.md) |
+| 数据首页 / `pages/DashboardPage.cpp` | 指标卡、丢包率、双集群容量环与首页导航 | [数据管理仪表](../components/monitoring.md#数据管理首页与面板) |
+| 常用组件 / `pages/CommonWidgetsPage.cpp` | 导航/列表/表格/树形视图、筛选条件、就地反馈和空状态 | [常用交互与反馈](../components/common-widgets.md) |
+
+原“视图控件”页已合并到“常用组件”，采用三列/两列/单列自适应分组；模型所有权、导航 ID、树形汇总示例保留。`DemoPageIds.h` 统一维护页面编号，工具栏和首页导航复用同一组常量。
 
 页面自动模拟默认关闭，隐藏时暂停计时器。水声示例为未校准归一化 ADC 数据；不能将 dBFS/Hz 当作实测声压级。控件不读取采集卡、数据库或本机网卡计数；业务接入需遵守数据单位和时间戳约定。
 
@@ -36,7 +38,9 @@
 
 ## 标题栏与全局操作
 
-设置菜单可切换标题左/居中、独立标题、图标和搜索显隐，用户入口展示模拟账户。搜索 Enter 后切换到高级表格并筛选录音，任务中心打开数据监控页。窄窗口搜索折叠为图标浮层，次要动作进入“更多”。
+设置菜单可切换标题左/居中、图标随标题对齐、左侧业务入口、独立标题及图标/搜索显隐，用户入口展示模拟账户。左侧“分析工作台”进入水声分析页。搜索 Enter 后切换到高级表格并筛选录音，任务中心打开数据监控页。窄窗口搜索折叠为图标浮层，次要动作进入“更多”。
+
+可运行 `./build/bin/widgets_demo --theme sg-blue --dashboard` 查看带侧边导航、统计卡和科技标题栏的数据管理首页；运行 `./build/bin/widgets_demo --theme sg-blue --centered-title` 查看参考设计图的蓝色配色与居中品牌标题。配色和标题布局独立；生产代码见[标题栏接入](../components/title-bar.md#参考图形式中间品牌标题左侧按钮)。
 
 ## 高级表格与图表
 

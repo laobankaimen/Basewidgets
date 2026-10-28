@@ -92,4 +92,4 @@ OK/Cancel 信号允许应用先校验再 accept/reject；内容替换由容器�
 
 ## 示例
 
-对应 `examples/widgets_demo/pages/InputsPage.cpp`、`ViewsPage.cpp`、`TextPage.cpp`、`DialogsPage.cpp`。交互、RTL、主题和拖动恢复检查的执行方法见[验证指南](../development/validation.md)。
+对应 `examples/widgets_demo/pages/InputsPage.cpp`、`CommonWidgetsPage.cpp`、`TextPage.cpp`、`DialogsPage.cpp`。交互、RTL、主题和拖动恢复检查的执行方法见[验证指南](../development/validation.md)。

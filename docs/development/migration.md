@@ -73,3 +73,9 @@ WindowPlacement 仍负责普通独立窗口的位置保存/恢复。库不写全
 颜色选择取消时返回有效初始色或最近选择色，数值输入取消时返回原输入值；需要单独的接受状态时使用 FramelessDialog。颜色历史只保存在进程内。
 
 图标/字体仍在 assets 中，未因无 QSS 绘制而整体删除；默认 Ai 示例标识已替换为项目波形 Logo。资源安装方式见[构建与发布](cmake-and-packaging.md)。
+
+## 图表显示抽样
+
+`StyledPlot::addGraph()` 返回 QCPGraph 兼容的 SampledGraph，`data()` 继续保存原始点，绘制按像素保极值抽样。常规 `replot()` 默认合并至 30 FPS；需要同步结果时显式使用 `rpImmediateRefresh` 或公开 `saveSnapshot`。
+
+`HistoryHeatmapPlot::colorMap()->data()` 现在是随视口变化的显示网格，不能按原始 bin/historyRow 索引读取；精确测量请使用 `levelAt`、`timeAt`、`coordinateAt`。详情见[图表交互](../components/chart-interaction.md#大数据绘制与刷新调度)和[时频图](../components/acoustic-analysis.md#时频图)。

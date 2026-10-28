@@ -65,6 +65,28 @@ QObject::connect(basewidgets::ThemeTokens::instance(),
 | 强调 / 主按钮底色 | `#71BEC6` / `#316A80` |
 | 选中背景 / 选中文字 | `#4F8FA3` / `#101F2B` |
 
+## SG 数据管理蓝色
+
+新增内置 `sg-blue`，参考 SG 设计图的存储状态页。保留深蓝画布、蓝色层次与青蓝强调；正文使用浅蓝白，小号状态文字适当提亮。没有将图片作为背景，控件、图表和窗口继续采用矢量/原生绘制。
+
+| 角色 | 配置色 |
+|---|---|
+| 页面 | `#0A284C`（从参考图采样） |
+| 弹出层 / 面板 | `#10355C` / `#173F69` |
+| 标题栏渐变 | `#175A94` → `#2068A3` |
+| 正文 / 辅助文字 | `#D7E7FA` / `#B6CEE8` |
+| 强调 / 第一条曲线 | `#65D5EB` / `#78B6FA` |
+
+配置源为 `assets/styles/themes/themes/sg-blue.xml`，在主题菜单选择 `sg-blue`，或运行：
+
+```bash
+./build/bin/widgets_demo --theme sg-blue --centered-title
+```
+
+`--centered-title` 只控制 demo 布局，不是主题配置的一部分；生产接入使用[标题栏公开接口](../components/title-bar.md#参考图形式中间品牌标题左侧按钮)。`titleBarBackgroundColor` 可单独配置标题栏底色，未配置时跟随页面背景；`titleBarGradientEndColor` 配置水平渐变终点，缺省与底色相同；标题文字和图标继续使用主题正文色，应保证两者的对比度。
+
+[数据首页效果](../images/sg-blue-dashboard.png)（`--theme sg-blue --dashboard`） · [数据监控效果](../images/sg-blue-monitoring.png) · [常用组件效果](../images/sg-blue-common-widgets.png)。配置随库自动构建，启动默认主题仍由 `themes.json` 的 `default_theme` 决定。
+
 ## 资源目录
 
 | 目录/文件 | 用途 |
@@ -135,6 +157,8 @@ if (manager->setCurrentTheme("ocean")) {
 | XML 键 | 用途 | 缺项回退 |
 |---|---|---|
 | `pageBackgroundColor` / `overlayBackgroundColor` | 页面 / 输入及弹出层 | 对应明暗主题默认值 |
+| `titleBarBackgroundColor` | 主窗口、子屏及弹窗标题栏底色 | 当前 `pageBackgroundColor` 对应的页面色 |
+| `titleBarGradientEndColor` / `titleBarAccentColor` | 标题水平渐变终点 / 科技装饰线 | 标题栏底色 / 当前强调色 |
 | `baseFillColor` / `darkerFillColor` | 交替表面 / 普通控件底色 | 对应明暗主题默认值 |
 | `darkFillColor` | 悬停底色 | 对应明暗主题默认值 |
 | `darkerBorderColor` / `lightBorderColor` | 控件边框 / 分组及分隔边线 | 对应明暗主题默认值 |

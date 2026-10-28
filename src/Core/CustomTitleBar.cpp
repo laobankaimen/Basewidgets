@@ -12,6 +12,7 @@
 #include <QStyle>
 #include <QPainter>
 #include <QPainterPath>
+#include <QLinearGradient>
 #include <QStylePainter>
 #include <QStyleOptionToolButton>
 #include <QTimer>
@@ -140,6 +141,8 @@ void CustomTitleBar::resetIcon() { m_iconOverride=false; syncIdentity(); }
 void CustomTitleBar::setTitleVisible(bool visible) { m_titleVisible=visible; layoutChildren(); }
 void CustomTitleBar::setIconVisible(bool visible) { m_iconVisible=visible; layoutChildren(); }
 void CustomTitleBar::setTitleAlignment(TitleAlignment alignment) { m_alignment=alignment; layoutChildren(); }
+void CustomTitleBar::setIconPlacement(IconPlacement placement) { m_iconPlacement=placement; layoutChildren(); }
+void CustomTitleBar::setDecoration(Decoration decoration) { m_decoration=decoration; update(); }
 void CustomTitleBar::syncIdentity()
 {
     const QString text=title(); m_titleLabel->setText(text); m_titleLabel->setToolTip(text);
@@ -180,6 +183,10 @@ void CustomTitleBar::setUserInfo(const QString& name,const QPixmap& avatar,const
 }
 void CustomTitleBar::updateIcons()
 {
+    // Local Window role also supplies the restore glyph's occlusion background.
+    QPalette colors=ThemeTokens::instance()->palette();
+    colors.setColor(QPalette::Window,ThemeTokens::instance()->titleBarBackground());
+    setPalette(colors);
     m_settings->setIcon(titleIcon("settings")); m_searchButton->setIcon(titleIcon("search")); m_more->setIcon(titleIcon("more"));
     m_user->setIcon(avatarIcon(m_userName,m_avatar,font()));
     syncIdentity(); updateForWindowState(); update();
@@ -237,11 +244,17 @@ void CustomTitleBar::initUI()
 }
 void CustomTitleBar::addTitleAction(QAction* action)
 {
+    addTitleAction(action,ActionPosition::Right);
+}
+void CustomTitleBar::addTitleAction(QAction* action,ActionPosition position)
+{
     if(!action)return;
-    for(const auto& item:m_actions)if(item.action==action)return;
+    for(auto& item:m_actions)if(item.action==action) {
+        item.position=position; layoutChildren(); return;
+    }
     auto* button=new TitleToolButton(this); button->setAutoRaise(true); button->setAppearance(ButtonAppearance::Subtle);
     button->setFocusPolicy(Qt::StrongFocus); button->setDefaultAction(action); button->setIconSize(QSize(18,18));
-    button->setObjectName("TitleBarCustomAction"); m_actions.append({action,button});
+    button->setObjectName("TitleBarCustomAction"); m_actions.append({action,button,position});
     connect(action,&QAction::changed,this,[this] { layoutChildren(); });
     connect(action,&QObject::destroyed,this,[this] {
         for(int i=m_actions.size()-1;i>=0;--i)if(!m_actions[i].action) {
@@ -288,24 +301,43 @@ void CustomTitleBar::layoutChildren()
     const int userWidth=compact?38:qMin(180,qMax(38,m_user->sizeHint().width()));
     placeRight(m_user,userWidth,user&&!overflowUser);
     placeRight(m_settings,36,settings&&!overflowSettings);
-    // Keep a usable identity/drag area. Optional actions move to the overflow menu first.
-    QVector<int> visibleActions; QList<QAction*> overflow;
+    // Reserve identity/drag space and an overflow entry before allocating actions.
+    // Left actions remain visible with a centered title whenever they fit; right
+    // actions keep the existing compact behavior for global search/user controls.
+    const bool withTitle=m_iconPlacement==IconPlacement::WithTitle;
+    const bool wantsIcon=m_iconVisible&&!icon().isNull();
+    int left=(!withTitle&&wantsIcon)?44:14;
+    QVector<int> leftActions,visibleActions; QList<QAction*> overflow;
     int actionBudget=qMax(0,right-170-(search?40:0));
+    int leftBudget=centered?qMax(0,width()/2-left-140):actionBudget;
     if(overflowSettings)overflow.append(m_settingsOverflow);
     if(overflowUser)overflow.append(m_userOverflow);
     if(overflowSearch)overflow.append(m_searchOverflow);
-    for(int i=0;i<m_actions.size();++i) {
-        auto& item=m_actions[i]; if(!item.action || !item.button)continue;
-        item.button->hide();
-        if(!extended || !item.action->isVisible())continue;
+    for(auto side:{ActionPosition::Left,ActionPosition::Right})for(int i=0;i<m_actions.size();++i) {
+        auto& item=m_actions[i];
+        if(!item.action || !item.button || item.position!=side || !extended || !item.action->isVisible())continue;
         item.button->setPopupMode(item.action->menu()?QToolButton::InstantPopup:QToolButton::DelayedPopup);
         const bool hasIcon=!item.action->icon().isNull();
         item.button->setToolButtonStyle(hasIcon?Qt::ToolButtonIconOnly:Qt::ToolButtonTextOnly);
         item.button->setToolTip(item.action->toolTip().isEmpty()?item.action->text():item.action->toolTip());
-        const int w=hasIcon?36:qMin(112,fontMetrics().horizontalAdvance(item.action->text())+20);
-        if(!compact && actionBudget>=w+40) { visibleActions.append(i); actionBudget-=w+spacing; item.button->setProperty("titleActionWidth",w); }
-        else overflow.append(item.action);
+        const int w=hasIcon?36:qBound(36,item.button->sizeHint().width(),160);
+        const bool isLeft=side==ActionPosition::Left;
+        const bool fits=isLeft?(width()>=500&&leftBudget>=w+spacing):!compact;
+        if(fits && actionBudget>=w+40) {
+            (isLeft?leftActions:visibleActions).append(i); actionBudget-=w+spacing;
+            if(isLeft)leftBudget-=w+spacing;
+            item.button->setProperty("titleActionWidth",w);
+        } else overflow.append(item.action);
     }
+    // Keep visible buttons mounted during QAction::changed (for example a check
+    // toggle). Hiding/re-showing the focused button would lose keyboard focus.
+    for(int i=0;i<m_actions.size();++i)if(m_actions[i].button)
+        m_actions[i].button->setVisible(leftActions.contains(i)||visibleActions.contains(i));
+    for(int i:leftActions) {
+        auto* button=m_actions[i].button.data(); const int w=button->property("titleActionWidth").toInt();
+        button->setGeometry(left,top,w,actionHeight); button->show(); left+=w+spacing;
+    }
+    if(!leftActions.isEmpty())left+=6;
     const auto oldActions=m_moreMenu->actions();
     if(oldActions!=overflow) {
         for(auto* action:oldActions)m_moreMenu->removeAction(action);
@@ -315,21 +347,36 @@ void CustomTitleBar::layoutChildren()
     for(auto it=visibleActions.crbegin();it!=visibleActions.crend();++it) {
         auto* button=m_actions[*it].button.data(); placeRight(button,button->property("titleActionWidth").toInt(),true);
     }
-    const bool inlineSearch=search&&!compact&&right>=430;
-    placeRight(m_searchEdit,qMin(220,qMax(160,right-330)),inlineSearch);
+    const bool inlineSearch=search&&!compact&&right-left>=386;
+    placeRight(m_searchEdit,qMin(220,qMax(160,right-left-286)),inlineSearch);
     placeRight(m_searchButton,36,search&&!inlineSearch&&!overflowSearch);
     if(!search)m_searchPopup->hide();
     m_searchShortcut->setEnabled(search&&!m_searchShortcut->key().isEmpty());
-    const bool showIcon=m_iconVisible&&!icon().isNull();
-    m_iconLabel->setVisible(showIcon); m_iconLabel->setGeometry(14,(h-20)/2,20,20);
-    int left=showIcon?44:16; right=qMax(left,right-8);
-    if(m_alignment==TitleAlignment::Center) {
+    right=qMax(left,right-8);
+    if(centered) {
         const int symmetric=qMax(left,width()-right);
         if(width()-2*symmetric>=72) { left=symmetric; right=width()-symmetric; }
-        // Extremely narrow: preserve readable title space, documented graceful left fallback.
+        // Extremely narrow: use the remaining safe area, with elision if needed.
     }
-    m_titleLabel->setAlignment((m_alignment==TitleAlignment::Center?Qt::AlignHCenter:Qt::AlignLeft)|Qt::AlignVCenter);
-    m_titleLabel->setVisible(m_titleVisible); m_titleLabel->setGeometry(left,0,qMax(0,right-left),h);
+    bool showIcon=wantsIcon;
+    if(withTitle) {
+        const int available=qMax(0,right-left);
+        showIcon=wantsIcon&&available>=20;
+        const bool hasText=m_titleVisible&&!title().isEmpty();
+        const int iconWidth=showIcon?(hasText?28:20):0;
+        const int textWidth=hasText?qMin(qMax(0,available-iconWidth),m_titleLabel->fontMetrics().horizontalAdvance(title())+2):0;
+        const int groupWidth=qMin(available,iconWidth+textWidth);
+        const int x=centered?left+(available-groupWidth)/2:left;
+        m_iconLabel->setGeometry(x,(h-20)/2,20,20);
+        m_titleLabel->setGeometry(x+qMin(iconWidth,groupWidth),0,textWidth,h);
+        m_titleLabel->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);
+    } else {
+        m_iconLabel->setGeometry(14,(h-20)/2,20,20);
+        m_titleLabel->setAlignment((centered?Qt::AlignHCenter:Qt::AlignLeft)|Qt::AlignVCenter);
+        m_titleLabel->setGeometry(left,0,qMax(0,right-left),h);
+    }
+    m_iconLabel->setVisible(showIcon);
+    m_titleLabel->setVisible(m_titleVisible);
     m_layoutActive=false;
 }
 void CustomTitleBar::focusSearch()
@@ -352,7 +399,25 @@ bool CustomTitleBar::isDraggableAt(const QPoint& position) const
 void CustomTitleBar::resizeEvent(QResizeEvent* event) { QWidget::resizeEvent(event); layoutChildren(); }
 void CustomTitleBar::paintEvent(QPaintEvent*)
 {
-    QPainter painter(this); painter.setPen(ThemeTokens::instance()->borderLight()); painter.drawLine(0,height()-1,width(),height()-1);
+    auto* t=ThemeTokens::instance(); QPainter painter(this);
+    QLinearGradient gradient(0,0,width(),0); gradient.setColorAt(0,t->titleBarBackground()); gradient.setColorAt(1,t->titleBarGradientEnd());
+    painter.fillRect(rect(),gradient);
+    painter.setPen(t->borderLight()); painter.drawLine(0,height()-1,width(),height()-1);
+    if(m_decoration!=Decoration::Technical || m_profile!=Profile::MainWindow)return;
+    painter.setRenderHint(QPainter::Antialiasing);
+    // Decorations stay in the bottom six pixels; never intercept input or reduce
+    // the title's hit area. Narrow windows use a single accent rule.
+    QColor accent=t->titleBarAccent(); accent.setAlpha(170); painter.setPen(QPen(accent,1));
+    if(width()<700) { painter.drawLine(14,height()-2,width()-14,height()-2); return; }
+    const qreal center=width()/2.; const qreal half=qBound(75.,m_titleLabel->width()/2.+36.,170.);
+    QPainterPath edge; edge.moveTo(0,height()-6); edge.lineTo(center-half-18,height()-6);
+    edge.lineTo(center-half,height()-1); edge.lineTo(center+half,height()-1);
+    edge.lineTo(center+half+18,height()-6); edge.lineTo(width(),height()-6); painter.drawPath(edge);
+    for(int side:{-1,1}) {
+        const qreal x=center+side*(half+24);
+        painter.fillRect(QRectF(x-2,height()-7,4,3),accent);
+        for(int i=0;i<5;++i) { const qreal offset=x+side*(16+i*7); painter.drawLine(QPointF(offset,height()-8),QPointF(offset+side*3,height()-12)); }
+    }
 }
 bool CustomTitleBar::eventFilter(QObject* watched,QEvent* event)
 {

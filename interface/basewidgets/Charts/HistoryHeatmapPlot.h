@@ -4,6 +4,8 @@ namespace basewidgets {
 /** 均匀 X 网格 × 时间的有界热力图基类，供声谱/LOFAR/DEMON/测向历程共用。
  * 色阶和显示门限只修改绘制；levelAt 始终返回原始值。NaN/缺帧透明，不当作低值。
  * 用户缩放/框选后暂停时间跟随，双击/Home 复位时恢复到最新历史。
+ * 显示层按可见网格/像素聚合最大值（最多 1024×512），放大后重建细节。
+ * 混合缺样桶取有限值最大值，全缺样桶透明；精确值/有效性始终通过 levelAt 查询。
  */
 class ACSS_UI_EXPORT HistoryHeatmapPlot : public StyledPlot {
     Q_OBJECT
@@ -28,7 +30,8 @@ public:
     double levelAt(int bin,int historyRow) const;
     double timeAt(int historyRow) const;
     double coordinateAt(int bin) const;
-    QCPColorMap* colorMap() const { return m_map; } ///< 借用，勿替换内部数据几何。
+    QCPColorMap* colorMap() const { return m_map; } ///< 借用的显示聚合层，勿替换数据几何；不是原始历史。
+    QSize displayGridSize() const; ///< 最近一次重绘的显示网格尺寸，可用于性能监测。
 signals:
     void cellSelected(double timeSeconds,double xCoordinate,double level,bool available);
     void levelRangeChanged(double lower,double upper);
@@ -49,6 +52,8 @@ private:
     bool m_hasTime=false,m_dirty=false,m_follow=true,m_thresholdEnabled=false;
     ColorPreset m_preset=ColorPreset::Viridis;
     QCPRange m_displayX{0,1};
+    QRect m_sourceCells;
+    QSize m_displayGrid;
     QCPColorMap* m_map=nullptr;
     QCPColorScale* m_scale=nullptr;
 };

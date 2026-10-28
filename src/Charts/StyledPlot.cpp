@@ -5,11 +5,20 @@
 #include <QClipboard>
 #include <QFileDialog>
 #include <QScopedPointer>
+#include <QTimer>
+#include <basewidgets/Charts/SampledGraph.h>
 #include <cmath>
 namespace basewidgets {
 StyledPlot::StyledPlot(QWidget* parent) : QCustomPlot(parent)
 {
     StyleManagerAdapter::instance();
+    // Dense non-cosmetic polylines can spend seconds in the Qt stroker. The
+    // QCustomPlot segment path preserves the pen while bounding per-segment work.
+    setPlottingHint(QCP::phFastPolylines,true);
+    setPlottingHint(QCP::phImmediateRefresh,false);
+    m_replotTimer=new QTimer(this); m_replotTimer->setSingleShot(true); m_replotTimer->setTimerType(Qt::PreciseTimer);
+    connect(m_replotTimer,&QTimer::timeout,this,[this] { QCustomPlot::replot(QCustomPlot::rpQueuedRefresh); });
+    connect(this,&QCustomPlot::beforeReplot,this,[this] { m_lastReplot.restart(); });
     setMinimumSize(280,220);
     axisRect()->setupFullAxesBox(true);
     plotLayout()->insertRow(0);
@@ -77,7 +86,28 @@ void StyledPlot::refreshTheme()
     legend->setTextColor(tokens->textPrimary()); legend->setBrush(tokens->bg1()); legend->setBorderPen(QPen(tokens->borderLight()));
     replot();
 }
-void StyledPlot::replot(QCustomPlot::RefreshPriority priority) { QCustomPlot::replot(priority); }
+QCPGraph* StyledPlot::addGraph(QCPAxis* key,QCPAxis* value)
+{
+    if(!key)key=xAxis; if(!value)value=yAxis;
+    if(!key||!value||key->parentPlot()!=this||value->parentPlot()!=this)return nullptr;
+    auto* graph=new SampledGraph(key,value); graph->setName(QString("Graph %1").arg(graphCount())); return graph;
+}
+bool StyledPlot::setMaximumFrameRate(int rate)
+{
+    if(rate<1||rate>120)return false;
+    m_maximumFrameRate=rate;
+    if(m_replotTimer->isActive()) { m_replotTimer->stop(); replot(); }
+    return true;
+}
+void StyledPlot::replot(QCustomPlot::RefreshPriority priority)
+{
+    if(priority!=QCustomPlot::rpQueuedReplot) { m_replotTimer->stop(); QCustomPlot::replot(priority); return; }
+    if(!m_replotTimer->isActive()) {
+        const int interval=(1000+m_maximumFrameRate-1)/m_maximumFrameRate;
+        const int delay=m_lastReplot.isValid()?int(qMax(qint64(0),interval-m_lastReplot.elapsed())):0;
+        m_replotTimer->start(delay);
+    }
+}
 void StyledPlot::setNavigationAxes(Qt::Orientations axes)
 {
     m_navigationAxes=axes & (Qt::Horizontal|Qt::Vertical);
@@ -167,11 +197,26 @@ void StyledPlot::mouseDoubleClickEvent(QMouseEvent* event)
 void StyledPlot::wheelEvent(QWheelEvent* event)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-    if(axisRect()->rect().contains(event->position().toPoint())) notifyUserNavigation();
+    const QPointF position=event->position();
 #else
-    if(axisRect()->rect().contains(event->pos())) notifyUserNavigation();
+    const QPointF position=event->posF();
 #endif
-    QCustomPlot::wheelEvent(event);
+    if(!axisRect()->rect().contains(position.toPoint())) { QCustomPlot::wheelEvent(event); return; }
+    emit mouseWheel(event);
+    if(interactions().testFlag(QCP::iRangeZoom) && event->angleDelta().y()!=0) {
+        notifyUserNavigation();
+        // Same axis/anchor semantics as QCPAxisRect, with a queued frame instead
+        // of a synchronous render for every wheel packet.
+        const double steps=event->angleDelta().y()/120.;
+        for(auto orientation:{Qt::Horizontal,Qt::Vertical})if(axisRect()->rangeZoom().testFlag(orientation)) {
+            const double factor=std::pow(axisRect()->rangeZoomFactor(orientation),steps);
+            if(!std::isfinite(factor)||factor<=0)continue;
+            for(auto* axis:axisRect()->rangeZoomAxes(orientation))if(axis)
+                axis->scaleRange(factor,axis->pixelToCoord(orientation==Qt::Horizontal?position.x():position.y()));
+        }
+        replot();
+    }
+    event->accept();
 }
 void StyledPlot::keyPressEvent(QKeyEvent* event)
 {

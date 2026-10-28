@@ -51,8 +51,34 @@ connect(plot, &basewidgets::StyledPlot::selectionMade, this,
 
 ## 通用曲线与主题
 
-通用曲线使用 `StyledPlot::addGraph()`，柱状图直接使用 `QCPBars`。StyledPlot 统一处理标题、坐标轴、图例与色标的主题，默认 queued replot 合并重绘。
+通用曲线使用 `StyledPlot::addGraph()`，柱状图直接使用 `QCPBars`。StyledPlot 统一处理标题、坐标轴、图例与色标的主题，默认按 30 FPS 合并流式数据更新和绘图区内的滚轮/拖动重绘。
 业务图表中的内部 graph/item 由控件持有，不要用继承的 removeGraph/removeItem 替换它们；需要完全自定义画布时使用 StyledPlot。
+
+## 大数据绘制与刷新调度
+
+`StyledPlot::addGraph()` 现在创建公开的 `SampledGraph`（兼容 QCPGraph 接口）。波形、频谱、DEMON 谱、波束和速率曲线统一使用它，不需要各页面重新抽样。`data()` 仍持有容量内原始数据，显示抽样不改变 FFT、峰值保持、频带积分或原始数据导出。
+
+- 只抽取当前可见区和两侧邻点，按横轴像素分桶；线性、对数、反向轴适用。每像素最多一个桶，总桶数最多 4096。
+- 每桶保留首、尾、最小、最大样点，并按原始时间排序。使用极值保留冲击峰，不用均值抹平尖峰。
+- NaN/非有限值作为断线处理；极密缺口保守断开，不跨缺口制造连接。每桶最多四个有限点和五个断线标记，输出量受像素宽度限制。
+- 放大后重新从原始数据取样，恢复局部细节。散点同样抽样；`scatterSkip` 在抽样后进一步稀疏显示。`SampledGraph::displaySamples()` 可查看显示样点；它不是业务计算的输入。此类始终启用像素抽样，不依赖 QCPGraph 的 `adaptiveSampling` 开关。
+- 启用 QCustomPlot 的快速线段路径，避免密集、非整数线宽折线进入 Qt 的昂贵整段描边路径。不改变用户设置的颜色与线宽，也不修改内置 QCustomPlot 源码。
+
+```cpp
+#include <basewidgets/Charts/StyledPlot.h>
+#include <basewidgets/Charts/SampledGraph.h>
+
+plot->setMaximumFrameRate(30); // 默认 30，允许 1..120；非法值返回 false
+// 多通道/多窗口可以按实际预算设为 20；不影响输入的数据采样率。
+plot->replot();               // 合并到下一显示帧，不为每次更新排队重绘
+plot->replot(basewidgets::QCustomPlot::rpImmediateRefresh); // 仅同步截图/检查等需要立即完成时使用
+```
+
+常规更新应使用 `StyledPlot*` 接口；直接经 `QCustomPlot*` 调用其非虚 `replot`、自行创建普通 QCPGraph，或强制立即绘制，会绕过相应优化。轴刻度区、色标等 QCustomPlot 原有交互与窗口 resize/DPI 刷新仍可能触发立即绘制，`maximumFrameRate` 是常规数据/导航调度上限，不是所有 Qt 绘制事件的硬上限。
+
+抽样仍需遍历可见的原始样点，数据输入量、通道数及可见图表数量应与设备预算匹配。大块 FFT/文件读取放工作线程，通过批量 queued 信号传到 GUI；不要逐样点发送 GUI 信号。绘制层节流不承担 DSP 或采集队列背压。
+
+声谱/LOFAR/DEMON/测向历程采用有界显示网格和最大值聚合，见[时频图](acoustic-analysis.md#时频图)。性能复现条件与测量结果见[验证指南](../development/validation.md#最近一次功能验证记录)。
 
 ## 业务图表入口
 

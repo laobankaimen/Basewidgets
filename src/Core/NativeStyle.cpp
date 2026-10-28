@@ -631,9 +631,13 @@ void NativeStyle::drawComplexControl(ComplexControl control, const QStyleOptionC
             } else if (windowControl=="minimize") {
                 p->drawLine(QPointF(glyph.left(),center.y()+3),QPointF(glyph.right(),center.y()+3));
             } else if (windowControl=="restore") {
-                p->drawRect(glyph.adjusted(2,-1,1,-2));
-                p->fillRect(glyph,hover || down ? background : pal.color(QPalette::Window));
-                p->drawRect(glyph);
+                // Draw only the exposed part of the rear window. An opaque erase
+                // rectangle would leave a patch on a gradient title-bar surface.
+                const QRectF rear=glyph.adjusted(2,-1,1,-2);
+                QPainterPath outline; outline.moveTo(rear.left(),glyph.top());
+                outline.lineTo(rear.topLeft()); outline.lineTo(rear.topRight());
+                outline.lineTo(rear.bottomRight()); outline.lineTo(glyph.right(),rear.bottom());
+                p->drawPath(outline); p->drawRect(glyph);
             } else p->drawRect(glyph);
             if ((tool->state & State_HasFocus) && (tool->state & State_KeyboardFocusChange))
                 rounded(p,option->rect.adjusted(2,2,-2,-2),Qt::transparent,foreground,1);

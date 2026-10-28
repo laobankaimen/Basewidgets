@@ -2,6 +2,9 @@
 
 # Sources
 set(UI_PUBLIC_HEADERS
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/SampledGraph.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/DashboardPanel.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/StorageDonutMeter.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/EmptyState.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/MessageBanner.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/FilterChip.h
@@ -88,6 +91,9 @@ set(UI_PUBLIC_HEADERS
 )
 
 set(UI_SOURCES
+    Charts/SampledGraph.cpp
+    Containers/DashboardPanel.cpp
+    Gauges/StorageDonutMeter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Containers/EmptyState.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Containers/MessageBanner.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/FilterChip.cpp

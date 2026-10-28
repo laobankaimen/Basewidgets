@@ -63,6 +63,7 @@
 #include <QtMath>
 #include "pages/InputsPage.h"
 #include "pages/CommonWidgetsPage.h"
+#include "pages/DashboardPage.h"
 #include "pages/GaugesPage.h"
 #include "pages/AcousticPage.h"
 #include "pages/DirectionAnalysisPage.h"
@@ -70,7 +71,7 @@
 #include "pages/DialogsPage.h"
 #include "pages/PagedTablePage.h"
 #include "pages/TextPage.h"
-#include "pages/ViewsPage.h"
+#include "DemoPageIds.h"
 
 // 示例数据模型
 #include <QStandardItemModel>
@@ -113,6 +114,8 @@ int main(int argc, char *argv[])
     arguments.setApplicationDescription("BaseWidgets 控件与配色示例"); arguments.addHelpOption();
     arguments.addOption({"styles-dir", "外部 styles 目录或主题 RCC；省略时使用库内嵌资源", "path"});
     arguments.addOption({"theme", "主题 XML 文件名（不含 .xml）；省略时读取 default_theme", "name"});
+    arguments.addOption({"dashboard", "打开数据管理首页，使用居中标题与科技装饰"});
+    arguments.addOption({"centered-title", "标题与图标整体居中，左侧展示业务动作"});
     arguments.addOption({"smoke-test", "遍历当前资源包的全部主题和页面后退出"});
     arguments.process(app);
     // 外部目录使用相同的配置协议。换配色只改 XML/JSON，应用无需重新编译。
@@ -172,9 +175,9 @@ int main(int argc, char *argv[])
     auto* actionGroup=new QActionGroup(toolBar);
     // The selected command follows the page, including pages outside this group.
     actionGroup->setExclusive(false);
-    auto* recordsAction=toolBar->addAction(icon("records"),"录音"); recordsAction->setData(8);
-    auto* monitorAction=toolBar->addAction(icon("monitor"),"监控"); monitorAction->setData(6);
-    auto* bearingAction=toolBar->addAction(icon("bearing"),"测向"); bearingAction->setData(5);
+    auto* recordsAction=toolBar->addAction(icon("records"),"录音"); recordsAction->setData(DemoPage::Records);
+    auto* monitorAction=toolBar->addAction(icon("monitor"),"监控"); monitorAction->setData(DemoPage::Monitoring);
+    auto* bearingAction=toolBar->addAction(icon("bearing"),"测向"); bearingAction->setData(DemoPage::Direction);
     for(auto* action:{recordsAction,monitorAction,bearingAction}) {
         action->setCheckable(true); actionGroup->addAction(action);
         action->setToolTip("打开"+action->text()+"工作区");
@@ -259,7 +262,7 @@ int main(int argc, char *argv[])
     // 顶部标签取消 Emoji 图标，避免跨平台字体缺失
     mainTabWidget->addTab(new InputsPage(mainTabWidget), "输入控件");
     mainTabWidget->addTab(new DialogsPage(mainTabWidget), "对话框");
-    mainTabWidget->addTab(new ViewsPage(mainTabWidget), "视图控件");
+    mainTabWidget->addTab(new CommonWidgetsPage(mainTabWidget), "常用组件");
     mainTabWidget->addTab(new TextPage(mainTabWidget), "文本布局");
     // 图表控件页
     mainTabWidget->addTab(new AcousticPage(mainTabWidget), "水声分析");
@@ -269,7 +272,9 @@ int main(int argc, char *argv[])
     mainTabWidget->addTab(new GaugesPage(mainTabWidget), "仪表盘");
     // 高级表格（分页/筛选/排序/导出）
     mainTabWidget->addTab(new PagedTablePage(mainTabWidget), "高级表格");
-    mainTabWidget->addTab(new CommonWidgetsPage(mainTabWidget), "常用组件");
+    auto* dashboard=new DashboardPage(mainTabWidget); mainTabWidget->addTab(dashboard,"数据首页");
+    QObject::connect(dashboard,&DashboardPage::pageRequested,mainTabWidget,&QTabWidget::setCurrentIndex);
+    if(arguments.isSet("dashboard"))mainTabWidget->setCurrentWidget(dashboard);
 
     // 导航状态只表达当前页面，不保留无实际作用的“列表/图标视图”开关。
     auto syncCommands=[actionGroup](int index) {
@@ -285,7 +290,7 @@ int main(int argc, char *argv[])
     QObject::connect(openAction,&QAction::triggered,window,[window,statusBar,mainTabWidget] {
         const QString path=DialogUtils::openFile(window,"选择录音文件",QString(),"录音 (*.wav *.flac *.raw);;所有文件 (*)");
         if(path.isEmpty())return;
-        mainTabWidget->setCurrentIndex(8);
+        mainTabWidget->setCurrentIndex(DemoPage::Records);
         statusBar->showMessage("已选择 "+QFileInfo(path).fileName()+" · 示例接入点，未执行文件解析",8000);
     });
     QObject::connect(exportAction,&QAction::triggered,window,[window,statusBar] {
@@ -362,6 +367,12 @@ int main(int argc, char *argv[])
     // 标题栏只发送搜索/操作信号，业务行为由应用实现。
     auto* titleBar=window->titleBar();
     titleBar->setTitle("水声数据管理中心");
+    // 布局和颜色分别配置；--theme sg-blue --centered-title 可查看设计稿风格。
+    // WithTitle 让图标与标题作为一个整体排列，左右按钮不会改变它的居中基准。
+    titleBar->setIconPlacement(CustomTitleBar::IconPlacement::WithTitle);
+    titleBar->setTitleAlignment((arguments.isSet("centered-title")||arguments.isSet("dashboard"))
+        ?CustomTitleBar::TitleAlignment::Center:CustomTitleBar::TitleAlignment::Left);
+    if(arguments.isSet("dashboard"))titleBar->setDecoration(CustomTitleBar::Decoration::Technical);
     titleBar->setSearchVisible(true); titleBar->setSettingsVisible(true); titleBar->setUserVisible(true);
     titleBar->setSearchPlaceholderText("搜索录音 · Ctrl+K");
     // 无照片时采用姓名字形占位，不把低分辨率示意头像放大。
@@ -378,9 +389,17 @@ int main(int argc, char *argv[])
     auto* alignment=titleSettings->addMenu("标题位置"); auto* alignmentGroup=new QActionGroup(titleBar);
     auto* left=alignment->addAction("左侧"); auto* center=alignment->addAction("居中");
     for(auto* action:{left,center}) { action->setCheckable(true); alignmentGroup->addAction(action); }
-    left->setChecked(true);
+    ((arguments.isSet("centered-title")||arguments.isSet("dashboard"))?center:left)->setChecked(true);
     QObject::connect(left,&QAction::triggered,titleBar,[titleBar] { titleBar->setTitleAlignment(CustomTitleBar::TitleAlignment::Left); });
     QObject::connect(center,&QAction::triggered,titleBar,[titleBar] { titleBar->setTitleAlignment(CustomTitleBar::TitleAlignment::Center); });
+    auto* followIcon=titleSettings->addAction("图标随标题对齐"); followIcon->setCheckable(true); followIcon->setChecked(true);
+    QObject::connect(followIcon,&QAction::toggled,titleBar,[titleBar](bool enabled) {
+        titleBar->setIconPlacement(enabled?CustomTitleBar::IconPlacement::WithTitle:CustomTitleBar::IconPlacement::Leading);
+    });
+    auto* technical=titleSettings->addAction("科技风标题装饰"); technical->setCheckable(true); technical->setChecked(arguments.isSet("dashboard"));
+    QObject::connect(technical,&QAction::toggled,titleBar,[titleBar](bool enabled) {
+        titleBar->setDecoration(enabled?CustomTitleBar::Decoration::Technical:CustomTitleBar::Decoration::Plain);
+    });
     auto* ownTitle=titleSettings->addAction("使用独立展示标题"); ownTitle->setCheckable(true); ownTitle->setChecked(true);
     QObject::connect(ownTitle,&QAction::toggled,titleBar,[titleBar](bool enabled) { if(enabled)titleBar->setTitle("水声数据管理中心"); else titleBar->resetTitle(); });
     auto* showIcon=titleSettings->addAction("显示应用图标"); showIcon->setCheckable(true); showIcon->setChecked(true);
@@ -388,13 +407,19 @@ int main(int argc, char *argv[])
     auto* searchToggle=titleSettings->addAction("显示全局搜索"); searchToggle->setCheckable(true); searchToggle->setChecked(true);
     QObject::connect(searchToggle,&QAction::toggled,titleBar,&CustomTitleBar::setSearchVisible);
     titleSettings->addAction(themeAction);
+    // 左侧为业务入口，QAction 仍由应用持有；点击仅演示页面导航，不启动真实采集。
+    auto* analysisAction=new QAction("分析工作台",titleBar);
+    titleBar->addTitleAction(analysisAction,CustomTitleBar::ActionPosition::Left);
+    QObject::connect(analysisAction,&QAction::triggered,mainTabWidget,[mainTabWidget] { mainTabWidget->setCurrentIndex(DemoPage::Acoustic); });
+    auto* showLeftActions=titleSettings->addAction("显示左侧业务入口"); showLeftActions->setCheckable(true); showLeftActions->setChecked(true);
+    QObject::connect(showLeftActions,&QAction::toggled,analysisAction,&QAction::setVisible);
     // 可复用 QAction；窄窗口会自动出现在“更多操作”菜单，动作仍是同一个对象。
     auto* taskAction=new QAction("任务中心",titleBar); titleBar->addTitleAction(taskAction);
-    QObject::connect(taskAction,&QAction::triggered,mainTabWidget,[mainTabWidget] { mainTabWidget->setCurrentIndex(6); });
+    QObject::connect(taskAction,&QAction::triggered,mainTabWidget,[mainTabWidget] { mainTabWidget->setCurrentIndex(DemoPage::Monitoring); });
     QObject::connect(titleBar,&CustomTitleBar::searchSubmitted,window,[window,mainTabWidget,statusBar](const QString& text) {
         auto* table=window->findChild<AdvancedTable*>("RecordingAdvancedTable");
         if(!table)return;
-        table->setFilterText(text); mainTabWidget->setCurrentIndex(8);
+        table->setFilterText(text); mainTabWidget->setCurrentIndex(DemoPage::Records);
         statusBar->showMessage(text.isEmpty()?"已清空录音筛选":QString("录音搜索：%1 · %2 条结果").arg(text).arg(table->pager()->totalRows()),6000);
     });
 
@@ -426,6 +451,9 @@ int main(int argc, char *argv[])
             if (!captureDir.isEmpty()) QDir().mkpath(captureDir);
             bool ok = qApp->styleSheet().isEmpty();
             auto require=[&ok](bool passed,const char* label) { if(!passed)qWarning()<<"Demo smoke failed:"<<label; ok=passed&&ok; };
+            require(mainTabWidget->count()==DemoPage::Count,"all consolidated demo pages are registered");
+            require(mainTabWidget->tabText(DemoPage::Common)=="常用组件","views live in the common components tab");
+            require(mainTabWidget->tabText(DemoPage::Dashboard)=="数据首页","dashboard navigation index is current");
             for (int width : {1100,640}) {
                 window->resize(width,760);
                 QApplication::processEvents();
@@ -443,16 +471,27 @@ int main(int argc, char *argv[])
                     }
                 }
             }
+            // 宽屏首页用于核对四张指标卡与双列图表布局；不影响普通启动偏好。
+            if(StyleManagerAdapter::instance()->themes().contains("sg-blue")) {
+                auto* manager=StyleManagerAdapter::instance(); const QString previous=manager->currentTheme();
+                auto* bar=window->titleBar(); const auto alignment=bar->titleAlignment(); const auto decoration=bar->decoration();
+                manager->setCurrentTheme("sg-blue"); manager->updateTheme();
+                bar->setTitleAlignment(CustomTitleBar::TitleAlignment::Center); bar->setDecoration(CustomTitleBar::Decoration::Technical);
+                mainTabWidget->setCurrentIndex(DemoPage::Dashboard); window->resize(1600,1000); QApplication::processEvents();
+                if(!captureDir.isEmpty())ok=window->grab().save(QDir(captureDir).filePath("dashboard-sg-blue-wide.png"))&&ok;
+                bar->setTitleAlignment(alignment); bar->setDecoration(decoration); window->resize(640,760);
+                manager->setCurrentTheme(previous); manager->updateTheme();
+            }
             // Real command-bar actions navigate to business pages; a page outside this
             // group clears every check state. No file chooser or settings write in smoke.
             if(auto* toolbar=window->findChild<QToolBar*>("DemoToolBar")) {
-                for(const auto& command:QList<QPair<QString,int>>{{"录音",8},{"监控",6},{"测向",5}}) {
+                for(const auto& command:QList<QPair<QString,int>>{{"录音",DemoPage::Records},{"监控",DemoPage::Monitoring},{"测向",DemoPage::Direction}}) {
                     QAction* found=nullptr;
                     for(auto* action:toolbar->actions())if(action->text()==command.first) { found=action; break; }
                     require(found!=nullptr,"command action exists");
                     if(found) { found->trigger(); require(mainTabWidget->currentIndex()==command.second,"command opens expected page"); require(found->isChecked(),"command remains selected"); }
                 }
-                mainTabWidget->setCurrentIndex(0);
+                mainTabWidget->setCurrentIndex(DemoPage::Inputs);
                 for(auto* action:toolbar->actions())if(action->isCheckable())require(!action->isChecked(),"unrelated page clears command selection");
                 if(auto* theme=window->findChild<QAction*>("WorkspaceThemeAction")) {
                     auto* manager=StyleManagerAdapter::instance(); const QString before=manager->currentTheme();
@@ -475,11 +514,14 @@ int main(int argc, char *argv[])
                 title->setSearchText("station_1");
                 QMetaObject::invokeMethod(title->searchEdit(),"returnPressed",Qt::DirectConnection);
                 auto* table=window->findChild<AdvancedTable*>("RecordingAdvancedTable");
-                ok=table && table->pager()->totalRows()==50 && mainTabWidget->currentIndex()==8 && ok;
+                ok=table && table->pager()->totalRows()==50 && mainTabWidget->currentIndex()==DemoPage::Records && ok;
                 title->setSearchText(""); QMetaObject::invokeMethod(title->searchEdit(),"returnPressed",Qt::DirectConnection);
+                bool foundLeft=false;
+                for(auto* action:title->findChildren<QAction*>())if(action->text()=="分析工作台") { action->trigger(); foundLeft=true; break; }
+                require(foundLeft&&mainTabWidget->currentIndex()==DemoPage::Acoustic,"left title action opens analysis page");
                 bool foundTask=false;
                 for(auto* action:title->findChildren<QAction*>())if(action->text()=="任务中心") { action->trigger(); foundTask=true; break; }
-                ok=foundTask && mainTabWidget->currentIndex()==6 && ok;
+                ok=foundTask && mainTabWidget->currentIndex()==DemoPage::Monitoring && ok;
             } else ok=false;
 
             // Exercise the role-based workspace on one offscreen surface as an explicit preview.

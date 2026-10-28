@@ -8,6 +8,10 @@
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --target widgets_demo --parallel 4
 ./build/bin/widgets_demo
+# SG 配色、图标与标题整体居中、左侧业务按钮
+./build/bin/widgets_demo --theme sg-blue --centered-title
+# 数据管理首页与科技标题装饰
+./build/bin/widgets_demo --theme sg-blue --dashboard
 ```
 
 - [快速入门](../../docs/guides/getting-started.md)：环境、初始化、线程与所有权。

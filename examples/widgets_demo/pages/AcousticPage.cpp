@@ -53,7 +53,9 @@ AcousticPage::AcousticPage(QWidget* parent) : StyledWidget(parent)
     m_status=new AcquisitionStatusPanel; m_status->setFixedHeight(220); metricLayout->addWidget(m_quality); metricLayout->addWidget(m_status); layout->addWidget(metrics);
     m_wave=new AcousticWaveformPlot; m_wave->setObjectName("AcousticDemoWaveform"); m_wave->setMinimumHeight(290);
     m_wave->configure(rate,32768); m_wave->addChannel("CH1 · 线谱+扫频"); m_wave->addChannel("CH2 · 含削波示例");
-    m_wave->setVisibleDuration(.02); layout->addWidget(m_wave);
+    // 展示与采集解耦：公共曲线默认按像素保峰值抽样、30 FPS 合并刷新。
+    // 仍按完整采样块写入，不能先每 N 点取一个，否则会漏掉短暂冲击峰。
+    m_wave->setMaximumFrameRate(30); m_wave->setVisibleDuration(.02); layout->addWidget(m_wave);
     m_spectrum=new AcousticSpectrumPlot; m_spectrum->setObjectName("AcousticDemoSpectrum"); m_spectrum->setMinimumHeight(290); m_spectrum->setLevelRange(-120,0); layout->addWidget(m_spectrum);
     auto* spectrumHint=new Label("PSD 与每频点功率不是同一量纲。频带功率需在线性域积分；未提供水听器标定时不显示 dB re 1 μPa。",content);
     spectrumHint->setWordWrap(true); layout->addWidget(spectrumHint);
