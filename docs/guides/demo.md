@@ -18,7 +18,7 @@
 | 仪表 / `pages/GaugesPage.cpp` | 完成量、阈值、航向、姿态、未知状态 | [通用仪表](../components/gauges.md) |
 | 高级表格 / `pages/PagedTablePage.cpp` | 三种模式、固定记录、跨页勾选、菜单与导出 | [高级表格](../components/advanced-table.md) |
 | 数据首页 / `pages/DashboardPage.cpp` | 指标卡、丢包率、双集群容量环与首页导航 | [数据管理仪表](../components/monitoring.md#数据管理首页与面板) |
-| 常用组件 / `pages/CommonWidgetsPage.cpp` | 导航/列表/表格/树形视图、筛选条件、就地反馈和空状态 | [常用交互与反馈](../components/common-widgets.md) |
+| 常用组件 / `pages/CommonWidgetsPage.cpp` | 搜索/复制/状态/折叠参数、基础视图、筛选与反馈 | [常用交互与反馈](../components/common-widgets.md) |
 
 原“视图控件”页已合并到“常用组件”，采用三列/两列/单列自适应分组；模型所有权、导航 ID、树形汇总示例保留。`DemoPageIds.h` 统一维护页面编号，工具栏和首页导航复用同一组常量。
 
@@ -41,6 +41,8 @@
 设置菜单可切换标题左/居中、图标随标题对齐、左侧业务入口、独立标题及图标/搜索显隐，用户入口展示模拟账户。左侧“分析工作台”进入水声分析页。搜索 Enter 后切换到高级表格并筛选录音，任务中心打开数据监控页。窄窗口搜索折叠为图标浮层，次要动作进入“更多”。
 
 可运行 `./build/bin/widgets_demo --theme sg-blue --dashboard` 查看带侧边导航、统计卡和科技标题栏的数据管理首页；运行 `./build/bin/widgets_demo --theme sg-blue --centered-title` 查看参考设计图的蓝色配色与居中品牌标题。配色和标题布局独立；生产代码见[标题栏接入](../components/title-bar.md#参考图形式中间品牌标题左侧按钮)。
+
+标题栏铃铛和常用组件页共享未读状态；“帮助 → 关于组件示例”打开可配置的 AboutDialog，常用组件页也可编辑名称/版本后预览。组件 API 见[消息与关于](../components/notifications-and-about.md)。
 
 ## 高级表格与图表
 

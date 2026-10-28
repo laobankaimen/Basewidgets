@@ -15,6 +15,7 @@ class QMenu;
 class QShortcut;
 namespace basewidgets {
 class ToolButton;
+class NotificationBell;
 /** 独立标题栏：主窗口可启用搜索/设置/头像/业务操作，弹窗默认只有标题和关闭。
  * 仅提供 UI 与信号，不执行搜索、登录或设置业务；所有接口在 GUI 线程调用。
  * 空白和标题可拖动，交互控件不参与拖动；绘制使用 NativeStyle/ThemeTokens，无 QSS。
@@ -65,6 +66,10 @@ public:
     void setSearchVisible(bool visible);
     void setSettingsVisible(bool visible);
     void setUserVisible(bool visible);
+    /** 主窗口消息入口默认关闭；窄窗口移入“更多”，简洁 profile 隐藏。
+     * notificationButton()->setModel 可同步未读数，点击只发 notificationsRequested。 */
+    void setNotificationsVisible(bool visible);
+    NotificationBell* notificationButton() const { return m_notifications; } ///< 借用，不要删除/另设固定尺寸。
     void setSearchPlaceholderText(const QString& placeholder);
     /** 默认 Ctrl+K；空快捷键禁用，避免与业务自身的全局搜索命令冲突。 */
     void setSearchShortcut(const QKeySequence& shortcut);
@@ -109,6 +114,7 @@ signals:
     /** 未给对应按钮绑定菜单时触发；有菜单时按 QToolButton 规则直接打开菜单。 */
     void settingsRequested();
     void userRequested();
+    void notificationsRequested();
 protected:
     bool event(QEvent* event) override;
     bool eventFilter(QObject* watched,QEvent* event) override;
@@ -132,6 +138,9 @@ private:
     QLabel *m_iconLabel=nullptr,*m_titleLabel=nullptr;
     ToolButton *m_btnMin=nullptr,*m_btnMax=nullptr,*m_btnClose=nullptr;
     ToolButton *m_settings=nullptr,*m_user=nullptr,*m_searchButton=nullptr,*m_more=nullptr;
+    NotificationBell* m_notifications=nullptr;
+    QAction* m_notificationsOverflow=nullptr;
+    bool m_notificationsVisible=false;
     QLineEdit *m_searchEdit=nullptr,*m_popupSearchEdit=nullptr;
     QFrame* m_searchPopup=nullptr;
     QMenu* m_moreMenu=nullptr;

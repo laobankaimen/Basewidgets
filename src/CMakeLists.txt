@@ -2,6 +2,16 @@
 
 # Sources
 set(UI_PUBLIC_HEADERS
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Views/NotificationModel.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/NotificationBell.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/NotificationPanel.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Dialogs/NotificationPopup.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/AboutWidget.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Dialogs/AboutDialog.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/StatusBadge.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/SearchEdit.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/CopyField.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/CollapsibleSection.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Charts/SampledGraph.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/DashboardPanel.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Gauges/StorageDonutMeter.h
@@ -91,6 +101,16 @@ set(UI_PUBLIC_HEADERS
 )
 
 set(UI_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/Views/NotificationModel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/NotificationBell.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Containers/NotificationPanel.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Dialogs/NotificationPopup.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Containers/AboutWidget.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Dialogs/AboutDialog.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/StatusBadge.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/SearchEdit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/CopyField.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Containers/CollapsibleSection.cpp
     Charts/SampledGraph.cpp
     Containers/DashboardPanel.cpp
     Gauges/StorageDonutMeter.cpp

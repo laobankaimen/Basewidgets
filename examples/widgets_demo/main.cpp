@@ -72,6 +72,13 @@
 #include "pages/PagedTablePage.h"
 #include "pages/TextPage.h"
 #include "DemoPageIds.h"
+#include "DemoAbout.h"
+#include <basewidgets/Inputs/NotificationBell.h>
+#include <basewidgets/Views/NotificationModel.h>
+#include <basewidgets/Containers/NotificationPanel.h>
+#include <basewidgets/Containers/CollapsibleSection.h>
+#include <basewidgets/Dialogs/NotificationPopup.h>
+#include <basewidgets/Dialogs/AboutDialog.h>
 
 // 示例数据模型
 #include <QStandardItemModel>
@@ -155,7 +162,11 @@ int main(int argc, char *argv[])
     fileMenu->addAction("退出(&X)",window,&QWidget::close);
     auto* helpMenu=menuBar->addMenu("帮助(&H)");
     helpMenu->addAction("关于组件示例",window,[window] {
-        DialogUtils::messageInfo(window,"BaseWidgets","水声分析与数据管理组件示例。\n界面中的采集、速率和仪表数据均为合成演示。");
+        auto* dialog=new AboutDialog(window); dialog->setObjectName("DemoAboutDialog"); dialog->setAttribute(Qt::WA_DeleteOnClose); dialog->setInfo(demoAboutInfo());
+        QObject::connect(dialog->aboutWidget(),&AboutWidget::linkActivated,dialog,[dialog](const QString& id,const QUrl&) {
+            if(id=="licenses")if(auto* section=dialog->findChild<CollapsibleSection*>("AboutLicense"))section->setExpanded(true);
+            if(id=="guide")dialog->setTitle("使用指南 · 请查看项目 docs 目录");
+        }); dialog->open();
     });
     window->setMenuBar(menuBar);
 
@@ -375,6 +386,17 @@ int main(int argc, char *argv[])
     if(arguments.isSet("dashboard"))titleBar->setDecoration(CustomTitleBar::Decoration::Technical);
     titleBar->setSearchVisible(true); titleBar->setSettingsVisible(true); titleBar->setUserVisible(true);
     titleBar->setSearchPlaceholderText("搜索录音 · Ctrl+K");
+    // 标题栏只负责入口；消息模型可同时绑定多个窗口/面板，未读数保持同步。
+    auto* messages=window->findChild<NotificationModel*>("CommonDemoNotifications");
+    titleBar->setNotificationsVisible(true); titleBar->notificationButton()->setModel(messages);
+    auto* notificationPopup=new NotificationPopup(window); notificationPopup->setObjectName("DemoTitleNotificationPopup"); notificationPopup->setModel(messages);
+    QObject::connect(titleBar,&CustomTitleBar::notificationsRequested,notificationPopup,[titleBar,notificationPopup] {
+        QWidget* anchor=titleBar->notificationButton()->isVisible()?static_cast<QWidget*>(titleBar->notificationButton()):titleBar;
+        if(notificationPopup->isVisible())notificationPopup->hide(); else notificationPopup->popup(anchor);
+    });
+    QObject::connect(notificationPopup->panel(),&NotificationPanel::actionRequested,mainTabWidget,[mainTabWidget,notificationPopup](const QString& id) {
+        mainTabWidget->setCurrentIndex(id.startsWith("import")?DemoPage::Records:DemoPage::Monitoring); notificationPopup->hide();
+    });
     // 无照片时采用姓名字形占位，不把低分辨率示意头像放大。
     titleBar->setUserInfo("演示用户",QPixmap(),"本地示例 · 数据分析");
     auto* accountMenu=new QMenu(titleBar);
@@ -516,6 +538,19 @@ int main(int argc, char *argv[])
                 auto* table=window->findChild<AdvancedTable*>("RecordingAdvancedTable");
                 ok=table && table->pager()->totalRows()==50 && mainTabWidget->currentIndex()==DemoPage::Records && ok;
                 title->setSearchText(""); QMetaObject::invokeMethod(title->searchEdit(),"returnPressed",Qt::DirectConnection);
+                auto* model=window->findChild<NotificationModel*>("CommonDemoNotifications");
+                auto* popup=window->findChild<NotificationPopup*>("DemoTitleNotificationPopup");
+                require(model&&popup&&title->notificationButton()->model()==model,"title bell shares demo notification model");
+                if(model&&popup) {
+                    const int before=model->unreadCount();
+                    model->addMessage({"smoke-notification","Smoke task","Synthetic notification",{},FeedbackTone::Info,false,"查看任务"});
+                    require(title->notificationButton()->unreadCount()==before+1,"title badge updates");
+                    title->notificationButton()->click(); QApplication::processEvents(); require(popup->isVisible(),"title bell opens message panel");
+                    popup->panel()->openMessage("smoke-notification"); require(model->unreadCount()==before,"viewing message updates shared unread count");
+                    if(auto* action=popup->findChild<PushButton*>("NotificationAction"))action->click();
+                    require(mainTabWidget->currentIndex()==DemoPage::Monitoring&&!popup->isVisible(),"message action navigates to monitoring");
+                    model->removeMessage("smoke-notification");
+                }
                 bool foundLeft=false;
                 for(auto* action:title->findChildren<QAction*>())if(action->text()=="分析工作台") { action->trigger(); foundLeft=true; break; }
                 require(foundLeft&&mainTabWidget->currentIndex()==DemoPage::Acoustic,"left title action opens analysis page");

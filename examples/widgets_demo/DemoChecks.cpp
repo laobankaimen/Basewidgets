@@ -94,6 +94,19 @@
 #include <basewidgets/Containers/MessageBanner.h>
 #include <basewidgets/Containers/EmptyState.h>
 #include "pages/CommonWidgetsPage.h"
+#include <basewidgets/Inputs/StatusBadge.h>
+#include <basewidgets/Inputs/NotificationBell.h>
+#include <basewidgets/Views/NotificationModel.h>
+#include <basewidgets/Containers/NotificationPanel.h>
+#include <basewidgets/Containers/AboutWidget.h>
+#include <basewidgets/Dialogs/NotificationPopup.h>
+#include <basewidgets/Dialogs/AboutDialog.h>
+#include "DemoAbout.h"
+#include <basewidgets/Inputs/SearchEdit.h>
+#include <basewidgets/Inputs/CopyField.h>
+#include <basewidgets/Containers/CollapsibleSection.h>
+#include <QIntValidator>
+#include <QInputMethodEvent>
 #include "DemoPageIds.h"
 #include <basewidgets/Views/ListView.h>
 #include <basewidgets/Views/TreeTable.h>
@@ -405,6 +418,170 @@ private slots:
         empty.setIcon(QIcon()); QVERIFY(empty.icon().isNull()); empty.setSecondaryActionText("");
         QVERIFY(empty.findChild<PushButton*>("EmptyStateSecondaryAction")->isHidden());
     }
+    void searchEditDebounceCommitAndCancel()
+    {
+        SearchEdit search; search.resize(280,40); search.show(); QVERIFY(search.isClearButtonEnabled());
+        QVERIFY(search.setDebounceInterval(40)); QVERIFY(!search.setDebounceInterval(-1)); QCOMPARE(search.debounceInterval(),40);
+        QSignalSpy requests(&search,&SearchEdit::searchRequested);
+        search.setText("a"); search.setText("ab"); search.setText("abc"); QCOMPARE(requests.count(),0);
+        QTRY_COMPARE(requests.count(),1); QCOMPARE(requests.takeFirst().first().toString(),QString("abc"));
+        search.setText("  station  "); QTest::keyClick(&search,Qt::Key_Return);
+        QCOMPARE(requests.count(),1); QCOMPARE(requests.takeFirst().first().toString(),QString("  station  "));
+        QTest::qWait(80); QCOMPARE(requests.count(),0); // Return cancels the pending duplicate.
+        search.setText("cancel"); search.cancelPendingSearch(); QTest::qWait(80); QCOMPARE(requests.count(),0);
+        search.setText("disabled"); search.setEnabled(false); QTest::qWait(80); search.requestSearch(); QCOMPARE(requests.count(),0);
+        search.setEnabled(true); QTest::keyClick(&search,Qt::Key_Escape); QVERIFY(search.text().isEmpty());
+        QTRY_COMPARE(requests.count(),1); QVERIFY(requests.takeFirst().first().toString().isEmpty());
+        QIntValidator validator(1,99,&search); search.setValidator(&validator); search.setText("0"); search.requestSearch();
+        QTest::qWait(80); QCOMPARE(requests.count(),0);
+        search.setValidator(nullptr); search.clear(); search.cancelPendingSearch();
+        QInputMethodEvent preedit("中",{}); QApplication::sendEvent(&search,&preedit); QTest::qWait(80); QCOMPARE(requests.count(),0);
+        QInputMethodEvent commit; commit.setCommitString("中"); QApplication::sendEvent(&search,&commit);
+        QTRY_COMPARE(requests.count(),1); QCOMPARE(requests.takeFirst().first().toString(),QString("中"));
+        QVERIFY(search.setDebounceInterval(0)); search.clear(); QTRY_COMPARE(requests.count(),1);
+    }
+    void copyFieldUsesFullTextAndSafeLifetime()
+    {
+        const QString before=QApplication::clipboard()->text();
+        CopyField field; field.resize(180,40); field.show();
+        auto* button=field.findChild<ToolButton*>("CopyFieldButton"); QVERIFY(button); QVERIFY(!button->isEnabled());
+        QVERIFY(field.textEdit()->isReadOnly()); QSignalSpy copied(&field,&CopyField::copied),changed(&field,&CopyField::textChanged);
+        field.copy(); QCOMPARE(copied.count(),0);
+        const QString longText=QString("录音-α/").repeated(8000); field.setText(longText); QCOMPARE(field.text(),longText); QCOMPARE(changed.count(),1);
+        button->click(); QCOMPARE(copied.count(),1); QCOMPARE(copied.takeFirst().first().toString(),longText); QCOMPARE(QApplication::clipboard()->text(),longText);
+        QVERIFY(button->accessibleName().contains("已复制")); field.setText("record-002"); QVERIFY(!button->accessibleName().contains("已复制"));
+        field.setEnabled(false); field.copy(); QCOMPARE(copied.count(),0);
+        field.setEnabled(true); field.setText(""); QVERIFY(!button->isEnabled());
+        auto* temporary=new CopyField("temporary"); QPointer<CopyField> guard=temporary;
+        connect(temporary,&CopyField::copied,temporary,[temporary] { delete temporary; }); temporary->copy(); QVERIFY(guard.isNull());
+        QApplication::clipboard()->setText(before);
+    }
+    void collapsibleSectionRetainsValuesAndFocus()
+    {
+        CollapsibleSection section("高级参数"); auto* input=new LineEdit("keep",section.contentWidget()); section.contentLayout()->addWidget(input);
+        section.resize(320,150); section.show(); section.activateWindow(); input->setFocus(); QTest::qWait(20);
+        auto* header=section.findChild<ToolButton*>("CollapsibleSectionHeader"); QVERIFY(header); QVERIFY(section.isExpanded());
+        const int expandedHeight=section.sizeHint().height(); QSignalSpy toggles(&section,&CollapsibleSection::expandedChanged);
+        section.setExpanded(false); QCOMPARE(toggles.count(),1); QVERIFY(section.contentWidget()->isHidden()); QVERIFY(header->hasFocus());
+        QCOMPARE(input->text(),QString("keep")); QVERIFY(section.sizeHint().height()<expandedHeight);
+        section.setExpanded(false); QCOMPARE(toggles.count(),1); QTest::keyClick(header,Qt::Key_Return);
+        QVERIFY(section.isExpanded()); QVERIFY(!section.contentWidget()->isHidden()); QCOMPARE(input->text(),QString("keep"));
+        QTest::keyClick(header,Qt::Key_Space); QVERIFY(!section.isExpanded());
+        section.setLayoutDirection(Qt::RightToLeft); QCOMPARE(header->arrowType(),Qt::LeftArrow);
+        section.setEnabled(false); QTest::keyClick(header,Qt::Key_Return); QVERIFY(!section.isExpanded());
+        section.setEnabled(true); section.setExpanded(true); QCOMPARE(header->arrowType(),Qt::DownArrow);
+        section.setTitle(QString("长标题与连接详情").repeated(30)); section.resize(240,180); QApplication::processEvents();
+        QCOMPARE(section.width(),240); QCOMPARE(header->toolTip(),section.title()); QVERIFY(!render(section).isNull());
+    }
+    void notificationModelBoundsAndSharedUnreadState()
+    {
+        NotificationModel model; QAbstractItemModelTester check(&model,QAbstractItemModelTester::FailureReportingMode::QtTest);
+        NotificationBell bell,other; bell.setModel(&model); other.setModel(&model);
+        QSignalSpy unread(&model,&NotificationModel::unreadCountChanged);
+        QVERIFY(model.setMaximumCount(2)); QVERIFY(!model.setMaximumCount(0));
+        QVERIFY(!model.addMessage({"","Invalid","body"})); QCOMPARE(model.rowCount(),0);
+        QVERIFY(model.addMessage({"a","First","body"})); QVERIFY(model.addMessage({"b","Second","body"}));
+        QCOMPARE(bell.unreadCount(),2); QCOMPARE(other.unreadCount(),2); QCOMPARE(model.messageAt(0).id,QString("b"));
+        QVERIFY(model.markRead("b")); QCOMPARE(bell.unreadCount(),1); const int notifications=unread.count();
+        QVERIFY(model.markRead("b")); QCOMPARE(unread.count(),notifications);
+        auto replacement=model.message("b"); replacement.title="Updated"; QVERIFY(model.addMessage(replacement)); QCOMPARE(model.rowCount(),2); QCOMPARE(model.unreadCount(),1);
+        QVERIFY(model.addMessage({"c","Third","body"})); QVERIFY(model.message("a").id.isEmpty()); QCOMPARE(model.unreadCount(),1);
+        QVERIFY(model.markRead("b",false)); QCOMPARE(other.unreadCount(),2); model.markAllRead(); QCOMPARE(bell.unreadCount(),0);
+        QVERIFY(model.setMaximumCount(1)); QCOMPARE(model.messageAt(0).id,QString("c")); QVERIFY(!model.removeMessage("missing"));
+        model.clear(); QCOMPARE(model.rowCount(),0); QCOMPARE(other.unreadCount(),0);
+        auto* transient=new NotificationModel; bell.setModel(transient); transient->addMessage({"x","Temp","body"}); delete transient;
+        QCOMPARE(bell.unreadCount(),0); QVERIFY(!bell.model()); bell.setUnreadCount(1000); QVERIFY(bell.toolTip().contains("1000"));
+        bell.setDotOnly(true); QVERIFY(bell.dotOnly()); bell.setModel(nullptr); QCOMPARE(bell.unreadCount(),0); bell.setUnreadCount(-1); QCOMPARE(bell.unreadCount(),0);
+    }
+    void notificationPanelReadFilterAndDetails()
+    {
+        NotificationModel model; model.addMessage({"a","<b>Literal title</b>","<script>literal body</script>",{},FeedbackTone::Warning,false,"查看任务"});
+        model.addMessage({"b","Already read","Second body",{},FeedbackTone::Info,true,{}});
+        NotificationPanel panel; panel.setModel(&model); panel.resize(400,520); panel.show(); panel.setUnreadOnly(true);
+        auto* view=panel.findChild<QListView*>("NotificationList"); QVERIFY(view); QCOMPARE(view->model()->rowCount(),1);
+        QSignalSpy activated(&panel,&NotificationPanel::messageActivated),action(&panel,&NotificationPanel::actionRequested);
+        panel.openMessage("a"); QCOMPARE(activated.count(),1); QCOMPARE(model.unreadCount(),0); QCOMPARE(view->model()->rowCount(),0);
+        QCOMPARE(panel.findChild<QPlainTextEdit*>("NotificationBody")->toPlainText(),QString("<script>literal body</script>"));
+        panel.findChild<PushButton*>("NotificationAction")->click(); QCOMPARE(action.count(),1); QCOMPARE(action.first().first().toString(),QString("a"));
+        panel.showList(); panel.setUnreadOnly(false); QCOMPARE(view->model()->rowCount(),2);
+        panel.openMessage("b"); QVERIFY(panel.findChild<PushButton*>("NotificationAction")->isHidden());
+        model.removeMessage("b"); QVERIFY(view->isVisible());
+        auto* borrowed=new NotificationModel; panel.setModel(borrowed); borrowed->addMessage({"x","Temporary","body"}); delete borrowed;
+        QVERIFY(panel.model()!=nullptr); QCOMPARE(panel.model()->rowCount(),0);
+        panel.setModel(&model); panel.findChild<PushButton*>("NotificationClear")->click(); QCOMPARE(model.rowCount(),0);
+    }
+    void notificationPopupAndAboutRenderMatrix()
+    {
+        QWidget window; auto* layout=new QVBoxLayout(&window); auto* bell=new NotificationBell; layout->addWidget(bell); window.resize(220,90); window.show();
+        NotificationModel model; model.addMessage({"one","存储容量提醒","实时存储使用率达到预警阈值。请检查归档任务状态。",QDateTime::fromString("2026-10-28T09:45:00+08:00",Qt::ISODate),FeedbackTone::Warning,false,"查看存储"});
+        model.addMessage({"two","录音导入完成","12 个录音文件已导入，等待核验。",{},FeedbackTone::Success,false,"查看录音"}); bell->setModel(&model);
+        NotificationPopup popup(&window); popup.setModel(&model); AboutDialog about(&window); QVERIFY(about.setInfo(demoAboutInfo()));
+        QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
+        const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR"); auto* manager=StyleManagerAdapter::instance();
+        for(const auto& theme:manager->themes()) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            const QRect available=window.screen()->availableGeometry(); window.move(available.bottomRight()-QPoint(240,100)); QApplication::processEvents();
+            popup.popup(bell); QApplication::processEvents(); QVERIFY(popup.isVisible()); QVERIFY2(available.contains(popup.frameGeometry()),qPrintable(QString("available=%1,%2 %3x%4; popup=%5,%6 %7x%8; min=%9x%10").arg(available.x()).arg(available.y()).arg(available.width()).arg(available.height()).arg(popup.x()).arg(popup.y()).arg(popup.width()).arg(popup.height()).arg(popup.minimumWidth()).arg(popup.minimumHeight()))); QCOMPARE(model.unreadCount(),2);
+            if(!directory.isEmpty()) { QDir().mkpath(directory); QVERIFY(popup.grab().save(directory+"/notifications-"+theme+".png")); }
+            QTest::keyClick(&popup,Qt::Key_Escape); QVERIFY(!popup.isVisible());
+            for(const QSize size:{QSize(540,580),QSize(400,480)}) {
+                about.resize(size); about.show(); QApplication::processEvents();
+                auto* scroll=about.aboutWidget()->findChild<QScrollArea*>("AboutScroll"); QVERIFY(scroll); QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);
+                if(!directory.isEmpty())QVERIFY(about.grab().save(directory+QString("/about-%1-%2.png").arg(theme).arg(size.width())));
+                about.hide();
+            }
+        }
+    }
+    void aboutDialogClosePaths()
+    {
+        AboutDialog dialog; QVERIFY(dialog.setInfo(demoAboutInfo()));
+        QSignalSpy finished(&dialog,&QDialog::finished);
+        dialog.open(); QTest::qWait(20); QVERIFY(dialog.isVisible());
+        dialog.findChild<PushButton*>("AboutClose")->click();
+        QVERIFY(!dialog.isVisible()); QCOMPARE(finished.count(),1); QCOMPARE(dialog.result(),int(QDialog::Accepted));
+
+        dialog.open(); QTest::qWait(20);
+        auto* focus=dialog.findChild<PushButton*>("AboutCopyInformation"); QVERIFY(focus); focus->setFocus();
+        QTest::keyClick(focus,Qt::Key_Escape); // Escape must propagate from a content widget.
+        QVERIFY(!dialog.isVisible()); QCOMPARE(finished.count(),2); QCOMPARE(dialog.result(),int(QDialog::Rejected));
+
+        dialog.open(); QTest::qWait(20);
+        auto* close=dialog.titleBar()->findChild<ToolButton*>("TitleBarCloseButton"); QVERIFY(close); close->click();
+        QVERIFY(!dialog.isVisible()); QCOMPARE(finished.count(),3); QCOMPARE(dialog.result(),int(QDialog::Rejected));
+
+        dialog.open(); QTest::qWait(20); QVERIFY(dialog.close());
+        QVERIFY(!dialog.isVisible()); QCOMPARE(finished.count(),4);
+        dialog.open(); QTest::qWait(20); dialog.reject();
+        QVERIFY(!dialog.isVisible()); QCOMPARE(finished.count(),5);
+
+        auto* disposable=new AboutDialog; disposable->setAttribute(Qt::WA_DeleteOnClose); QPointer<AboutDialog> guard=disposable;
+        disposable->open(); QTest::qWait(20); disposable->titleBar()->findChild<ToolButton*>("TitleBarCloseButton")->click();
+        QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete); QVERIFY(guard.isNull());
+    }
+    void aboutConfigurationAndSignals()
+    {
+        AboutWidget about; QVERIFY(about.informationText().contains(QCoreApplication::applicationName()));
+        AboutInfo info=demoAboutInfo(); info.productName="<b>Literal product</b>"; QVERIFY(about.setInfo(info));
+        QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
+        QCOMPARE(about.findChild<QLabel*>("AboutProductName")->text(),info.productName);
+        for(auto* text:about.findChildren<QLabel*>())QCOMPARE(text->textFormat(),Qt::PlainText);
+        QSignalSpy activated(&about,&AboutWidget::linkActivated); about.findChild<PushButton*>("AboutLink_guide")->click();
+        QCOMPARE(activated.count(),1); QCOMPARE(activated.first().at(0).toString(),QString("guide")); QCOMPARE(activated.first().at(1).toUrl(),QUrl("app:guide"));
+        auto bad=info; bad.links.append(bad.links.first()); QVERIFY(!about.setInfo(bad)); QCOMPARE(about.info().productName,info.productName);
+        QJsonObject config{{"productName","可配置产品"},{"version","2.5"},{"copyButtonVisible",false},
+            {"details",QJsonArray{QJsonObject{{"label","协议"},{"value","v2"}}}},
+            {"links",QJsonArray{QJsonObject{{"id","help"},{"text","帮助"},{"url","app:help"}}}}};
+        QVERIFY(about.setConfiguration(config)); QVERIFY(!about.isCopyButtonVisible()); QVERIFY(about.informationText().contains("协议: v2"));
+        auto invalid=config; invalid["version"]=5; QVERIFY(!about.setConfiguration(invalid)); QCOMPARE(about.info().version,QString("2.5"));
+        invalid=config; invalid["logo"]="/missing/about-logo.png"; QVERIFY(!about.setConfiguration(invalid));
+        QTemporaryDir assets; QImage logo(48,24,QImage::Format_ARGB32); logo.fill(Qt::cyan); QVERIFY(logo.save(assets.filePath("logo.png")));
+        auto custom=config; custom["logo"]=assets.filePath("logo.png"); QVERIFY(about.setConfiguration(custom)); QVERIFY(!about.info().logo.isNull());
+        QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete); about.setCopyButtonVisible(true);
+        QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete); QSignalSpy copied(&about,&AboutWidget::informationCopied);
+        const QString before=QApplication::clipboard()->text(); about.findChild<PushButton*>("AboutCopyInformation")->click(); QCOMPARE(copied.count(),1);
+        QCOMPARE(QApplication::clipboard()->text(),about.informationText()); QApplication::clipboard()->setText(before);
+        AboutDialog dialog; QVERIFY(dialog.setConfiguration(config)); QVERIFY(dialog.windowTitle().contains("可配置产品"));
+    }
     void commonWidgetsDemoIntegration()
     {
         CommonWidgetsPage page; page.resize(900,700); page.show();
@@ -429,6 +606,16 @@ private slots:
         QCOMPARE(list->model()->rowCount(),3); QCOMPARE(table->model()->rowCount(),3);
         QCOMPARE(list->model()->parent(),static_cast<QObject*>(list)); QCOMPARE(table->model()->parent(),static_cast<QObject*>(table));
         QCOMPARE(tree->columnAggregation(2),TreeTable::Sum); QCOMPARE(tree->model()->rowCount(),2);
+        auto* search=page.findChild<SearchEdit*>("CommonDemoSearch"); QVERIFY(search);
+        search->setText("任务 B"); search->requestSearch(); QCOMPARE(list->model()->rowCount(),1);
+        QCOMPARE(list->model()->index(0,0).data().toString(),QString("任务 B"));
+        search->clear(); search->requestSearch(); QCOMPARE(list->model()->rowCount(),3);
+        auto* status=page.findChild<QComboBox*>("CommonDemoConnectionChoice"); auto* badge=page.findChild<StatusBadge*>("CommonDemoConnectionStatus"); QVERIFY(status&&badge);
+        status->setCurrentIndex(1); QCOMPARE(badge->tone(),FeedbackTone::Warning); QCOMPARE(badge->text(),QString("连接中"));
+        badge->setDotVisible(false); QVERIFY(!badge->isDotVisible()); badge->setDotVisible(true);
+        const QString badgeText="很长的状态描述，用于检查省略与无障碍原文"; badge->setText(badgeText); QCOMPARE(badge->accessibleName(),badgeText); QCOMPARE(badge->toolTip(),badgeText);
+        status->setCurrentIndex(0); QCOMPARE(badge->tone(),FeedbackTone::Success);
+        auto* advanced=page.findChild<CollapsibleSection*>("CommonDemoAdvancedSection"); QVERIFY(advanced); advanced->setExpanded(false); advanced->setExpanded(true);
         QCOMPARE(page.findChildren<QScrollArea*>().size(),1); // 页面共享一个外层滚动区
         auto* manager=StyleManagerAdapter::instance(); const QString capture=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
         for(const QString& theme:manager->themes()) {
@@ -853,6 +1040,7 @@ private slots:
         auto* layout=new QVBoxLayout(&window); layout->setContentsMargins(0,0,0,0); layout->setSpacing(0);
         auto* title=new CustomTitleBar(&window); title->attachToWindow(&window); title->setTitle("水声数据管理中心");
         title->setSearchVisible(true); title->setSettingsVisible(true); title->setUserVisible(true);
+        title->setNotificationsVisible(true); title->notificationButton()->setUnreadCount(8);
         title->setUserInfo("演示用户",QPixmap(),"只读分析员"); layout->addWidget(title); layout->addStretch();
         auto* task=new QAction("任务中心",&window); title->addTitleAction(task);
         window.resize(1100,240); window.show(); QTest::qWait(15);
@@ -892,6 +1080,13 @@ private slots:
         task->setVisible(false); QVERIFY(!more->menu()->actions().contains(task));
         task->setVisible(true); QVERIFY(more->menu()->actions().contains(task));
         delete task; QVERIFY(more->isHidden());
+        QSignalSpy messages(title,&CustomTitleBar::notificationsRequested); title->notificationButton()->click(); QCOMPARE(messages.count(),1);
+        window.resize(240,240); QApplication::processEvents();
+        QAction* overflowMessage=nullptr; for(auto* action:more->menu()->actions())if(action->text().contains("消息中心"))overflowMessage=action;
+        QVERIFY(overflowMessage); QVERIFY(overflowMessage->text().contains("8")); overflowMessage->trigger(); QCOMPARE(messages.count(),2);
+        title->notificationButton()->setEnabled(false); QVERIFY(!overflowMessage->isEnabled()); title->notificationButton()->setEnabled(true); QVERIFY(overflowMessage->isEnabled());
+        title->setNotificationsVisible(false); for(auto* action:more->menu()->actions())QVERIFY(!action->text().contains("消息中心"));
+        window.resize(640,240); QApplication::processEvents();
         QFont large=title->font(); large.setPixelSize(28); title->setFont(large); QApplication::processEvents();
         QVERIFY(title->height()>=title->fontMetrics().height()+20); verifyNoOverlap();
         title->setLayoutDirection(Qt::RightToLeft); QApplication::processEvents(); verifyNoOverlap();

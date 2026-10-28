@@ -3,6 +3,7 @@
 #include <basewidgets/Core/ThemeTokens.h>
 #include <basewidgets/Core/BaseWidgetInterface.h>
 #include <basewidgets/Inputs/ToolButton.h>
+#include <basewidgets/Inputs/NotificationBell.h>
 #include <basewidgets/Inputs/LineEdit.h>
 #include <basewidgets/Inputs/ElidedLabel.h>
 #include <QLabel>
@@ -160,6 +161,7 @@ void CustomTitleBar::updateHeight() { setFixedHeight(qMax(m_profile==Profile::Ma
 void CustomTitleBar::setSearchVisible(bool visible) { m_searchVisible=visible; if(!visible)m_searchPopup->hide(); layoutChildren(); }
 void CustomTitleBar::setSettingsVisible(bool visible) { m_settingsVisible=visible; layoutChildren(); }
 void CustomTitleBar::setUserVisible(bool visible) { m_userVisible=visible; layoutChildren(); }
+void CustomTitleBar::setNotificationsVisible(bool visible) { m_notificationsVisible=visible; layoutChildren(); }
 void CustomTitleBar::setSearchShortcut(const QKeySequence& shortcut)
 {
     m_searchShortcut->setKey(shortcut);
@@ -213,6 +215,11 @@ void CustomTitleBar::initUI()
     m_btnClose=button("TitleBarCloseButton",tr("关闭")); m_btnClose->setProperty("bwWindowControl","close"); m_btnClose->setAppearance(ButtonAppearance::Danger);
     m_settings=button("TitleBarSettingsButton",tr("设置")); m_settings->setPopupMode(QToolButton::InstantPopup);
     m_user=button("TitleBarUserButton",tr("用户")); m_user->setPopupMode(QToolButton::InstantPopup); m_user->setIconSize(QSize(22,22));
+    m_notifications=new NotificationBell(this); m_notifications->setObjectName("TitleBarNotificationButton"); m_notifications->installEventFilter(this);
+    m_notificationsOverflow=new QAction(tr("消息中心"),this);
+    connect(m_notifications,&QToolButton::clicked,this,&CustomTitleBar::notificationsRequested);
+    connect(m_notificationsOverflow,&QAction::triggered,this,&CustomTitleBar::notificationsRequested);
+    connect(m_notifications,&NotificationBell::unreadCountChanged,this,[this](int) { layoutChildren(); });
     m_searchButton=button("TitleBarSearchButton",tr("搜索 (Ctrl+K)"));
     m_more=button("TitleBarMoreButton",tr("更多操作")); m_moreMenu=new QMenu(m_more); m_more->setMenu(m_moreMenu); m_more->setPopupMode(QToolButton::InstantPopup);
     m_searchEdit=new LineEdit(this); m_searchEdit->setObjectName("TitleBarSearchEdit"); m_searchEdit->setClearButtonEnabled(true);
@@ -289,6 +296,10 @@ void CustomTitleBar::layoutChildren()
     placeRight(m_btnMin,buttonWidth,m_showMinimize&&!isFullScreen(),true);
     right-=8;
     const bool user=extended&&m_userVisible,settings=extended&&m_settingsVisible,search=extended&&m_searchVisible;
+    const bool notifications=extended&&m_notificationsVisible;
+    const bool overflowNotifications=notifications&&width()<600;
+    m_notificationsOverflow->setText(m_notifications->unreadCount()?tr("消息中心（%1 条未读）").arg(m_notifications->unreadCount()):tr("消息中心"));
+    m_notificationsOverflow->setEnabled(m_notifications->isEnabled());
     const bool centered=m_alignment==TitleAlignment::Center;
     const bool compact=width()<900 || centered;
     const bool overflowSettings=settings && (width()<500 || (centered&&width()<800));
@@ -301,6 +312,7 @@ void CustomTitleBar::layoutChildren()
     const int userWidth=compact?38:qMin(180,qMax(38,m_user->sizeHint().width()));
     placeRight(m_user,userWidth,user&&!overflowUser);
     placeRight(m_settings,36,settings&&!overflowSettings);
+    placeRight(m_notifications,40,notifications&&!overflowNotifications);
     // Reserve identity/drag space and an overflow entry before allocating actions.
     // Left actions remain visible with a centered title whenever they fit; right
     // actions keep the existing compact behavior for global search/user controls.
@@ -313,6 +325,7 @@ void CustomTitleBar::layoutChildren()
     if(overflowSettings)overflow.append(m_settingsOverflow);
     if(overflowUser)overflow.append(m_userOverflow);
     if(overflowSearch)overflow.append(m_searchOverflow);
+    if(overflowNotifications)overflow.append(m_notificationsOverflow);
     for(auto side:{ActionPosition::Left,ActionPosition::Right})for(int i=0;i<m_actions.size();++i) {
         auto& item=m_actions[i];
         if(!item.action || !item.button || item.position!=side || !extended || !item.action->isVisible())continue;
@@ -421,6 +434,7 @@ void CustomTitleBar::paintEvent(QPaintEvent*)
 }
 bool CustomTitleBar::eventFilter(QObject* watched,QEvent* event)
 {
+    if(watched==m_notifications&&event->type()==QEvent::EnabledChange)layoutChildren();
     if(watched==m_window) {
         if(event->type()==QEvent::WindowStateChange)updateForWindowState();
         else if(event->type()==QEvent::ScreenChangeInternal)updateIcons();

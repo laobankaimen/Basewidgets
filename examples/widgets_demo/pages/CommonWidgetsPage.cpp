@@ -1,9 +1,21 @@
 // 常用组件组合示例：通过公开信号连接业务，控件本身不执行导入/筛选/删除。
 #include "CommonWidgetsPage.h"
+#include "../DemoAbout.h"
+#include <basewidgets/Views/NotificationModel.h>
+#include <basewidgets/Inputs/NotificationBell.h>
+#include <basewidgets/Containers/NotificationPanel.h>
+#include <basewidgets/Dialogs/NotificationPopup.h>
+#include <basewidgets/Dialogs/AboutDialog.h>
 #include <basewidgets/Inputs/SegmentedControl.h>
 #include <basewidgets/Inputs/FilterChip.h>
 #include <basewidgets/Inputs/PushButton.h>
 #include <basewidgets/Inputs/Label.h>
+#include <basewidgets/Inputs/StatusBadge.h>
+#include <basewidgets/Inputs/SearchEdit.h>
+#include <basewidgets/Inputs/CopyField.h>
+#include <basewidgets/Inputs/ComboBox.h>
+#include <basewidgets/Inputs/SpinBox.h>
+#include <basewidgets/Containers/CollapsibleSection.h>
 #include <basewidgets/Core/ThemeTokens.h>
 #include <basewidgets/Containers/MessageBanner.h>
 #include <basewidgets/Containers/EmptyState.h>
@@ -14,6 +26,8 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QStandardItemModel>
+#include <QSortFilterProxyModel>
+#include <QFormLayout>
 #include <basewidgets/Views/NavigationList.h>
 #include <basewidgets/Views/ListView.h>
 #include <basewidgets/Views/TableView.h>
@@ -21,6 +35,89 @@
 
 using namespace basewidgets;
 namespace {
+// 小控件按实际业务接线：不访问磁盘/设备，不在输入事件里执行耗时查询。
+void addUtilityExamples(ResponsiveGridLayout* cards,QWidget* content)
+{
+    auto card=[&](const QString& title) {
+        auto* box=new GroupBox(title,content); auto* layout=new QVBoxLayout(box);
+        layout->setContentsMargins(8,6,8,8); layout->setSpacing(8); cards->addWidget(box); return layout;
+    };
+    auto* lookup=card("搜索与复制");
+    auto* search=new SearchEdit(content); search->setObjectName("CommonDemoSearch"); search->setPlaceholderText("筛选下方任务列表，如 A");
+    search->setDebounceInterval(300); lookup->addWidget(search);
+    auto* result=new Label("输入后自动筛选；Enter 立即提交。",content); result->setObjectName("CommonDemoSearchResult"); result->setWordWrap(true); lookup->addWidget(result);
+    auto* copy=new CopyField("REC-2026-1028-001",content); copy->setObjectName("CommonDemoCopy"); copy->textEdit()->setAccessibleName("示例录音编号"); lookup->addWidget(copy);
+    auto* copied=new Label("录音编号可选择，也可一键复制。",content); copied->setObjectName("CommonDemoCopyResult"); copied->setWordWrap(true); lookup->addWidget(copied); lookup->addStretch();
+    QObject::connect(copy,&CopyField::copied,copied,[copied](const QString&) { copied->setText("录音编号已复制到剪贴板。"); });
+    // 列表在下面的分组创建，按 QObject 名称定位接线，模型归视图持有。
+    QObject::connect(search,&SearchEdit::searchRequested,content,[content,result](const QString& text) {
+        auto* view=content->findChild<ListView*>("CommonDemoList"); if(!view)return;
+        auto* proxy=qobject_cast<QSortFilterProxyModel*>(view->model());
+        if(!proxy) {
+            proxy=new QSortFilterProxyModel(view); proxy->setSourceModel(view->model());
+            proxy->setFilterCaseSensitivity(Qt::CaseInsensitive); proxy->setFilterKeyColumn(0); view->setModel(proxy);
+        }
+        proxy->setFilterFixedString(text);
+        result->setText(text.isEmpty()?QString("已显示全部 %1 项任务").arg(proxy->rowCount()):QString("匹配 %1 项任务").arg(proxy->rowCount()));
+    });
+
+    auto* states=card("状态徽标");
+    auto* host=new QWidget(content); auto* grid=new ResponsiveGridLayout(host,110,2); grid->setContentsMargins(0,0,0,0); grid->setSpacing(6);
+    const QStringList labels{"采集在线","已核验","等待连接","校验失败"};
+    const QList<FeedbackTone> tones{FeedbackTone::Info,FeedbackTone::Success,FeedbackTone::Warning,FeedbackTone::Danger};
+    for(int i=0;i<labels.size();++i) { auto* badge=new StatusBadge(labels[i],host); badge->setTone(tones[i]); grid->addWidget(badge); }
+    states->addWidget(host);
+    auto* connection=new StatusBadge("设备在线",content); connection->setObjectName("CommonDemoConnectionStatus"); connection->setTone(FeedbackTone::Success); states->addWidget(connection);
+    auto* status=new ComboBox(content); status->setObjectName("CommonDemoConnectionChoice"); status->addItems({"设备在线","连接中","设备离线"}); status->setAccessibleName("模拟设备状态"); states->addWidget(status); states->addStretch();
+    QObject::connect(status,QOverload<int>::of(&QComboBox::currentIndexChanged),connection,[connection,status](int index) {
+        connection->setText(status->itemText(index)); connection->setTone(index==0?FeedbackTone::Success:index==1?FeedbackTone::Warning:FeedbackTone::Neutral);
+    });
+
+    auto* advanced=card("参数收纳");
+    auto* section=new CollapsibleSection("高级采集参数",content); section->setObjectName("CommonDemoAdvancedSection");
+    auto* form=new QFormLayout; form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    auto* overlap=new SpinBox(section->contentWidget()); overlap->setObjectName("CommonDemoOverlap"); overlap->setRange(0,90); overlap->setValue(50); overlap->setSuffix(" %"); overlap->setAccessibleName("帧重叠比例");
+    auto* window=new ComboBox(section->contentWidget()); window->addItems({"Hann","矩形窗"}); window->setAccessibleName("分析窗函数");
+    form->addRow("重叠",overlap); form->addRow("窗函数",window); section->contentLayout()->addLayout(form); advanced->addWidget(section);
+    auto* details=new CollapsibleSection("连接详情",content); details->setObjectName("CommonDemoConnectionSection");
+    auto* address=new CopyField("127.0.0.1:9000",details->contentWidget()); address->textEdit()->setAccessibleName("演示端点地址"); details->contentLayout()->addWidget(address); details->setExpanded(false); advanced->addWidget(details);
+    auto* hint=new Label("折叠保留参数；Space / Enter 展开。",content); hint->setWordWrap(true); advanced->addWidget(hint); advanced->addStretch();
+}
+void addMessageAndAboutExamples(ResponsiveGridLayout* cards,QWidget* content)
+{
+    auto* messages=new GroupBox("消息铃铛与面板",content); auto* layout=new QVBoxLayout(messages); layout->setContentsMargins(8,6,8,8); layout->setSpacing(8);
+    auto* model=new NotificationModel(content); model->setObjectName("CommonDemoNotifications"); model->setMaximumCount(200);
+    // 稳定 ID 避免重复推送造成重复条目；时间为明确的模拟快照，不接入真实服务。
+    model->addMessage({"import-001","录音导入完成","已导入 12 个录音文件，可到数据目录查看。",QDateTime::fromString("2026-10-28T09:30:00+08:00",Qt::ISODate),FeedbackTone::Success,false,"查看录音"});
+    model->addMessage({"storage-001","存储容量提醒","实时存储集群使用率达到预警阈值，请检查归档策略。",QDateTime::fromString("2026-10-28T09:45:00+08:00",Qt::ISODate),FeedbackTone::Warning,false,"查看存储"});
+    auto* top=new QHBoxLayout; auto* bell=new NotificationBell(messages); bell->setObjectName("CommonDemoBell"); bell->setModel(model); top->addWidget(bell);
+    auto* summary=new Label(messages); summary->setObjectName("CommonDemoNotificationCount"); summary->setWordWrap(true); top->addWidget(summary,1); layout->addLayout(top);
+    auto refresh=[summary,model] { summary->setText(QString("%1 条消息 · %2 条未读").arg(model->rowCount()).arg(model->unreadCount())); };
+    refresh(); QObject::connect(model,&NotificationModel::unreadCountChanged,summary,[refresh](int) { refresh(); }); QObject::connect(model,&NotificationModel::countChanged,summary,[refresh](int) { refresh(); });
+    auto* popup=new NotificationPopup(messages); popup->setObjectName("CommonDemoNotificationPopup"); popup->setModel(model);
+    QObject::connect(bell,&QToolButton::clicked,popup,[popup,bell] { if(popup->isVisible())popup->hide(); else popup->popup(bell); });
+    auto* add=new PushButton("模拟收到消息",messages); add->setObjectName("CommonDemoAddMessage"); layout->addWidget(add);
+    QObject::connect(add,&QPushButton::clicked,model,[model,count=0]() mutable {
+        ++count; model->addMessage({QString("demo-%1").arg(count),QString("分析任务 %1 已完成").arg(count),"任务结果已就绪。这里可以连接应用自己的任务列表或消息服务。",QDateTime::currentDateTime(),FeedbackTone::Info,false,"查看任务"});
+    });
+    auto* read=new PushButton("全部标为已读",messages); read->setAppearance(ButtonAppearance::Subtle); layout->addWidget(read); QObject::connect(read,&QPushButton::clicked,model,&NotificationModel::markAllRead);
+    auto* hint=new Label("打开铃铛查看详情；标题栏与此处共享未读状态。",messages); hint->setWordWrap(true); layout->addWidget(hint); layout->addStretch();
+    QObject::connect(popup->panel(),&NotificationPanel::actionRequested,popup,[popup,hint](const QString& id) { hint->setText("业务动作："+id+"（此处接入页面跳转）"); popup->hide(); }); cards->addWidget(messages);
+
+    auto* about=new GroupBox("可配置关于页面",content); auto* form=new QVBoxLayout(about); form->setContentsMargins(8,6,8,8); form->setSpacing(8);
+    auto* name=new LineEdit("水声数据管理中心",about); name->setObjectName("CommonDemoProductName"); name->setAccessibleName("产品名称"); form->addWidget(name);
+    auto* version=new LineEdit("2.0.0-demo",about); version->setObjectName("CommonDemoProductVersion"); version->setAccessibleName("产品版本"); form->addWidget(version);
+    auto* preview=new PushButton("预览关于窗口",about); preview->setObjectName("CommonDemoAboutPreview"); form->addWidget(preview);
+    auto* description=new Label("修改名称和版本再预览；Logo、说明、版权、许可和链接均可配置。",about); description->setWordWrap(true); form->addWidget(description); form->addStretch();
+    QObject::connect(preview,&QPushButton::clicked,about,[about,name,version] {
+        auto* dialog=new AboutDialog(about); dialog->setObjectName("CommonDemoAboutDialog"); dialog->setAttribute(Qt::WA_DeleteOnClose);
+        auto info=demoAboutInfo(); info.productName=name->text(); info.version=version->text(); dialog->setInfo(info);
+        QObject::connect(dialog->aboutWidget(),&AboutWidget::linkActivated,dialog,[dialog](const QString& id,const QUrl&) {
+            if(id=="licenses")if(auto* license=dialog->findChild<CollapsibleSection*>("AboutLicense"))license->setExpanded(true);
+            if(id=="guide")dialog->setTitle("使用指南 · 项目 docs 目录提供完整接入说明");
+        }); dialog->open();
+    }); cards->addWidget(about);
+}
 // 视图示例与其他常用组件共用页面布局，不再建立独立的整页滚动区。
 // 各模型以视图为 QObject 父对象，页面销毁时自动释放；选择/排序沿用 Qt API。
 void addViewExamples(ResponsiveGridLayout* cards,QWidget* content)
@@ -78,6 +175,7 @@ CommonWidgetsPage::CommonWidgetsPage(QWidget* parent) : StyledWidget(parent)
     scroll->setObjectName("CommonDemoScroll");
     auto* content=new StyledWidget; auto* layout=new QVBoxLayout(content); layout->setContentsMargins(10,10,10,10); layout->setSpacing(8);
     auto* cards=new ResponsiveGridLayout(nullptr,300,3); cards->setContentsMargins(0,0,0,0); cards->setSpacing(8); layout->addLayout(cards);
+    addUtilityExamples(cards,content);
     addViewExamples(cards,content);
     auto* feedback=new GroupBox("消息与反馈",content); auto* feedbackLayout=new QVBoxLayout(feedback);
     feedbackLayout->setContentsMargins(8,6,8,8); feedbackLayout->setSpacing(8);
@@ -144,6 +242,6 @@ CommonWidgetsPage::CommonWidgetsPage(QWidget* parent) : StyledWidget(parent)
         banner->setTone(FeedbackTone::Warning); banner->setTitle("尚未选择数据目录");
         banner->setMessage("此处接入业务的目录选择与扫描逻辑；示例不访问或导入实际文件。"); banner->show();
     });
-    cards->addWidget(emptyCard); layout->addStretch(); scroll->setWidget(content);
+    cards->addWidget(emptyCard); addMessageAndAboutExamples(cards,content); layout->addStretch(); scroll->setWidget(content);
     auto* outer=new QVBoxLayout(this); outer->setContentsMargins(0,0,0,0); outer->addWidget(scroll);
 }

@@ -25,7 +25,8 @@
 | 文档 | 内容 |
 |---|---|
 | [基础控件](components/basic-widgets.md) | 按钮、输入、日期范围、视图、布局和 DialogUtils |
-| [常用交互与反馈](components/common-widgets.md) | 分段切换、筛选标签、行内消息和空状态 |
+| [常用交互与反馈](components/common-widgets.md) | 搜索、复制、状态徽标、折叠分组、筛选与反馈 |
+| [消息中心与关于页](components/notifications-and-about.md) | 消息模型、铃铛、面板、多屏弹出与产品信息配置 |
 | [高级表格](components/advanced-table.md) | 三种模式、固定记录、勾选全选、模型映射、右键与 CSV |
 | [图表通用交互](components/chart-interaction.md) | 导航、框选、复位、坐标/选区信号、菜单扩展与导出 |
 | [水声分析](components/acoustic-analysis.md) | 波形、功率谱/PSD、时频缓存、校准、录音时间线 |

@@ -1,6 +1,6 @@
 #pragma once
 #include <basewidgets/Core/StyledWidget.h>
-/** 集中展示导航/列表/表格/树形视图、筛选条件、消息反馈和空状态；按宽度换行。 */
+/** 集中展示搜索/复制/状态/折叠参数、基础视图和筛选反馈；按宽度换行。 */
 class CommonWidgetsPage : public basewidgets::StyledWidget {
 public:
     explicit CommonWidgetsPage(QWidget* parent=nullptr);

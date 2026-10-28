@@ -30,6 +30,7 @@ cmake --build build --target widgets_demo --parallel 4
 | 多波束、测向历程、LOFAR/DEMON | [测向与解调](docs/components/direction-and-demon.md) |
 | 容量、网速、任务、数据质量 | [数据管理仪表](docs/components/monitoring.md) |
 | 数值、航向、姿态 | [通用仪表](docs/components/gauges.md) |
+| 消息铃铛、未读列表、可配置关于页 | [消息与关于](docs/components/notifications-and-about.md) |
 | 标题、搜索、用户入口 | [标题栏](docs/components/title-bar.md) |
 | 主控与多个独立子屏 | [多屏工作区](docs/components/multi-screen.md) |
 | CMake、安装、外部引用、CPack | [构建与发布](docs/development/cmake-and-packaging.md) |
@@ -60,3 +61,11 @@ docs/                   分类文档与截图
 亮色：
 
 ![亮色主题示例](docs/images/light.png)
+
+海洋色：
+
+![海洋色主题示例](docs/images/ocean.png)
+
+亮蓝色：
+
+![亮蓝色主题示例](docs/images/blue.png)

@@ -134,6 +134,10 @@ bar->userButton()->setMenu(accountMenu);
 
 设置、头像、更多操作的紧凑纯图标按钮不额外挤入下拉箭头，点击区域和键盘菜单行为仍由 QToolButton 管理；宽窗口用户名旁保留下拉箭头。
 
+## 消息铃铛
+
+主窗口可通过 `setNotificationsVisible(true)` 开启铃铛，`notificationButton()` 返回借用的 NotificationBell，可绑定共享 NotificationModel。点击发送 `notificationsRequested()`；窄窗口进入更多菜单，仍显示未读数量。面板及弹出位置由应用连接，详见[消息中心](notifications-and-about.md#主窗口标题栏接入)。
+
 ## 自定义动作与窄窗口
 
 ```cpp
