@@ -18,13 +18,14 @@
 |---|---|
 | [快速入门](guides/getting-started.md) | 环境、构建运行、最小应用、GUI 线程与所有权 |
 | [主题与资源](guides/themes-and-resources.md) | NativeStyle、主题切换、图标来源、DPI、资源生成和外部覆盖 |
-| [Demo 导览](guides/demo.md) | 九个页面、标题栏操作、主/子屏预览和模拟数据边界 |
+| [Demo 导览](guides/demo.md) | 十个页面、标题栏操作、主/子屏预览和模拟数据边界 |
 
 ## 控件与接口 · components
 
 | 文档 | 内容 |
 |---|---|
 | [基础控件](components/basic-widgets.md) | 按钮、输入、日期范围、视图、布局和 DialogUtils |
+| [常用交互与反馈](components/common-widgets.md) | 分段切换、筛选标签、行内消息和空状态 |
 | [高级表格](components/advanced-table.md) | 三种模式、固定记录、勾选全选、模型映射、右键与 CSV |
 | [图表通用交互](components/chart-interaction.md) | 导航、框选、复位、坐标/选区信号、菜单扩展与导出 |
 | [水声分析](components/acoustic-analysis.md) | 波形、功率谱/PSD、时频缓存、校准、录音时间线 |

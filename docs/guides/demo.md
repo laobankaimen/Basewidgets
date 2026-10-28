@@ -18,6 +18,7 @@
 | 数据监控 / `pages/DataManagementPage.cpp` | 容量/速率、计数重置、任务队列和核验质量 | [监控仪表](../components/monitoring.md) |
 | 仪表 / `pages/GaugesPage.cpp` | 完成量、阈值、航向、姿态、未知状态 | [通用仪表](../components/gauges.md) |
 | 高级表格 / `pages/PagedTablePage.cpp` | 三种模式、固定记录、跨页勾选、菜单与导出 | [高级表格](../components/advanced-table.md) |
+| 常用组件 / `pages/CommonWidgetsPage.cpp` | 分段切换、筛选条件、就地反馈和空状态动作 | [常用交互与反馈](../components/common-widgets.md) |
 
 页面自动模拟默认关闭，隐藏时暂停计时器。水声示例为未校准归一化 ADC 数据；不能将 dBFS/Hz 当作实测声压级。控件不读取采集卡、数据库或本机网卡计数；业务接入需遵守数据单位和时间戳约定。
 
@@ -51,7 +52,7 @@
 
 ## 公开示例与包消费示例的区别
 
-widgets_demo 在源码工程中直接链接 BaseWidgets；`examples/package_consumer` 是独立配置的安装树消费示例。后者用于检查安装包，不加入默认的九个展示页，配置方法见[构建与发布](../development/cmake-and-packaging.md#外部工程引用)。
+widgets_demo 在源码工程中直接链接 BaseWidgets；`examples/package_consumer` 是独立配置的安装树消费示例。后者用于检查安装包，不加入默认的十个展示页，配置方法见[构建与发布](../development/cmake-and-packaging.md#外部工程引用)。
 
 ## 外部主题预览
 

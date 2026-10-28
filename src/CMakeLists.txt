@@ -2,6 +2,11 @@
 
 # Sources
 set(UI_PUBLIC_HEADERS
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/EmptyState.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/MessageBanner.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/FilterChip.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/SegmentedControl.h
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Core/FeedbackTone.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/QtAdvancedUIExport.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Styles/acss_globals.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Styles/QtAdvancedStylesheet.h
@@ -83,6 +88,10 @@ set(UI_PUBLIC_HEADERS
 )
 
 set(UI_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/Containers/EmptyState.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Containers/MessageBanner.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/FilterChip.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/SegmentedControl.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Styles/QtAdvancedStylesheet.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/StyleManagerAdapter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/NativeStyle.cpp

@@ -85,6 +85,11 @@
 #include <basewidgets/Inputs/Slider.h>
 #include <basewidgets/Inputs/ProgressBar.h>
 #include <basewidgets/Inputs/ToggleSwitch.h>
+#include <basewidgets/Inputs/SegmentedControl.h>
+#include <basewidgets/Inputs/FilterChip.h>
+#include <basewidgets/Containers/MessageBanner.h>
+#include <basewidgets/Containers/EmptyState.h>
+#include "pages/CommonWidgetsPage.h"
 
 using namespace basewidgets;
 
@@ -328,6 +333,96 @@ private slots:
         QCOMPARE(waveform.graph(1)->pen().color(),tokens->seriesColor(1));
         QCOMPARE(beams.graph(0)->pen().color(),QColor("#778899"));
         QVERIFY(qApp->styleSheet().isEmpty());
+    }
+    void segmentedControlNavigation()
+    {
+        SegmentedControl segment; segment.setAccessibleName("Record view");
+        segment.addTab("All"); segment.addTab("Disabled"); segment.addTab("Archived");
+        segment.setTabData(2,"archived"); segment.setTabEnabled(1,false); segment.resize(380,42); segment.show();
+        segment.activateWindow(); segment.setFocus(Qt::TabFocusReason); QTest::qWait(20);
+        QSignalSpy changed(&segment,&QTabBar::currentChanged);
+        QTest::keyClick(&segment,Qt::Key_Right); QCOMPARE(segment.currentIndex(),2); QCOMPARE(changed.count(),1);
+        QCOMPARE(segment.tabData(segment.currentIndex()).toString(),QString("archived"));
+        segment.setCurrentIndex(2); QCOMPARE(changed.count(),1);
+        QTest::mouseClick(&segment,Qt::LeftButton,Qt::NoModifier,segment.tabRect(1).center()); QCOMPARE(segment.currentIndex(),2);
+        segment.setLayoutDirection(Qt::RightToLeft); segment.setCurrentIndex(0);
+        QVERIFY(segment.tabRect(0).center().x()>segment.tabRect(2).center().x());
+        QTest::keyClick(&segment,Qt::Key_Left); QCOMPARE(segment.currentIndex(),2);
+        segment.setTabText(2,QString(100,'W')); segment.resize(180,42);
+        QVERIFY(!render(segment).isNull()); // long options use Qt elision/scrolling
+        segment.removeTab(2); QVERIFY(segment.currentIndex()!=2);
+    }
+    void filterChipSelectionAndRemoval()
+    {
+        FilterChip chip("Station / East Sea"); chip.setRemovable(true); chip.resize(220,38); chip.show();
+        auto* close=chip.findChild<QAbstractButton*>("FilterChipRemove"); QVERIFY(close);
+        QSignalSpy toggled(&chip,&QAbstractButton::toggled), removed(&chip,&FilterChip::removeRequested);
+        chip.activateWindow(); chip.setFocus(Qt::TabFocusReason); QTest::qWait(20);
+        QTest::keyClick(&chip,Qt::Key_Space); QVERIFY(chip.isChecked()); QCOMPARE(toggled.count(),1);
+        QTest::mouseClick(close,Qt::LeftButton); QCOMPARE(removed.count(),1); QCOMPARE(toggled.count(),1); QVERIFY(chip.isVisible());
+        chip.setFocus(); QTest::keyClick(&chip,Qt::Key_Delete); QCOMPARE(removed.count(),2); QVERIFY(chip.isChecked());
+        QTest::keyClick(&chip,Qt::Key_Return); QVERIFY(!chip.isChecked());
+        chip.setLayoutDirection(Qt::RightToLeft); QVERIFY(close->geometry().center().x()<chip.width()/2);
+        QTest::mouseClick(&chip,Qt::LeftButton,Qt::NoModifier,QPoint(chip.width()-24,chip.height()/2)); QVERIFY(chip.isChecked());
+        chip.setRemovable(false); QVERIFY(close->isHidden()); QTest::keyClick(&chip,Qt::Key_Delete); QCOMPARE(removed.count(),2);
+        chip.setRemovable(true); chip.setEnabled(false); QTest::keyClick(&chip,Qt::Key_Delete); QCOMPARE(removed.count(),2);
+        close->click(); QCOMPARE(removed.count(),2);
+        chip.setEnabled(true); chip.setCheckable(false); QTest::mouseClick(&chip,Qt::LeftButton,Qt::NoModifier,QPoint(100,18)); QVERIFY(!chip.isChecked());
+        chip.setText(QString(100,'W')); chip.resize(180,38); QVERIFY(!render(chip).isNull()); QCOMPARE(chip.text().size(),100);
+        // Receivers may destroy the chip synchronously from an action signal.
+        auto* transient=new FilterChip("Remove me"); transient->setRemovable(true); QPointer<FilterChip> guard=transient;
+        connect(transient,&FilterChip::removeRequested,transient,[transient] { delete transient; });
+        transient->findChild<QAbstractButton*>("FilterChipRemove")->click(); QVERIFY(guard.isNull());
+    }
+    void feedbackActionsAndWrapping()
+    {
+        MessageBanner banner; banner.setTitle("Import result"); banner.setMessage(QString("Recorded data needs verification. ").repeated(18));
+        banner.setActionText("Review"); banner.setTone(FeedbackTone::Warning); banner.resize(350,banner.heightForWidth(350)); banner.show();
+        QSignalSpy action(&banner,&MessageBanner::actionRequested), dismissed(&banner,&MessageBanner::dismissed);
+        auto* button=banner.findChild<PushButton*>("MessageBannerAction"); QVERIFY(button);
+        button->click(); QCOMPARE(action.count(),1); QVERIFY(banner.isVisible());
+        banner.setDismissible(false); banner.dismiss(); QCOMPARE(dismissed.count(),0); QVERIFY(banner.isVisible());
+        banner.setDismissible(true); banner.findChild<QAbstractButton*>("MessageBannerClose")->click();
+        QCOMPARE(dismissed.count(),1); QVERIFY(banner.isHidden()); banner.dismiss(); QCOMPARE(dismissed.count(),1); banner.show();
+        QVERIFY(banner.heightForWidth(300)>banner.heightForWidth(600));
+        banner.setActionText(""); QVERIFY(button->isHidden());
+        banner.setMessage("<b>Literal text</b>"); QCOMPARE(banner.message(),QString("<b>Literal text</b>"));
+        for(auto* label:banner.findChildren<QLabel*>())QCOMPARE(label->textFormat(),Qt::PlainText);
+        EmptyState empty; empty.setTitle("No matching recordings"); empty.setDescription("Clear filters to see all recordings.");
+        empty.setActionText("Clear filters"); empty.setSecondaryActionText("Choose folder"); empty.resize(330,300); empty.show();
+        QSignalSpy primary(&empty,&EmptyState::actionRequested), secondary(&empty,&EmptyState::secondaryActionRequested);
+        empty.findChild<PushButton*>("EmptyStateAction")->click(); empty.findChild<PushButton*>("EmptyStateSecondaryAction")->click();
+        QCOMPARE(primary.count(),1); QCOMPARE(secondary.count(),1); QVERIFY(empty.isVisible());
+        empty.setEnabled(false); empty.findChild<PushButton*>("EmptyStateAction")->click(); QCOMPARE(primary.count(),1);
+        empty.setEnabled(true); QPixmap icon(40,20); icon.fill(Qt::blue); empty.setIcon(QIcon(icon)); QVERIFY(!empty.icon().isNull());
+        empty.setIcon(QIcon()); QVERIFY(empty.icon().isNull()); empty.setSecondaryActionText("");
+        QVERIFY(empty.findChild<PushButton*>("EmptyStateSecondaryAction")->isHidden());
+    }
+    void commonWidgetsDemoIntegration()
+    {
+        CommonWidgetsPage page; page.resize(900,700); page.show();
+        auto* segments=page.findChild<SegmentedControl*>("CommonDemoSegments");
+        auto* banner=page.findChild<MessageBanner*>("CommonDemoBanner");
+        auto* empty=page.findChild<EmptyState*>("CommonDemoEmptyState");
+        auto* summary=page.findChild<QLabel*>("CommonDemoSummary");
+        QVERIFY(segments&&banner&&empty&&summary); QTest::qWait(20);
+        auto chips=page.findChildren<FilterChip*>(); QCOMPARE(chips.size(),3);
+        segments->setCurrentIndex(2); QVERIFY(summary->text().contains("已归档"));
+        empty->findChild<PushButton*>("EmptyStateAction")->click();
+        for(auto* chip:chips)QVERIFY(!chip->isChecked()); QCOMPARE(banner->tone(),FeedbackTone::Success);
+        QVERIFY(summary->text().contains("0 项"));
+        empty->findChild<PushButton*>("EmptyStateSecondaryAction")->click(); QCOMPARE(banner->tone(),FeedbackTone::Warning);
+        chips.first()->findChild<QAbstractButton*>("FilterChipRemove")->click(); QVERIFY(chips.first()->isHidden());
+        auto* manager=StyleManagerAdapter::instance(); const QString capture=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        for(const QString& theme:manager->themes()) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for(int width:{900,400}) {
+                page.resize(width,700); QTest::qWait(20); QVERIFY(!render(page).isNull());
+                if(!capture.isEmpty()) { QDir().mkpath(capture); QVERIFY(page.grab().save(capture+QString("/common-%1-%2.png").arg(theme).arg(width))); }
+            }
+        }
+        page.setLayoutDirection(Qt::RightToLeft); QFont large=page.font(); large.setPointSize(18); page.setFont(large);
+        QTest::qWait(20); QVERIFY(!render(page).isNull()); QVERIFY(qApp->styleSheet().isEmpty());
     }
     void checkboxAndRadioInteraction()
     {

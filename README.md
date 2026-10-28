@@ -22,7 +22,7 @@ cmake --build build --target widgets_demo --parallel 4
 |---|---|
 | 初始化、线程、所有权 | [快速入门](docs/guides/getting-started.md) |
 | 主题、SVG、字体、DPI | [主题与资源](docs/guides/themes-and-resources.md) |
-| 九个演示页和多屏预览 | [Demo 导览](docs/guides/demo.md) |
+| 十个演示页和多屏预览 | [Demo 导览](docs/guides/demo.md) |
 | 输入、布局、对话框 | [基础控件](docs/components/basic-widgets.md) |
 | 排序、固定记录、跨页勾选、CSV | [高级表格](docs/components/advanced-table.md) |
 | 右键扩展、框选、复位、联动 | [图表交互](docs/components/chart-interaction.md) |

@@ -40,6 +40,10 @@ LineEdit、TextEdit、PlainTextEdit、ComboBox、SpinBox 等沿用 Qt 输入/编
 - TabWidget 的标签和页面内容框默认都不画鼠标 hover 强调。`setHoverEffectEnabled(true)` 只启用标签；`setContentHoverEffectEnabled(true)` 单独启用页面外框。选中和键盘焦点保持，内容里的输入框仍有正常反馈。
 - GroupBox、Frame 等容器边框默认静态；需要鼠标强调时显式设置 `bwFrameHoverEnabled=true`，不把容器视为输入控件。
 
+## 常用交互与反馈
+
+SegmentedControl、FilterChip、MessageBanner、EmptyState 的接口、键盘操作与业务信号见[常用组件](common-widgets.md)。这些控件在主 demo 的“常用组件”页面展示，配色随主题更新。
+
 ## 标准对话框入口
 
 公共高层入口是 `Dialogs/DialogUtils.h`。文件选择器实现位于 src 内部；不要使用不存在的公开 FilePickerWidget/ColorPickerWidget 示例。

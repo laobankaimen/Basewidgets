@@ -10,6 +10,7 @@ add_executable(widgets_demo
     main.cpp
     pages/DialogsPage.cpp
     pages/InputsPage.cpp
+    pages/CommonWidgetsPage.cpp
     pages/GaugesPage.cpp
     pages/AcousticPage.cpp
     pages/DirectionAnalysisPage.cpp

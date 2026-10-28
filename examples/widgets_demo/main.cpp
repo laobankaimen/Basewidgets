@@ -62,6 +62,7 @@
 #include <QMenu>
 #include <QtMath>
 #include "pages/InputsPage.h"
+#include "pages/CommonWidgetsPage.h"
 #include "pages/GaugesPage.h"
 #include "pages/AcousticPage.h"
 #include "pages/DirectionAnalysisPage.h"
@@ -268,6 +269,7 @@ int main(int argc, char *argv[])
     mainTabWidget->addTab(new GaugesPage(mainTabWidget), "仪表盘");
     // 高级表格（分页/筛选/排序/导出）
     mainTabWidget->addTab(new PagedTablePage(mainTabWidget), "高级表格");
+    mainTabWidget->addTab(new CommonWidgetsPage(mainTabWidget), "常用组件");
 
     // 导航状态只表达当前页面，不保留无实际作用的“列表/图标视图”开关。
     auto syncCommands=[actionGroup](int index) {
