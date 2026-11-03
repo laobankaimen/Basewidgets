@@ -19,7 +19,7 @@
 
 ## 数据管理首页与面板
 
-`widgets_demo --theme sg-blue --dashboard` 打开“数据首页”，参考 SG 首页的左侧导航、四张指标卡、丢包率图、双存储集群、数据类型分布及任务/最近操作分区。[宽屏效果](../images/sg-blue-dashboard.png)。宽度不足时，卡片和图表会逐级减少列数，内容纵向滚动；不靠缩小文字适配。
+`widgets_demo --theme sg-blue --dashboard` 打开“数据首页”，参考 SG 首页的左侧导航、四张指标卡、丢包率图、双存储集群、数据类型分布及任务/最近操作分区。宽度不足时，卡片和图表会逐级减少列数，内容纵向滚动；不靠缩小文字适配。
 
 `DashboardPanel` 提供轻量渐变背景、分隔线和内容布局，默认无整框鼠标悬停效果。示例中的统计卡由该公开容器、标签与 SVG 图标组合，没有使用整图背景，也没有要求独立图片素材。所有数据均为合成快照；左侧导航、查看记录和图表扩展菜单已接入原有 demo 页面。丢包率仍继承 `StyledPlot` 的右键扩展、Shift 框选和双击/Home 复位。
 
@@ -142,8 +142,8 @@ quality->setSnapshot(snapshot);
 
 ADC RMS/Peak、DC、峰均比和削波使用 `SignalQualityMeter`，详见[水声数据约定](acoustic-analysis.md)。
 
-## 示例与验证
+## 示例
 
 `examples/widgets_demo/pages/DataManagementPage.cpp` 演示容量/网速、任务队列、数据质量和三类速率历程；`AcousticPage.cpp` 演示采集状态。示例均为模拟快照。
 
-跨线程按需注册 StorageSegment、AcquisitionStatus、DataQualitySnapshot 等值类型，不从工作线程调用仪表。单位换算、计数器重置、溢出、空数据和点击/键盘回调的检查见[验证指南](../development/validation.md)。
+跨线程按需注册 StorageSegment、AcquisitionStatus、DataQualitySnapshot 等值类型，不从工作线程调用仪表。

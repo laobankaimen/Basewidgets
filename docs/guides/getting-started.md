@@ -12,7 +12,7 @@
 | 非 Linux | CMake 尝试 Qt5，再尝试 Qt6；Windows 的原生窗口代码仍需对应编译器/Qt 组合验证 |
 | Qt Test | 普通构建不需要；只有 `UI_DEMO_CHECKS=ON` 时使用 |
 
-配置时通过 `-DCMAKE_PREFIX_PATH=/path/to/Qt` 指定 Qt 安装前缀。Linux 不会因旧的 Qt6 缓存而切到 Qt6，完整选项见[构建与发布](../development/cmake-and-packaging.md)。
+配置时通过 `-DCMAKE_PREFIX_PATH=/path/to/Qt` 指定 Qt 安装前缀。Linux 不会因旧的 Qt6 缓存而切到 Qt6，完整选项见[构建与发布](installation.md)。
 
 ## 构建与运行
 
@@ -58,7 +58,7 @@ int main(int argc, char** argv)
 }
 ```
 
-已安装的库通过以下目标引用，安装前缀设置见[构建与发布](../development/cmake-and-packaging.md#外部工程引用)：
+已安装的库通过以下目标引用，安装前缀设置见[构建与发布](installation.md#安装与外部工程引用)：
 
 ```cmake
 find_package(BaseWidgets CONFIG REQUIRED)

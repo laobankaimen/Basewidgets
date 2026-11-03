@@ -122,10 +122,8 @@ auto result = WindowPlacement::moveToScreen(auxiliaryWindow, screen);
 - Wayland 由合成器控制绝对位置：跨屏请求返回 `CompositorManaged`，不承诺强制移动成功。窗口尺寸仍会收敛；弹窗仍保留父子关系。
 - `watch(window)->setRecoveryEnabled(false)` 可禁用自动保护；`ensureVisible` 手动恢复，`bestScreen` / `fitToScreens` 可对纯矩形拓扑做验证。
 
-## 示例与验证
+## 示例
 
 `examples/widgets_demo/main.cpp` 在普通启动时为其他屏幕创建子屏工作区；主控和每个子屏可展示不同页面。子屏录音表格直接引用主控源模型，图表仍为各页面的模拟数据。
 
 “屏幕”菜单提供主控屏选择、自动创建开关、重新显示子屏和单屏预览；子屏状态栏的“返回主屏”只激活主控，不关闭自己。
-
-两屏/三屏分配规则、共享模型、关闭/复用、模拟断屏和持久化检查见[验证指南](../development/validation.md)。真实热插拔、混合 DPI 和窗口管理器验收独立列出；offscreen 通过不表示实机已验证。

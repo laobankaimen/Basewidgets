@@ -19,7 +19,11 @@ auto* toggle = new PushButton("固定面板", parent);
 toggle->setCheckable(true);
 ```
 
-每个操作区通常选择一个主要动作。Primary 为实色强调，Subtle 用于轻操作，Outline 显式常驻描边，Danger 表示危险操作；Danger 本身不执行确认或删除。checked 与视觉优先级分别表达，键盘焦点保留。
+每个操作区通常选择一个主要动作。Primary 为实色强调，Subtle 用于轻操作，Outline 显式常驻描边，Danger 表示危险操作；Danger 本身不执行确认或删除。checked 与视觉优先级分别表达，键盘焦点保留。主要/危险按钮和弹窗确定按钮在悬停时改变底色并显示轻边框，按下进一步加深，移出恢复；禁用时不产生悬停反馈。
+
+下图依次为默认、悬停、按下；上行为主要按钮，下行为弹窗确定。
+
+![按钮状态](../images/button-states.png)
 
 CheckBox 支持三态；RadioButton 保留 Qt 排他逻辑。ToggleSwitch 使用 toggled 驱动动画，键盘和程序设置均生效。BusyIndicator 隐藏时停止内部动画计时，显式颜色不会被主题切换覆盖。
 
@@ -69,6 +73,10 @@ const QFont font = basewidgets::DialogUtils::pickFont(parent, QFont(), &accepted
 
 最近颜色与颜色历史保留在进程内静态状态，不自动持久化到下一次启动。需要跨启动保存时由应用负责。
 
+文件选择会验证路径、遵循调用方的文件类型过滤器；保存已存在的文件时要求确认覆盖，选择文件夹时可直接确认当前目录。窗口按屏幕空间调整尺寸，窄屏隐藏侧栏和次要列，优先保留文件列表。路径选择只返回结果，不执行文件解析或保存。
+
+![文件选择窗口](../images/file-picker.png)
+
 ## 自建弹窗
 
 FramelessDialog 提供内容区、简洁标题和可选按钮页脚。标准确认/取消默认纯文字；按钮排列、焦点和模态规则保留 Qt 行为。表面采用浮层底色、外边框和页脚分隔线。
@@ -92,4 +100,4 @@ OK/Cancel 信号允许应用先校验再 accept/reject；内容替换由容器�
 
 ## 示例
 
-对应 `examples/widgets_demo/pages/InputsPage.cpp`、`CommonWidgetsPage.cpp`、`TextPage.cpp`、`DialogsPage.cpp`。交互、RTL、主题和拖动恢复检查的执行方法见[验证指南](../development/validation.md)。
+对应 `examples/widgets_demo/pages/InputsPage.cpp`、`CommonWidgetsPage.cpp`、`TextPage.cpp`、`DialogsPage.cpp`。

@@ -135,8 +135,6 @@ if (AcousticAnalysis::scaleToMicroPascals(rawSamples, microPaPerUnit, &pressure)
 }
 ```
 
-## 示例与验证
+## 示例
 
 `examples/widgets_demo/pages/AcousticPage.cpp` 使用 24 kHz 两通道合成信号，包含 750 Hz 线谱、扫频、削波、PSD、缺帧与录音元数据。采样时间来自样点索引，定时器只控制演示速度；自动模拟默认关闭，隐藏时暂停。
-
-检查覆盖窗函数归一化、Power/PSD、DC/Nyquist、频带积分、校准倍率、缺样/削波、有界缓存与记录选择。统计记录及平台边界见[验证指南](../development/validation.md)。旧薄封装的替代方式见[迁移指南](../development/migration.md#图表)。

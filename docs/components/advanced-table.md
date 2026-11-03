@@ -85,7 +85,7 @@ connect(table, &AdvancedTable::prepareContextMenu, table,
 });
 ```
 
-迁移已有菜单槽时，注意[源模型索引语义](../development/migration.md#表格与标题栏)。
+菜单回调中的索引属于源模型，不要再进行分页映射。
 
 菜单非阻塞，关闭后销毁；同步添加动作，不保留裸 `QMenu*`。`contextMenuRequested` / `sourceActivated` 输出源索引，`mapToSource` / `mapFromSource` 显式跨两层代理映射。普通记录不在当前页或已过滤时，`mapFromSource` 返回无效索引。
 
@@ -93,6 +93,12 @@ connect(table, &AdvancedTable::prepareContextMenu, table,
 
 `AdvancedTable` 是可组合的平面表格入口，树表用 `TreeTable`；数据库服务端排序/分页、千万级虚拟数据、Excel 公式引擎不由这个 UI 类隐式实现，应用仍应提供适合业务的数据模型。
 
-## 示例与验证
+## 示例
 
-示例：`examples/widgets_demo/pages/PagedTablePage.cpp`。检查覆盖模型一致性、固定记录、跨页勾选、排序/筛选/删行、CSV 与菜单生命周期；运行方式见[验证指南](../development/validation.md)。
+示例：`examples/widgets_demo/pages/PagedTablePage.cpp`。
+
+## 分页交互
+
+底栏按首页、上一页、页码、下一页、尾页排列；当前页突出显示，边界按钮禁用。窄窗口保留当前页与导航入口。跳转框在 Enter 或失焦时提交，编辑多个数字不会逐位翻页；翻页后保留可用的键盘焦点。
+
+![窄屏分页](../images/pagination.png)

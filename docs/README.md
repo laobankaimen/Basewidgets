@@ -2,61 +2,30 @@
 
 [项目首页](../README.md)
 
-本文档按使用任务分类。当前接口用法与历史设计记录分开维护；函数签名以 `interface/basewidgets/` 为准，示例和检查集中在 `examples/widgets_demo/`。
+文档只维护当前设计与使用方法。函数签名以 `interface/basewidgets/` 为准；组件示例位于 `examples/widgets_demo/`。
 
-## 阅读路线
-
-- 初次接入：[快速入门](guides/getting-started.md) → [Demo 导览](guides/demo.md) → 对应控件文档。
-- 水声业务：[图表交互](components/chart-interaction.md) → [数据单位与频谱](components/acoustic-analysis.md) → [测向与解调](components/direction-and-demon.md)。
-- 数据管理：[高级表格](components/advanced-table.md) → [监控仪表](components/monitoring.md) → [多屏工作区](components/multi-screen.md)。
-- 维护与发布：[架构约束](development/architecture.md) → [构建发布](development/cmake-and-packaging.md) → [验证](development/validation.md)。
-- 升级旧项目：[迁移指南](development/migration.md)。
-
-## 使用指南 · guides
+## 设计与接入
 
 | 文档 | 内容 |
 |---|---|
-| [快速入门](guides/getting-started.md) | 环境、构建运行、最小应用、GUI 线程与所有权 |
-| [主题与资源](guides/themes-and-resources.md) | NativeStyle、主题切换、图标来源、DPI、资源生成和外部覆盖 |
-| [Demo 导览](guides/demo.md) | 十个页面、标题栏操作、主/子屏预览和模拟数据边界 |
+| [界面设计规范](design.md) | 视觉层级、交互状态、布局、数据反馈与组件边界 |
+| [快速入门](guides/getting-started.md) | 环境、最小应用、线程与所有权 |
+| [构建、安装与接入](guides/installation.md) | 构建选项、Qt 兼容、find_package、Linux 桌面入口和打包 |
+| [主题与资源](guides/themes-and-resources.md) | 配色角色、切换/外部覆盖、SVG 与 DPI |
+| [Demo 导览](guides/demo.md) | 页面入口、命令、模拟数据和多屏示例 |
 
-## 控件与接口 · components
-
-| 文档 | 内容 |
-|---|---|
-| [基础控件](components/basic-widgets.md) | 按钮、输入、日期范围、视图、布局和 DialogUtils |
-| [常用交互与反馈](components/common-widgets.md) | 搜索、复制、状态徽标、折叠分组、筛选与反馈 |
-| [消息中心与关于页](components/notifications-and-about.md) | 消息模型、铃铛、面板、多屏弹出与产品信息配置 |
-| [高级表格](components/advanced-table.md) | 三种模式、固定记录、勾选全选、模型映射、右键与 CSV |
-| [图表通用交互](components/chart-interaction.md) | 导航、框选、复位、坐标/选区信号、菜单扩展与导出 |
-| [水声分析](components/acoustic-analysis.md) | 波形、功率谱/PSD、时频缓存、校准、录音时间线 |
-| [测向与解调](components/direction-and-demon.md) | 多波束、方位历程、LOFAR、DEMON 和算法边界 |
-| [数据管理仪表](components/monitoring.md) | 容量、双向速率、任务、核验质量与采集状态 |
-| [通用仪表](components/gauges.md) | CircularGauge、CompassGauge、AttitudeMeter |
-| [标题栏](components/title-bar.md) | 三种 profile、标题/图标覆盖、搜索、用户与动作扩展 |
-| [多屏工作区](components/multi-screen.md) | 主/子屏职责、共享模型、分配与断屏、WindowPlacement |
-
-## 开发与维护 · development
+## 控件用法
 
 | 文档 | 内容 |
 |---|---|
-| [构建与发布](development/cmake-and-packaging.md) | Qt 选择、选项、资源构建、安装组件、find_package 与 CPack |
-| [验证指南](development/validation.md) | demo 检查、截图、最近验证记录与尚需实机验收的范围 |
-| [架构约束](development/architecture.md) | 绘制、模块分层、资源依赖和平台代码边界 |
-| [迁移指南](development/migration.md) | QSS 兼容层、移除接口与新接入方式 |
-
-## 历史资料 · archive
-
-[原生绘制迁移记录](archive/native-style-history.md) 保存方案修正原因和阶段记录，不作为当前使用说明。旧文档路径到新位置的对应表也在该文件中。
-
-## 文档维护规则
-
-1. 一个主题只维护一份完整说明；其他页面用相对链接引用，不继续追加“本轮新增”段落。
-2. 构建/安装命令集中在构建文档；测试结果集中在验证文档，记录环境和日期。
-3. API 示例区分可独立运行的程序与需业务提供变量的片段；不要把内部实现类写成公开接口。
-4. 历史结论保留时间和范围，不把 offscreen 检查扩写为 Windows、真实硬件或多屏已验收。
-5. 截图统一放在 `images/`，资源许可证继续跟随 `assets/` 中的原文件。
-6. 新文档加入本索引；移动文件后同步更新源码树与安装树中的相对链接。
-
-- [UI 与交互审查（2026-11-03）：问题清单、修复和验证边界](development/ui-interaction-review-2026-11-03.md)
-- [登录控件与状态栏](components/login-and-status.md)
+| [基础控件](components/basic-widgets.md) | 按钮、输入、日期、视图、布局和对话框 |
+| [常用交互与反馈](components/common-widgets.md) | 搜索、复制、筛选、消息反馈、登录和状态栏 |
+| [消息中心与关于页](components/notifications-and-about.md) | 共享读状态、铃铛/弹窗与产品信息配置 |
+| [标题栏](components/title-bar.md) | 窗口角色、图标/标题、搜索、用户与动作扩展 |
+| [多屏工作区](components/multi-screen.md) | 主控/子屏、共享模型、位置保存与恢复 |
+| [高级表格](components/advanced-table.md) | 排序、分页、固定记录、勾选、菜单与 CSV |
+| [图表交互](components/chart-interaction.md) | 导航、框选、复位、联动、菜单与显示抽样 |
+| [水声分析](components/acoustic-analysis.md) | 单位、波形、Power/PSD、时频与录音时间线 |
+| [测向与解调](components/direction-and-demon.md) | 多波束、方位历程、LOFAR/DEMON |
+| [数据管理仪表](components/monitoring.md) | 容量、速率、任务、核验质量与采集状态 |
+| [通用仪表](components/gauges.md) | 数值、航向与姿态 |

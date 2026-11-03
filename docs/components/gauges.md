@@ -2,7 +2,7 @@
 
 [文档首页](../README.md)
 
-`CircularGauge`、`CompassGauge`、`AttitudeMeter` 直接使用 QPainter，统一由 ThemeTokens 适配明暗主题。它们只展示调用方数值，不创建内部采样/动画定时器。移除的旧控件和接口见[迁移指南](../development/migration.md#仪表)。
+`CircularGauge`、`CompassGauge`、`AttitudeMeter` 直接使用 QPainter，统一由 ThemeTokens 适配明暗主题。它们只展示调用方数值，不创建内部采样/动画定时器。
 
 ## 数据及绘制约定
 
@@ -66,4 +66,4 @@ gauge->setValue(3200);
 
 `examples/widgets_demo/pages/GaugesPage.cpp` 展示完成量/目标、温度阈值、转速、航向、姿态、无数据与禁用状态。自动演示默认关闭，隐藏时停计时器，显示时遵从用户开关。
 
-边界/主题/尺寸检查见[验证指南](../development/validation.md)。容量、网速和业务进度类仪表见[数据管理仪表](monitoring.md)。
+容量、网速和业务进度类仪表见[数据管理仪表](monitoring.md)。

@@ -2,7 +2,7 @@
 
 [文档首页](../README.md)
 
-本页八个小控件由 BaseWidgets 库公开提供，展示页位于 `examples/widgets_demo/pages/CommonWidgetsPage.cpp`。沿用 Qt Widgets 的事件和布局体系，使用 QPainter/NativeStyle 与 ThemeTokens，不注入 QSS；支持 dark、light、ocean、sg-blue 和外部主题。
+本页控件由 BaseWidgets 库公开提供，展示页位于 `examples/widgets_demo/pages/CommonWidgetsPage.cpp`。沿用 Qt Widgets 的事件和布局体系，使用 QPainter/NativeStyle 与 ThemeTokens，不注入 QSS；支持 dark、light、ocean、sg-blue 和外部主题。
 
 | 控件 | 适用场景 | 业务接入 |
 |---|---|---|
@@ -14,14 +14,16 @@
 | `Inputs/FilterChip.h` | 站点、格式、时间范围等筛选条件 | `toggled(bool)`、`removeRequested()` |
 | `Containers/MessageBanner.h` | 页面内导入结果、离线提醒、校验告警 | `actionRequested()`、`dismissed()` |
 | `Containers/EmptyState.h` | 暂无数据、无搜索结果、未连接 | `actionRequested()`、`secondaryActionRequested()` |
+| `Containers/LoginWidget.h` | 登录表单、校验与等待反馈 | `authenticationRequested()`、`setBusy()`、`setError()` |
+| `Containers/StatusBar.h` | 状态灯、版本和本机时间 | `addIndicator()`、`setVersionText()`、`setClockVisible()` |
 
 所有 API 均在 GUI 线程调用，父对象管理所有权。提示、动作与移除操作不会直接访问数据源。
 
 ## 常用组件页布局
 
-原独立的“视图控件”页已经合并至“常用组件”，基础紧凑分组包括：搜索与复制、状态徽标、参数收纳、导航与列表、基础表格、树形表格、视图与筛选、消息反馈、空状态；另有消息中心与可配置关于窗口示例。宽窗口三列，宽度不足时自动减少为两列或单列；只保留一个页面级滚动区。视图内仍可滚动浏览更多记录，保留模型所有权、导航业务 ID 和分组求和示例。
+“常用组件”按任务分组，包括：搜索与复制、状态徽标、参数收纳、导航与列表、基础表格、树形表格、视图与筛选、消息反馈、空状态；另有消息中心与可配置关于窗口示例。宽窗口三列，宽度不足时自动减少为两列或单列；只保留一个页面级滚动区。视图内仍可滚动浏览更多记录，保留模型所有权、导航业务 ID 和分组求和示例。
 
-减少页边距、标题留白与控件间距，不缩小正文；所有分组默认不增加鼠标悬停效果。[SG 主题效果](../images/sg-blue-common-widgets.png)。
+减少页边距、标题留白与控件间距，不缩小正文；所有分组默认不增加鼠标悬停效果。
 
 ## 状态徽标 StatusBadge
 
@@ -168,10 +170,34 @@ QObject::connect(empty, &basewidgets::EmptyState::actionRequested,
 
 ## 消息铃铛与关于页
 
-新增铃铛、消息模型/面板与关于页面的完整接入说明见[消息中心与关于页](notifications-and-about.md)。常用组件页提供模拟消息、共享未读数、名称/版本编辑和关于弹窗预览。
+铃铛、消息模型/面板与关于页面的完整接入说明见[消息中心与关于页](notifications-and-about.md)。常用组件页提供模拟消息、共享未读数、名称/版本编辑和关于弹窗预览。
 
-## 演示与验收
+## 登录与状态栏
 
-主 demo 的“常用组件”标签演示八个小控件及基础视图的组合：搜索框筛选任务列表，复制字段展示完整编号，状态选项更新徽标，折叠参数保留值；分段切换更新当前视图说明，勾选和移除更新条件计数，空状态主动作取消全部筛选，次动作展示提示，恢复按钮重建示例状态。
+`LoginWidget` 是可嵌入页面或对话框的 Qt Widgets 控件，最低 Qt 5.11。必填校验后发出 `authenticationRequested(account, password)`，同时进入 busy 状态；账号去除两端空白，密码原样传递。等待期间防止再次提交并恢复密码隐藏。
 
-[海洋色预览](../images/common-widgets-ocean.png) · [亮色预览](../images/common-widgets-light.png)。键盘、RTL、禁用、主题与安装消费检查见[验证指南](../development/validation.md)。
+```cpp
+#include <basewidgets/Containers/LoginWidget.h>
+#include <basewidgets/Containers/StatusBar.h>
+#include <basewidgets/Inputs/StatusBadge.h>
+
+// 外层拥有控件及认证服务；不要打印、持久化或无意捕获密码。
+auto* login = new basewidgets::LoginWidget(parent);
+connect(login, &basewidgets::LoginWidget::authenticationRequested,
+        authenticationService, &AuthenticationService::authenticate);
+// 在业务结果槽中调用：
+// login->setError(tr("账号或密码错误")); // 结束 busy 并保留输入供修正
+// login->setBusy(false); login->clearPassword(); // 成功后清空密码并导航
+
+auto* status = new basewidgets::StatusBar(parent);
+auto* connection = status->addIndicator(QObject::tr("未连接设备"));
+status->setVersionText("v1.0.1");
+status->setClockVisible(true);
+// 业务连接成功时更新 connection->setText()/setTone()。
+```
+
+所有控件操作在 GUI 线程调用，耗时认证放到应用的异步服务中。控件不验证账号、不保存密码、不模拟成功；应用决定成功导航、超时和取消行为。不要把这个组件当作安全认证实现。
+
+`StatusBar::addIndicator` 返回由状态栏拥有的 `StatusBadge`，业务负责更新文字和语义状态。版本号为空时隐藏，时钟关闭时停止计时器；时钟显示本机时间，不能表示数据新鲜度。数据采集业务应另设“最后接收时间/连接状态”，未知状态不要用绿色“在线”掩盖。
+
+示例接入位于常用组件页；登录按钮会明确返回“尚未连接认证服务”。主状态栏使用“演示·未连接设备”，不把本机时间或示例数据当作设备在线状态。

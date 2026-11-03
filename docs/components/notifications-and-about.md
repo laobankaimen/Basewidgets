@@ -52,7 +52,7 @@ messages->addMessage(item);
 
 ## 消息面板与业务动作
 
-NotificationPanel 使用 Model/View 委托绘制行，列表只展示摘要，详情显示完整纯文本。打开面板不自动标记已读；点击消息或按 Enter 查看详情时标记该条已读。默认也有“仅未读”“全部已读”“清空”入口。
+NotificationPanel 使用 Model/View 委托绘制行，列表只展示摘要，详情显示完整纯文本。打开面板不自动标记已读；点击消息或按 Enter 查看详情时标记该条已读。默认也有“仅未读”“全部已读”“清空”入口。未读使用实心点、侧线与加粗标题，已读使用空心点和普通标题；严重程度单独显示，读状态同时保留文字和辅助技术描述。
 
 ```cpp
 #include <basewidgets/Containers/NotificationPanel.h>
@@ -68,9 +68,9 @@ connect(panel, &basewidgets::NotificationPanel::actionRequested,
 
 `messageActivated(id)` 表示已进入详情；`actionRequested(id)` 仅在详情动作按钮被点击时发出，不隐式执行任务、打开 URL 或删除消息。空 `actionText` 隐藏动作按钮。更新中的消息会刷新当前详情，删除当前消息后返回列表。面板不接管外部模型；模型销毁后恢复自己的空模型。
 
-NotificationPopup 使用 Qt::Popup，点击外部或 Escape 关闭，关闭后可复用。`popup(anchor)` 根据锚点中心所在屏幕的 `availableGeometry` 放置，空间不足时改到上方并夹取位置；不是固定使用主屏坐标。空/隐藏锚点不弹出。列表的模型数量、字体与屏幕尺寸仍由应用合理配置。
+NotificationPopup 使用 Qt::Popup，点击外部或 Escape 关闭，关闭后可复用。`popup(anchor)` 根据锚点中心所在屏幕的 `availableGeometry` 放置，根据上下剩余空间调整位置和高度，内容在面板内滚动，不遮住锚点。空/隐藏锚点不弹出。列表的模型数量、字体与屏幕尺寸仍由应用合理配置。
 
-[SG 消息面板预览](../images/notifications-sg-blue.png)
+![消息中心](../images/notifications.png)
 
 ## 主窗口标题栏接入
 
@@ -86,7 +86,8 @@ connect(title, &basewidgets::CustomTitleBar::notificationsRequested,
         popup, [title, popup] {
     QWidget* anchor = title->notificationButton()->isVisible()
         ? static_cast<QWidget*>(title->notificationButton()) : title;
-    popup->popup(anchor);
+    if (popup->isVisible()) popup->hide();
+    else popup->popup(anchor);
 });
 ```
 
@@ -143,10 +144,6 @@ connect(about->aboutWidget(), &basewidgets::AboutWidget::linkActivated,
 
 可选 `logo` 是本地或 qrc 路径，空值沿用应用图标；不是远程图片 URL。相对路径相对于进程工作目录，应用也可先转为绝对路径。字符串字段类型错误、Logo 不存在或链接无效时保持旧配置。缺项恢复默认而不是增量合并；`copyButtonVisible` 缺省 true。C++ 的 `setInfo` 保持现有复制按钮偏好，JSON 则一并配置它。
 
-[SG 关于窗口预览](../images/about-sg-blue.png)
-
-## Demo 与验证
+## Demo
 
 主标题栏和“常用组件 → 消息铃铛与面板”共享同一示例模型；模拟消息、查看详情、全部已读都会同步角标。标题栏详情的动作可跳到录音或监控页。“帮助 → 关于组件示例”使用通用 AboutDialog；“常用组件 → 可配置关于页面”可以修改名称/版本后预览。
-
-回归覆盖模型边界与角色、未读共享、筛选/详情/生命周期、弹窗屏幕边界、标题栏溢出菜单、JSON 原子验证、纯文本/Logo/链接/复制及四主题宽窄渲染。执行方式与平台边界见[验证指南](../development/validation.md)。

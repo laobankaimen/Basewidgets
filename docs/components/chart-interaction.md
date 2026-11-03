@@ -56,7 +56,7 @@ connect(plot, &basewidgets::StyledPlot::selectionMade, this,
 
 ## 大数据绘制与刷新调度
 
-`StyledPlot::addGraph()` 现在创建公开的 `SampledGraph`（兼容 QCPGraph 接口）。波形、频谱、DEMON 谱、波束和速率曲线统一使用它，不需要各页面重新抽样。`data()` 仍持有容量内原始数据，显示抽样不改变 FFT、峰值保持、频带积分或原始数据导出。
+`StyledPlot::addGraph()` 创建公开的 `SampledGraph`（兼容 QCPGraph 接口）。波形、频谱、DEMON 谱、波束和速率曲线统一使用它，不需要各页面重新抽样。`data()` 仍持有容量内原始数据，显示抽样不改变 FFT、峰值保持、频带积分或原始数据导出。
 
 - 只抽取当前可见区和两侧邻点，按横轴像素分桶；线性、对数、反向轴适用。每像素最多一个桶，总桶数最多 4096。
 - 每桶保留首、尾、最小、最大样点，并按原始时间排序。使用极值保留冲击峰，不用均值抹平尖峰。
@@ -78,15 +78,13 @@ plot->replot(basewidgets::QCustomPlot::rpImmediateRefresh); // 仅同步截图/�
 
 抽样仍需遍历可见的原始样点，数据输入量、通道数及可见图表数量应与设备预算匹配。大块 FFT/文件读取放工作线程，通过批量 queued 信号传到 GUI；不要逐样点发送 GUI 信号。绘制层节流不承担 DSP 或采集队列背压。
 
-声谱/LOFAR/DEMON/测向历程采用有界显示网格和最大值聚合，见[时频图](acoustic-analysis.md#时频图)。性能复现条件与测量结果见[验证指南](../development/validation.md#最近一次功能验证记录)。
+声谱/LOFAR/DEMON/测向历程采用有界显示网格和最大值聚合，见[时频图](acoustic-analysis.md#时频图)。
 
 ## 业务图表入口
 
 - [波形、频谱、时频与录音时间线](acoustic-analysis.md)
 - [波束、测向、LOFAR 与 DEMON](direction-and-demon.md)
 - [容量、速率与数据管理仪表](monitoring.md)
-
-菜单、鼠标框选与流式视口检查见[验证指南](../development/validation.md)。
 
 ## 主题序列色与业务颜色
 

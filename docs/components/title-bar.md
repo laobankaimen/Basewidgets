@@ -81,7 +81,7 @@ bar->addTitleAction(tasks); // 原有单参数接口继续放在右侧
 
 两侧操作数量不同时仍以窗口几何中心为基准。窄窗口会折叠操作、收缩标题；极窄时标题使用剩余安全区域，窗口控制保持可用。标题与图标仍能拖动窗口，左侧按钮接受点击和键盘，不触发拖动。
 
-启动 demo 查看：`./build/bin/widgets_demo --theme sg-blue --centered-title`。左侧“分析工作台”切换到水声分析页；右侧设置菜单可以切换标题位置、图标跟随方式及左侧入口显隐。[完整页面预览](../images/sg-blue-monitoring.png)。
+启动 demo 查看：`./build/bin/widgets_demo --theme sg-blue --centered-title`。左侧“分析工作台”切换到水声分析页；右侧设置菜单可以切换标题位置、图标跟随方式及左侧入口显隐。
 
 ## 可选科技装饰
 
@@ -169,8 +169,12 @@ dialog->open();
 
 Dialog profile 与主窗口使用同一拖动/窗口控制基础，不带复杂业务区。无需复制平台代码。拖动命中通过 `isDraggableAt` 统一判断：交互控件不拖动，标题/图标/空白可拖动。Windows 原生 WM_NCHITTEST 和非 Windows 手动/系统拖动共用这条规则；关闭状态、拖动释放丢失等原有处理保留。
 
-## 示例与验证
+## 示例
 
 `examples/widgets_demo/main.cpp` 演示左侧业务按钮、图标随标题整体居中、标题对齐、独立标题、图标/搜索显隐、主题切换、账户菜单和任务中心；搜索提交后切换到录音表格并筛选。“对话框”页提供简洁居中标题示例。
 
-覆盖默认/覆盖/重绑定、profile、居中、窄屏、不重叠布局、菜单生命周期、搜索和头像的检查见[验证指南](../development/validation.md)。旧 setTitle/setIcon 跟随行为迁移见[迁移指南](../development/migration.md#表格与标题栏)。
+## 图标与点击区域
+
+标题动作使用 20×20 逻辑像素图标槽，铃铛/设置采用同一 SVG 网格和线宽，头像圆形占槽位的 90%。纯图标按钮宽 36px，图形大小与点击区域分别控制。图标和文字按同一垂直中心排列；菜单关闭后恢复按钮状态，鼠标焦点不作为选中状态。
+
+![标题栏动作](../images/title-actions.png)

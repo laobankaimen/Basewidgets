@@ -1,32 +1,9 @@
 # widgets_demo
 
-本目录保留全部演示页面与可选功能检查。详细说明统一放在[Demo 导览](../../docs/guides/demo.md)，避免重复维护接口和验证结果。
+全部组件的演示入口，直接链接源码树中的 BaseWidgets。
 
-从仓库根目录运行：
+- [快速入门](../../docs/guides/getting-started.md)：构建、运行和初始化。
+- [Demo 导览](../../docs/guides/demo.md)：页面、启动参数和交互。
+- [安装指南](../../docs/guides/installation.md)：可选自检、Linux 桌面入口和发布。
 
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build --target widgets_demo --parallel 4
-./build/bin/widgets_demo
-# SG 配色、图标与标题整体居中、左侧业务按钮
-./build/bin/widgets_demo --theme sg-blue --centered-title
-# 数据管理首页与科技标题装饰
-./build/bin/widgets_demo --theme sg-blue --dashboard
-```
-
-- [快速入门](../../docs/guides/getting-started.md)：环境、初始化、线程与所有权。
-- [页面与交互导览](../../docs/guides/demo.md)：十个页面、搜索、勾选、主控/子屏预览。
-- [验证指南](../../docs/development/validation.md)：启用 UI_DEMO_CHECKS、截图及平台验收边界。
-- [文档首页](../../docs/README.md)：全部控件与开发文档索引。
-
-模拟数据不代表设备实测结果；所有功能检查继续在本 demo 内，不建立独立 test 工程。
-
-## Linux 桌面图标与可选安装
-
-设置 `-DUI_INSTALL_DEMO=ON` 后，安装会包含 `bin/widgets_demo`、
-`share/applications/org.basewidgets.demo.desktop` 和 hicolor 应用图标。
-应用设置同名 desktop identity，X11 WM_CLASS 为 `widgets_demo`。
-安装到自定义前缀时，需把 bin 加入 PATH，并让桌面搜索该前缀的 share
-（或安装到桌面已有的用户/系统应用目录）。共享库和 Qt 运行时仍由部署方提供。
-
-新增登录控件示例位于“常用组件”；它不连接认证后端。
+模拟数据仅用于演示；登录、采集和监控业务由应用接入。

@@ -99,5 +99,3 @@ if (basewidgets::DemonAnalysis::analyze(samples, fs, settings, &result, &error))
 `examples/widgets_demo/pages/DirectionAnalysisPage.cpp` 演示三束响应、方位历程、窄带 LOFAR、32/64 Hz AM 调制，提供色标、门限与业务菜单扩展。所有数值是合成数据，页面隐藏时暂停模拟。
 
 DemonAnalysis 可在工作线程计算，图表更新必须切回 GUI 线程。Qt5 queued 信号接线前按实际传输类型注册 `DemonSettings`、`DemonResult`、`AcousticSpectrumFrame`；菜单扩展必须在 GUI 线程直接连接。
-
-检查涵盖原始值不受显示门限影响、多束显隐/拾取、已知调制频率与抗混叠；具体命令和验收边界见[验证指南](../development/validation.md)。
