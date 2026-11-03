@@ -1,3 +1,8 @@
+#include <QEvent>
+#include <QTimer>
+#include <QCursor>
+#include <QApplication>
+#include <QMenu>
 /*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
@@ -22,6 +27,21 @@ ToolButton::ToolButton(acss::QtAdvancedStylesheet* manager, QWidget* parent)
 }
 
 ToolButton::~ToolButton() = default;
+
+bool ToolButton::event(QEvent* event)
+{
+    const auto type=event->type();
+    const bool result=QToolButton::event(event);
+    if(type==QEvent::FocusIn || type==QEvent::FocusOut || type==QEvent::WindowActivate || type==QEvent::UngrabMouse) {
+        QTimer::singleShot(0,this,[this] {
+            const bool hover=isVisible() && rect().contains(mapFromGlobal(QCursor::pos()));
+            setAttribute(Qt::WA_UnderMouse,hover);
+            if(menu() && !menu()->isVisible() && !(QApplication::mouseButtons() & Qt::LeftButton))setDown(false);
+            update();
+        });
+    }
+    return result;
+}
 
 void ToolButton::setAppearance(ButtonAppearance appearance)
 {

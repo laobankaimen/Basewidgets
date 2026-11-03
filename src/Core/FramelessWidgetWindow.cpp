@@ -1,3 +1,4 @@
+#include <QtMath>
 /*
  * Author: zhoutao@zkhx.com
  * Date: 2025-12-25
@@ -72,11 +73,16 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
     {
         case WM_NCCALCSIZE:
         {
-            NCCALCSIZE_PARAMS& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam);
-            if (params.rgrc[0].top != 0)
-                params.rgrc[0].top -= 1;
-
-            *result = WVR_REDRAW;
+            // wParam==FALSE supplies RECT, not NCCALCSIZE_PARAMS.
+            RECT* client=msg->wParam
+                ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam)->rgrc[0]
+                : reinterpret_cast<RECT*>(msg->lParam);
+            if(IsZoomed(msg->hwnd) && !isFullScreen()) {
+                MONITORINFO monitor = {}; monitor.cbSize=sizeof(monitor);
+                if(GetMonitorInfo(MonitorFromWindow(msg->hwnd,MONITOR_DEFAULTTONEAREST),&monitor))
+                    *client=monitor.rcWork;
+            }
+            *result = 0;
             return true;
         }
         case WM_NCLBUTTONDBLCLK:
@@ -181,30 +187,19 @@ bool FramelessWidgetWindow::nativeWindowsEvent(const QByteArray &eventType, void
         }
         case WM_GETMINMAXINFO:
         {
-            if (::IsZoomed(msg->hwnd)) {
-                RECT frame = { 0, 0, 0, 0 };
-                AdjustWindowRectEx(&frame, WS_OVERLAPPEDWINDOW, FALSE, 0);
-
-                //record frame area data
-                double dpr = this->devicePixelRatioF();
-
-                m_frames.setLeft(abs(frame.left)/dpr+0.5);
-                m_frames.setTop(abs(frame.bottom)/dpr+0.5);
-                m_frames.setRight(abs(frame.right)/dpr+0.5);
-                m_frames.setBottom(abs(frame.bottom)/dpr+0.5);
-
-                QMainWindow::setContentsMargins(m_frames.left()+m_margins.left(),
-                                                m_frames.top()+m_margins.top(),
-                                                m_frames.right()+m_margins.right(),
-                                                m_frames.bottom()+m_margins.bottom());
-                m_bJustMaximized = true;
-            }else {
-                if (m_bJustMaximized)
-                {
-                    QMainWindow::setContentsMargins(m_margins);
-                    m_frames = QMargins();
-                    m_bJustMaximized = false;
-                }
+            // Native coordinates, relative to the selected monitor, not Qt logical pixels.
+            MONITORINFO monitor = {}; monitor.cbSize=sizeof(monitor);
+            if(GetMonitorInfo(MonitorFromWindow(msg->hwnd,MONITOR_DEFAULTTONEAREST),&monitor)) {
+                auto* info=reinterpret_cast<MINMAXINFO*>(msg->lParam);
+                info->ptMaxPosition.x=monitor.rcWork.left-monitor.rcMonitor.left;
+                info->ptMaxPosition.y=monitor.rcWork.top-monitor.rcMonitor.top;
+                info->ptMaxSize.x=monitor.rcWork.right-monitor.rcWork.left;
+                info->ptMaxSize.y=monitor.rcWork.bottom-monitor.rcWork.top;
+                const QSize minimum=minimumSize().expandedTo(minimumSizeHint());
+                const qreal scale=devicePixelRatioF();
+                info->ptMinTrackSize.x=qMax(info->ptMinTrackSize.x,LONG(qCeil(minimum.width()*scale)));
+                info->ptMinTrackSize.y=qMax(info->ptMinTrackSize.y,LONG(qCeil(minimum.height()*scale)));
+                *result=0; return true;
             }
             return false;
         }
@@ -330,7 +325,10 @@ bool FramelessWidgetWindow::eventFilter(QObject* watched, QEvent* event)
         // Recompute on press: a previous hover position must not resize the wrong edge.
         updateResizeCursor(resizeRegionAt(mapFromGlobal(mouse->globalPos())));
         if (mouse->button() == Qt::LeftButton && m_resizeRegion != NoneR) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
             if (windowHandle() && windowHandle()->startSystemResize(resizeRegionToEdges())) return true;
+#endif
+            if (QGuiApplication::platformName().startsWith("wayland"))return false;
             m_resizing = true;
             m_dragStartPos = mouse->globalPos();
             m_startGeo = frameGeometry();

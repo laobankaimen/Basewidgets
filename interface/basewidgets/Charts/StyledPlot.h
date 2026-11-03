@@ -77,7 +77,7 @@ private:
     void applyMode();
     void acceptRectangle(const QRect& rectangle);
     InteractionMode m_mode=InteractionMode::Pan;
-    Qt::Orientations m_navigationAxes=Qt::Horizontal|Qt::Vertical;
+    Qt::Orientations m_navigationAxes=Qt::Orientations(Qt::Horizontal)|Qt::Vertical;
     QCPRange m_homeX{0,1},m_homeY{0,1};
     bool m_hasHome=false,m_temporaryZoom=false,m_pressed=false;
     QPoint m_pressPixel;

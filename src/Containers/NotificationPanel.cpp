@@ -39,12 +39,12 @@ public:
         const bool unread=!index.data(NotificationModel::ReadRole).toBool();
         const bool selected=option.state&QStyle::State_Selected,enabled=option.state&QStyle::State_Enabled;
         const auto tone=static_cast<FeedbackTone>(index.data(NotificationModel::ToneRole).toInt());
-        const QColor accent=enabled?feedbackPainting::toneColor(tone):t->textDisabled();
         p->fillRect(option.rect,selected?feedbackPainting::blend(t->bg1(),t->primary(),.18):t->bg1());
         QRect content=option.rect.adjusted(14,10,-12,-8); const int line=messageLineHeight(option.font);
         const bool rtl=option.direction==Qt::RightToLeft;
-        p->setPen(Qt::NoPen); p->setBrush(accent);
-        const int x=rtl?content.right()-3:content.left()+3; p->drawEllipse(QPointF(x,content.top()+line/2.),3,3);
+        p->setPen(QPen(unread&&enabled?t->primary():t->textDisabled(),1.2)); p->setBrush(unread?QBrush(enabled?t->primary():t->textDisabled()):Qt::NoBrush);
+        const int x=rtl?content.right()-3:content.left()+3; p->drawEllipse(QPointF(x,content.top()+line/2.),unread?4:3,unread?4:3);
+        if(unread) { const QRect stripe(rtl?option.rect.right()-2:option.rect.left(),option.rect.top()+6,3,option.rect.height()-12); p->fillRect(stripe,t->primary()); }
         if(rtl)content.adjust(0,0,-15,0); else content.adjust(15,0,0,0);
         QFont heading=option.font; heading.setBold(unread); p->setFont(heading); p->setPen(enabled?t->textPrimary():t->textDisabled());
         const int align=Qt::AlignVCenter|(rtl?Qt::AlignRight:Qt::AlignLeft);
@@ -56,7 +56,9 @@ public:
         for(int i=0;i<2;++i) { auto row=body.createLine(); if(!row.isValid())break; row.setLineWidth(content.width()); row.setPosition(QPointF(0,y)); y+=row.height(); }
         body.endLayout(); body.draw(p,QPointF(content.left(),content.top()+line+4));
         const auto timestamp=index.data(NotificationModel::TimestampRole).toDateTime();
-        QString footer=unread?tr("未读"):tr("已读"); if(timestamp.isValid())footer+=" · "+timestamp.toLocalTime().toString("MM-dd HH:mm");
+        QString severity;
+        switch(tone) { case FeedbackTone::Warning:severity=tr("警告");break; case FeedbackTone::Danger:severity=tr("错误");break; case FeedbackTone::Success:severity=tr("成功");break; default:severity=tr("通知");break; }
+        QString footer=(unread?tr("未读"):tr("已读"))+" · "+severity; if(timestamp.isValid())footer+=" · "+timestamp.toLocalTime().toString("MM-dd HH:mm");
         p->drawText(QRect(content.left(),content.top()+line*3+9,content.width(),line),align,option.fontMetrics.elidedText(footer,Qt::ElideRight,content.width()));
         p->setPen(t->borderLight()); p->drawLine(option.rect.bottomLeft(),option.rect.bottomRight());
         if(option.state&QStyle::State_HasFocus) { p->setPen(QPen(t->primary(),1,Qt::DashLine)); p->setBrush(Qt::NoBrush); p->drawRect(option.rect.adjusted(2,2,-3,-3)); }
@@ -72,7 +74,7 @@ NotificationPanel::NotificationPanel(QWidget* parent) : StyledWidget(parent)
     auto* tools=new QHBoxLayout; m_unread=new CheckBox(tr("仅未读"),this); m_unread->setObjectName("NotificationUnreadOnly");
     m_markAll=new PushButton(tr("全部已读"),this); m_markAll->setObjectName("NotificationMarkAll"); m_markAll->setAppearance(ButtonAppearance::Subtle);
     tools->addWidget(m_unread); tools->addStretch(); tools->addWidget(m_markAll); layout->addLayout(tools);
-    m_stack=new QStackedWidget(this); layout->addWidget(m_stack,1);
+    m_stack=new QStackedWidget(this); m_stack->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Ignored); layout->addWidget(m_stack,1);
     m_listPage=new QWidget(m_stack); auto* listLayout=new QVBoxLayout(m_listPage); listLayout->setContentsMargins(0,0,0,0);
     m_list=new ListView(m_listPage); m_list->setObjectName("NotificationList"); m_list->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_list->setFrameShape(QFrame::NoFrame); m_list->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff); m_list->setUniformItemSizes(true); m_list->setSelectionMode(QAbstractItemView::SingleSelection);

@@ -43,6 +43,36 @@ QT_QPA_PLATFORM=offscreen QT_SCALE_FACTOR=2 BW_NATIVE_CAPTURE_DIR=/tmp/basewidge
 
 ## 最近一次功能验证记录
 
+2026-11-03 按钮反馈复查：主要/危险/弹窗确定按钮增强 hover/pressed 反馈，新增真实鼠标路由及禁用态检查。Qt 5.11.3、5.15.13 均 **113 passed，0 failed**，5.15 的 150% 缩放同样通过；四主题页面 smoke 通过。本轮两套增量编译无 warning/error，继续启用弃用警告报错。
+
+
+2026-11-03 同日复查：统一标题操作图标的视觉尺寸，修复 FilePicker 的 QString split 和 QComboBox 字符串信号弃用警告。Linux GCC 下 Qt 5.11.3 / 5.15.13 全量构建均启用 `-Werror=deprecated-declarations`，编译日志无 warning/error；两套 **112 passed，0 failed**。新增三主题 × 四绘制倍率的标题动作光学尺寸与中心检查。下方 111 项为首轮结果，追加结果与截图见 [审查报告同日复查](ui-interaction-review-2026-11-03.md)。
+
+
+记录日期：2026-11-03，UI/交互审查修复。完整问题、处理结果、截图和限制见 [审查报告](ui-interaction-review-2026-11-03.md)。
+
+- Linux / Qt **5.11.3**（官方 gcc_64 SDK）：实际编译 BaseWidgets、widgets_demo 和 Qt Test 检查，**111 passed，0 failed**。
+- Linux / Qt **5.15.13** / offscreen：**111 passed，0 failed**；150% 缩放同样 **111 passed，0 failed**。
+- CTest `widgets_behavior` 已注册：`ctest --test-dir /tmp/basewidgets-review-build --output-on-failure`，1/1 通过，内部包含上述 111 项检查。
+- 四主题 × 十页面 × 640/1100 两宽度的 80 组 smoke 截图通过；200% 缩放 smoke 同样通过。人工查看了 light/dark/ocean/sg-blue 代表页面、窄分页、文件窗口、消息和登录页。
+- 新增检查覆盖 Qt 原生窗口鼠标分发下的铃铛重复开启/外部关闭、Esc、页码提交/焦点/边界、三主题重复文件首开及刷新、无效路径、当前目录选择、取消覆盖确认、登录状态与状态栏。
+- Linux 当前桌面使用 xcb 启动实际 demo：`_NET_WM_ICON` 非空，`WM_CLASS = "widgets_demo", "widgets_demo"`；desktop 文件和图标安装到临时 prefix 验证存在。原生 Wayland shell 未实机验收。
+- 安装至 `/tmp/basewidgets-review-install` 后，仓库 package_consumer 及另一个只依赖安装头文件的消费工程编译成功；后者实际运行新 LoginWidget、StatusBar 和 WindowPlacement 接口通过。
+- Windows 最大化裁切、真实分辨率变化黑屏、混合 DPI/多屏和用户报告的首次文件打开崩溃仍需目标机器复测；本轮未复现首开崩溃。
+
+本轮构建路径：`/tmp/basewidgets-review-build`（5.15.13），`/tmp/basewidgets-review-qt511`（5.11.3）。旧 Qt SDK 位于 `/tmp/basewidgets-qt511/5.11.3/gcc_64`；该 SDK 解压使用时需要设置 `QT_PLUGIN_PATH`，避免加载系统 Qt 的插件。示例：
+
+```bash
+QT_PLUGIN_PATH=/tmp/basewidgets-qt511/5.11.3/gcc_64/plugins \
+  cmake --build /tmp/basewidgets-review-qt511 --target widgets_demo --parallel 4
+QT_QPA_PLATFORM=offscreen \
+  QT_PLUGIN_PATH=/tmp/basewidgets-qt511/5.11.3/gcc_64/plugins \
+  /tmp/basewidgets-review-qt511/bin/widgets_demo --verify
+```
+
+### 前次记录（2026-10-28）
+
+
 记录日期：2026-10-28，消息中心、可配置关于页面及全部关闭入口修复后的验收。
 
 - Linux / Qt 5.15 / offscreen：106 项检查通过，1.5 倍缩放同样通过。

@@ -57,6 +57,15 @@ bool unpackRect(const QJsonValue& value,QRect& rect)
     rect=QRect(v[0],v[1],v[2],v[3]); return rect.isValid();
 }
 }
+QScreen* WindowPlacement::screenFor(const QWidget* widget)
+{
+    if(widget) {
+        const QWidget* top=widget->window();
+        if(top->windowHandle() && top->windowHandle()->screen())return top->windowHandle()->screen();
+        if(auto* screen=QGuiApplication::screenAt(widget->mapToGlobal(widget->rect().center())))return screen;
+    }
+    return QGuiApplication::primaryScreen();
+}
 int WindowPlacement::bestScreen(const QRect& rectangle,const QVector<QRect>& available,int fallback)
 {
     int best=-1; qint64 area=0;
@@ -98,17 +107,28 @@ void WindowPlacement::observe(QScreen* screen)
 {
     connect(screen,&QScreen::availableGeometryChanged,this,[this] { scheduleRecovery(); });
     connect(screen,&QScreen::geometryChanged,this,[this] { scheduleRecovery(); });
+    connect(screen,&QScreen::logicalDotsPerInchChanged,this,[this] { scheduleRecovery(); });
+    connect(screen,&QScreen::physicalDotsPerInchChanged,this,[this] { scheduleRecovery(); });
 }
 void WindowPlacement::scheduleRecovery()
 {
     if(!m_enabled||m_pending)return;
     m_pending=true;
     // Coalesce topology signals; Qt first reassigns windows whose QScreen disappeared.
-    QTimer::singleShot(0,this,[this] { m_pending=false; if(m_enabled&&m_window&&m_window->isVisible())ensureVisible(m_window); });
+    QTimer::singleShot(0,this,[this] {
+        m_pending=false;
+        if(!m_enabled||!m_window||!m_window->isVisible())return;
+        ensureVisible(m_window);
+        // Resolution/DPI transitions may invalidate the backing store without resizing
+        // a maximized window. Invalidate all visible widget surfaces after Qt settles.
+        m_window->update();
+        for(auto* child:m_window->findChildren<QWidget*>())if(child->isVisible())child->update();
+        if(m_window->windowHandle())m_window->windowHandle()->requestUpdate();
+    });
 }
 bool WindowPlacement::eventFilter(QObject* watched,QEvent* event)
 {
-    if(watched==m_window && (event->type()==QEvent::Show || event->type()==QEvent::WindowStateChange))scheduleRecovery();
+    if(watched==m_window && (event->type()==QEvent::Show || event->type()==QEvent::WindowStateChange || event->type()==QEvent::ScreenChangeInternal))scheduleRecovery();
     return QObject::eventFilter(watched,event);
 }
 void WindowPlacement::ensureVisible(QWidget* window)
@@ -116,7 +136,7 @@ void WindowPlacement::ensureVisible(QWidget* window)
     if(!window||!window->isWindow()||window->isMaximized()||window->isFullScreen()||window->isMinimized())return;
     const auto screens=QGuiApplication::screens(); const auto available=availableScreens();
     const QRect rectangle=window->geometry();
-    const int index=bestScreen(rectangle,available,screens.indexOf(window->screen()));
+    const int index=bestScreen(rectangle,available,screens.indexOf(screenFor(window)));
     if(index<0)return;
     // On Wayland only clamp size. Calling setScreen can recreate a native window unnecessarily.
     const QRect fitted=fit(rectangle,available[index]);
@@ -141,7 +161,7 @@ void WindowPlacement::centerOnParent(QWidget* window)
     QWidget* parent=window->parentWidget()?window->parentWidget()->window():nullptr;
     const auto screens=QGuiApplication::screens(); if(screens.isEmpty())return;
     const auto available=availableScreens();
-    const int index=bestScreen(parent?parent->frameGeometry():window->geometry(),available,screens.indexOf(parent?parent->screen():window->screen()));
+    const int index=bestScreen(parent?parent->frameGeometry():window->geometry(),available,screens.indexOf(parent?screenFor(parent):screenFor(window)));
     if(index<0)return;
     const auto reference=parent?parent->frameGeometry():available[index];
     const QSize size=window->size().boundedTo(available[index].size());
@@ -152,7 +172,7 @@ QByteArray WindowPlacement::save(const QWidget* window)
     if(!window||!window->isWindow())return {};
     const QRect normal=window->normalGeometry().isValid()?window->normalGeometry():window->geometry();
     const auto screens=QGuiApplication::screens();
-    const int index=bestScreen(normal,availableScreens(),screens.indexOf(window->screen()));
+    const int index=bestScreen(normal,availableScreens(),screens.indexOf(screenFor(window)));
     QScreen* screen=index>=0?screens[index]:nullptr;
     QJsonObject object{{"version",1},{"normal",packRect(normal)},{"state",window->isFullScreen()?2:window->isMaximized()?1:0}};
     if(screen) {

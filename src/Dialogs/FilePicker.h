@@ -42,12 +42,18 @@ public:
 
     QString selectedPath() const;
     QStringList selectedPaths() const;
+    bool validateSelection();
+    QSize sizeHint() const override { return QSize(940,540); }
 
 signals:
     void selectionChanged(const QString& path);
     void fileActivated(const QString& path); // double click
 
+protected:
+    void resizeEvent(QResizeEvent*) override;
 private:
+    void connectModelSignals();
+    void reloadDirectory();
     void setupUi(const QString& initialDir, const QString& filter);
     void updatePreview(const QString& path);
     void updateNavButtons();

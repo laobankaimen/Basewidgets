@@ -10,6 +10,11 @@
 #include "FilePicker.h"
 
 #include <QVariant>
+#include <QFileInfo>
+#include <QDialogButtonBox>
+#include <QPushButton>
+#include <QScreen>
+#include <basewidgets/Core/WindowPlacement.h>
 
 namespace basewidgets {
 
@@ -18,6 +23,24 @@ static QColor s_lastPickedColor = QColor("#26A69A");
 QColor DialogUtils::getLastPickedColor()
 {
     return s_lastPickedColor;
+}
+
+static void prepareFileDialog(FramelessDialog& dialog,FilePickerWidget* picker,bool save=false)
+{
+    dialog.setSizeGripEnabled(true);
+    QSize target(980,680);
+    if(auto* screen=WindowPlacement::screenFor(&dialog))target=target.boundedTo(screen->availableGeometry().size()-QSize(24,24));
+    dialog.resize(target);
+    if(auto* buttons=dialog.findChild<QDialogButtonBox*>())
+        if(auto* ok=buttons->button(QDialogButtonBox::Ok))ok->setText(save?QObject::tr("保存"):QObject::tr("选择"));
+    auto accept=[&dialog,picker,save] {
+        if(!picker->validateSelection())return;
+        if(save && QFileInfo::exists(picker->selectedPath()) &&
+           !DialogUtils::askQuestion(&dialog,QObject::tr("替换文件"),QObject::tr("文件已存在，是否替换？\n%1").arg(picker->selectedPath())))return;
+        dialog.accept();
+    };
+    QObject::connect(&dialog,&FramelessDialog::okButtonClicked,&dialog,accept);
+    QObject::connect(picker,&FilePickerWidget::fileActivated,&dialog,accept);
 }
 
 QString DialogUtils::openFile(QWidget* parent, const QString& title, const QString& initialDir, const QString& filter)
@@ -29,9 +52,8 @@ QString DialogUtils::openFile(QWidget* parent, const QString& title, const QStri
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
-    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    prepareFileDialog(dlg,widget);
     QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
-    QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
 
     if (dlg.exec() == QDialog::Accepted) {
         return widget->selectedPath();
@@ -48,9 +70,8 @@ QStringList DialogUtils::openFiles(QWidget* parent, const QString& title, const 
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
-    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    prepareFileDialog(dlg,widget);
     QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
-    QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
 
     if (dlg.exec() == QDialog::Accepted) {
         return widget->selectedPaths();
@@ -67,9 +88,8 @@ QString DialogUtils::saveFile(QWidget* parent, const QString& title, const QStri
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
-    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    prepareFileDialog(dlg,widget,true);
     QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
-    QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
 
     if (dlg.exec() == QDialog::Accepted) {
         return widget->selectedPath();
@@ -86,9 +106,8 @@ QString DialogUtils::openDirectory(QWidget* parent, const QString& title, const 
     widget->setProperty("msgContent", QVariant(true));
     dlg.setContentWidget(widget);
     dlg.setCustomDialogBtn(true,true,true);
-    QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
+    prepareFileDialog(dlg,widget);
     QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
-    QObject::connect(widget, &FilePickerWidget::fileActivated, &dlg, &QDialog::accept);
 
     if (dlg.exec() == QDialog::Accepted) {
         return widget->selectedPath();

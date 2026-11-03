@@ -33,8 +33,8 @@ QSize ToggleSwitch::sizeHint() const
 void ToggleSwitch::updateColors() {
     StyleManagerAdapter::instance();
     auto* tokens = ThemeTokens::instance();
-    setOnColor(tokens->primary());
-    setOffColor(tokens->border());
+    setOnColor(tokens->primaryButton());
+    setOffColor(tokens->bgHover());
     setKnobColor(tokens->switchKnob());
 }
 

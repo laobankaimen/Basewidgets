@@ -1,3 +1,4 @@
+#include <basewidgets/Containers/LoginWidget.h>
 // 常用组件组合示例：通过公开信号连接业务，控件本身不执行导入/筛选/删除。
 #include "CommonWidgetsPage.h"
 #include "../DemoAbout.h"
@@ -42,6 +43,11 @@ void addUtilityExamples(ResponsiveGridLayout* cards,QWidget* content)
         auto* box=new GroupBox(title,content); auto* layout=new QVBoxLayout(box);
         layout->setContentsMargins(8,6,8,8); layout->setSpacing(8); cards->addWidget(box); return layout;
     };
+    auto* loginLayout=card("登录页面 · 接线示例");
+    auto* login=new LoginWidget(content); loginLayout->addWidget(login);
+    QObject::connect(login,&LoginWidget::authenticationRequested,login,[login](const QString&,const QString&) {
+        login->clearPassword(); login->setError("此处为界面演示，尚未连接认证服务。");
+    });
     auto* lookup=card("搜索与复制");
     auto* search=new SearchEdit(content); search->setObjectName("CommonDemoSearch"); search->setPlaceholderText("筛选下方任务列表，如 A");
     search->setDebounceInterval(300); lookup->addWidget(search);

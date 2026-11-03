@@ -5,6 +5,7 @@ namespace basewidgets {
 class NotificationModel;
 /** 矢量消息铃铛，默认显示未读数（超过 99 显示 99+），无闪烁或轮询。
  * 可独立设置数量，也可绑定 NotificationModel；clicked 沿用 QToolButton。
+ * 图标使用同一套标题栏 SVG；默认 iconSize 为 20×20，可通过 setIconSize 调整。
  * 不自动创建弹窗或标记已读，应用可连接 NotificationPopup::popup。GUI 线程使用。
  */
 class ACSS_UI_EXPORT NotificationBell : public ToolButton {

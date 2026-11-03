@@ -8,7 +8,7 @@
 |---|---|
 | CMake | 3.16+，以根 CMakeLists.txt 为准 |
 | C++ | C++14 |
-| Linux | 构建固定选择 Qt 5.15；Core、Gui、Widgets、PrintSupport、Svg、X11Extras 和 X11 开发依赖 |
+| Linux | 构建选择 Qt 5.11+；Core、Gui、Widgets、PrintSupport、Svg、X11Extras 和 X11 开发依赖 |
 | 非 Linux | CMake 尝试 Qt5，再尝试 Qt6；Windows 的原生窗口代码仍需对应编译器/Qt 组合验证 |
 | Qt Test | 普通构建不需要；只有 `UI_DEMO_CHECKS=ON` 时使用 |
 

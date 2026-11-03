@@ -174,6 +174,7 @@ signals:
 
 protected:
     void applyStylesheet();
+    void resizeEvent(QResizeEvent*) override;
 
 private:
     void initUi();

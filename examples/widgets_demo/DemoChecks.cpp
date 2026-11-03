@@ -1,3 +1,4 @@
+#include <basewidgets/Containers/LoginWidget.h>
 // 可选的 demo 验证入口（-DUI_DEMO_CHECKS=ON，运行 widgets_demo --verify）。
 // 检查渲染/交互/生命周期，不作为独立测试工程或应用安装依赖。
 #include <QtTest>
@@ -56,6 +57,11 @@
 #include <QScrollArea>
 #include <QToolBar>
 #include <QStatusBar>
+#include <QWindow>
+#include <QFileSystemModel>
+#include <QDialogButtonBox>
+#include <QTreeView>
+#include <basewidgets/Containers/StatusBar.h>
 #include <basewidgets/Core/FramelessWidgetWindow.h>
 #include <basewidgets/Core/WindowPlacement.h>
 #include <basewidgets/Core/ScreenWindow.h>
@@ -206,13 +212,19 @@ private slots:
             QVERIFY(tokens->textPlaceholder() != tokens->textDisabled());
             QCOMPARE(tokens->textPlaceholder(), manager->themeColor("placeholderTextColor"));
             for (QPalette::ColorGroup group : {QPalette::Active, QPalette::Inactive}) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
                 QCOMPARE(palette.color(group, QPalette::PlaceholderText), tokens->textPlaceholder());
+#endif
                 QVERIFY(contrastRatio(palette.color(group, QPalette::Highlight),
                                       palette.color(group, QPalette::HighlightedText)) >= 4.5);
             }
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
             QCOMPARE(palette.color(QPalette::Disabled, QPalette::PlaceholderText), tokens->textDisabled());
+#endif
             LineEdit input; input.setPlaceholderText("输入录音名称");
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
             QCOMPARE(input.palette().color(QPalette::PlaceholderText), tokens->textPlaceholder());
+#endif
             input.setText("录音样本"); input.selectAll();
             QVERIFY(contrastRatio(input.palette().highlight().color(), input.palette().highlightedText().color()) >= 4.5);
         }
@@ -258,6 +270,53 @@ private slots:
                     QVERIFY(containsInk(label));
                 }
             }
+        }
+    }
+    void primaryAndDialogButtonsHaveVisibleHoverFeedback()
+    {
+        auto* manager=StyleManagerAdapter::instance();
+        const QString capture=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        for(const QString theme:manager->themes()) {
+            QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            FramelessDialog dialog; dialog.resize(460,260);
+            auto* primary=new PushButton("主要操作"); primary->setAppearance(ButtonAppearance::Primary);
+            dialog.setContentWidget(primary); dialog.show(); dialog.activateWindow(); QTest::qWait(10);
+            auto* box=dialog.findChild<QDialogButtonBox*>(); QVERIFY(box);
+            auto* ok=box->button(QDialogButtonBox::Ok); QVERIFY(ok);
+            QImage gallery(450,100,QImage::Format_ARGB32_Premultiplied); gallery.fill(ThemeTokens::instance()->bg1());
+            int row=0;
+            for(QPushButton* button:{static_cast<QPushButton*>(primary),ok}) {
+                QVERIFY(button->testAttribute(Qt::WA_Hover));
+                QList<QColor> colors;
+                for(int state=0;state<3;++state) {
+                    QStyleOptionButton option; option.initFrom(button); option.rect=QRect(0,0,140,40); option.text=button->text();
+                    option.state=QStyle::State_Enabled;
+                    if(state==1)option.state|=QStyle::State_MouseOver;
+                    if(state==2)option.state|=QStyle::State_Sunken;
+                    if(button==ok)option.features|=QStyleOptionButton::DefaultButton;
+                    QImage image(option.rect.size(),QImage::Format_ARGB32_Premultiplied); image.fill(ThemeTokens::instance()->bg1());
+                    { QPainter painter(&image); button->style()->drawControl(QStyle::CE_PushButton,&option,&painter,button); }
+                    const QColor fill=image.pixelColor(8,20); colors.append(fill);
+                    QVERIFY(contrastRatio(option.palette.color(QPalette::BrightText),fill)>=4.5);
+                    { QPainter painter(&gallery); painter.drawImage(state*150,row*50,image); }
+                }
+                auto difference=[](const QColor& a,const QColor& b) { return qMax(qAbs(a.red()-b.red()),qMax(qAbs(a.green()-b.green()),qAbs(a.blue()-b.blue()))); };
+                QVERIFY(difference(colors[0],colors[1])>=12); QVERIFY(difference(colors[1],colors[2])>=12);
+                // Exercise real window mouse routing, including QDialogButtonBox's plain QPushButton.
+                const QPoint outside=dialog.titleBar()->mapTo(&dialog,QPoint(6,6));
+                QTest::mouseMove(dialog.windowHandle(),outside); QTest::qWait(5);
+                const QColor idle=render(*button).pixelColor(8,button->height()/2);
+                QTest::mouseMove(dialog.windowHandle(),button->mapTo(&dialog,button->rect().center())); QTest::qWait(5);
+                const QColor hovered=render(*button).pixelColor(8,button->height()/2);
+                QVERIFY(difference(idle,hovered)>=12);
+                QTest::mouseMove(dialog.windowHandle(),outside); QTest::qWait(5);
+                QCOMPARE(render(*button).pixelColor(8,button->height()/2),idle);
+                button->setEnabled(false); const QImage disabled=render(*button);
+                QTest::mouseMove(dialog.windowHandle(),button->mapTo(&dialog,button->rect().center())); QTest::qWait(5);
+                QCOMPARE(render(*button),disabled); button->setEnabled(true);
+                ++row;
+            }
+            if(!capture.isEmpty()) { QDir().mkpath(capture); QVERIFY(gallery.save(capture+"/button-states-"+theme+".png")); }
         }
     }
     void themeConfigurationRejectsPartialUpdates()
@@ -473,6 +532,114 @@ private slots:
         section.setTitle(QString("长标题与连接详情").repeated(30)); section.resize(240,180); QApplication::processEvents();
         QCOMPARE(section.width(),240); QCOMPARE(header->toolTip(),section.title()); QVERIFY(!render(section).isNull());
     }
+    void notificationPopupOutsideClickDoesNotReplay()
+    {
+        QWidget host; NotificationBell bell(&host); bell.move(40,10); bell.resize(bell.sizeHint()); host.resize(200,100); host.move(20,0); host.show();
+        NotificationPopup popup(&host);
+        connect(&bell,&QToolButton::clicked,&popup,[&] { if(popup.isVisible())popup.hide(); else popup.popup(&bell); });
+        for(int i=0;i<4;++i) {
+            bell.click(); QVERIFY(popup.isVisible()); QVERIFY(bell.isDown());
+            QTest::mouseClick(&popup,Qt::LeftButton,Qt::NoModifier,QPoint(-10,-10));
+            QVERIFY(!popup.isVisible()); QVERIFY(!bell.isDown());
+            bell.click(); QVERIFY(popup.isVisible());
+            QTest::mouseClick(popup.windowHandle(),Qt::LeftButton,Qt::NoModifier,popup.mapFromGlobal(bell.mapToGlobal(bell.rect().center())));
+            QTest::qWait(10); QVERIFY(!popup.isVisible()); QVERIFY(!bell.isDown());
+            bell.click(); QVERIFY(popup.isVisible());
+            QTest::keyClick(&popup,Qt::Key_Escape); QVERIFY(!popup.isVisible()); QVERIFY(!bell.isDown());
+        }
+    }
+    void fileDialogsValidationGeometryAndRepeatedOpen()
+    {
+        QTemporaryDir directory; QVERIFY(directory.isValid());
+        const QString selected=directory.filePath("record.txt");
+        QFile file(selected); QVERIFY(file.open(QIODevice::WriteOnly)); file.write("sample"); file.close();
+        for(int i=0;i<30;++i) { QFile entry(directory.filePath(QString("sample-%1.txt").arg(i))); QVERIFY(entry.open(QIODevice::WriteOnly)); }
+        QWidget parent; parent.resize(780,580); parent.show();
+        bool inspected=false,invalidBlocked=false,listDominates=false; QString actual;
+        for(const QString theme:{QString("light"),QString("dark"),QString("sg-blue")}) {
+            auto* manager=StyleManagerAdapter::instance(); QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            for(int iteration=0;iteration<3;++iteration) {
+                QTimer::singleShot(60,&parent,[&] {
+                    auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget()); if(!dialog)return;
+                    auto* view=dialog->findChild<QTreeView*>("FilePickerList");
+                    auto* name=dialog->findChild<QLineEdit*>("FilePickerName");
+                    auto* filter=dialog->findChild<QComboBox*>("FilePickerFilter");
+                    auto* buttons=dialog->findChild<QDialogButtonBox*>();
+                    inspected=view&&name&&filter&&buttons;
+                    if(!inspected) { dialog->reject(); return; }
+                    listDominates=view->height()>(dialog->height()>=480?dialog->height()/2:dialog->height()/3);
+                    inspected=inspected && filter->count()==1 && dialog->width()>=qMin(600,WindowPlacement::screenFor(dialog)->availableGeometry().width()-24) && dialog->width()<=WindowPlacement::screenFor(dialog)->availableGeometry().width();
+                    name->setText("missing.txt"); buttons->button(QDialogButtonBox::Ok)->click(); invalidBlocked=dialog->isVisible();
+                    dialog->findChild<QToolButton*>("FilePickerRefresh")->click();
+                    QTest::qWait(20);
+                    name->setText("record.txt");
+                    const QString captures=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+                    if(!captures.isEmpty() && iteration==0) { QDir().mkpath(captures); dialog->grab().save(captures+"/file-picker-"+theme+".png"); }
+                    buttons->button(QDialogButtonBox::Ok)->click();
+                });
+                actual=DialogUtils::openFile(&parent,"打开录音",directory.path(),"Text (*.txt)");
+                QVERIFY(inspected); QVERIFY(invalidBlocked); QVERIFY(listDominates); QCOMPARE(actual,selected);
+            }
+        }
+        QTimer::singleShot(30,&parent,[] { if(auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget()))dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok)->click(); });
+        QCOMPARE(DialogUtils::openDirectory(&parent,QString(),directory.path()),directory.path());
+        bool confirmationSeen=false,saveRemainsOpen=false;
+        QTimer::singleShot(30,&parent,[&] {
+            auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget()); if(!dialog)return;
+            dialog->findChild<QLineEdit*>("FilePickerName")->setText("record.txt");
+            QTimer::singleShot(20,dialog,[&] {
+                auto* confirm=qobject_cast<QDialog*>(QApplication::activeModalWidget());
+                confirmationSeen=confirm && !confirm->findChild<QLineEdit*>("FilePickerName");
+                if(confirm)confirm->reject();
+            });
+            dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok)->click();
+            saveRemainsOpen=dialog->isVisible(); dialog->reject();
+        });
+        QVERIFY(DialogUtils::saveFile(&parent,QString(),directory.path(),"Text (*.txt)").isEmpty());
+        QVERIFY(confirmationSeen); QVERIFY(saveRemainsOpen);
+        QVERIFY(file.open(QIODevice::ReadOnly)); QCOMPARE(file.readAll(),QByteArray("sample"));
+    }
+    void paginationCommitFocusAndBoundaries()
+    {
+        QStandardItemModel model(500,1); AdvancedTable table; table.setSourceModel(&model); table.resize(800,420); table.show(); table.activateWindow();
+        auto* jump=table.findChild<QSpinBox*>("PageJump"); QVERIFY(jump);
+        jump->setFocus(); jump->selectAll(); QTest::keyClicks(jump,"12"); QCOMPARE(table.pager()->currentPage(),0);
+        QTest::keyClick(jump,Qt::Key_Return); QCOMPARE(table.pager()->currentPage(),11);
+        PushButton* active=nullptr; for(auto* button:table.findChildren<PushButton*>())if(button->property("active").toBool()&&button->isVisible())active=button;
+        QVERIFY(active); active->setFocus(); QTest::keyClick(active,Qt::Key_Space); QApplication::processEvents();
+        auto* focused=qobject_cast<PushButton*>(QApplication::focusWidget()); QVERIFY(focused); QVERIFY(focused->isChecked());
+        table.findChild<PushButton*>("FirstPageBtn")->click(); QVERIFY(!table.findChild<PushButton*>("PrevPageBtn")->isEnabled());
+        table.findChild<PushButton*>("LastPageBtn")->click(); QVERIFY(!table.findChild<PushButton*>("NextPageBtn")->isEnabled());
+        table.resize(420,420); QApplication::processEvents();
+        int visiblePages=0; for(auto* button:table.findChildren<PushButton*>())if(button->property("pageNumber").isValid()&&button->isVisible())++visiblePages;
+        QCOMPARE(visiblePages,1); QCOMPARE(table.width(),420);
+        const QString capture=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        if(!capture.isEmpty())table.grab().save(capture+"/pagination-narrow.png");
+    }
+    void loginValidationAsyncStateAndPassword()
+    {
+        LoginWidget login; login.resize(360,380); login.show();
+        auto* password=login.findChild<QLineEdit*>("LoginPassword"); auto* submit=login.findChild<QPushButton*>("LoginSubmit"); QVERIFY(password); QVERIFY(submit);
+        QCOMPARE(password->echoMode(),QLineEdit::Password); QSignalSpy request(&login,&LoginWidget::authenticationRequested);
+        submit->click(); QCOMPARE(request.count(),0); QVERIFY(!login.findChild<QLabel*>("LoginError")->isHidden());
+        login.setAccount(" user "); password->setText(" secret ");
+        login.findChild<QCheckBox*>("LoginReveal")->setChecked(true); QCOMPARE(password->echoMode(),QLineEdit::Normal);
+        submit->click(); QCOMPARE(request.count(),1); QVERIFY(login.isBusy()); QCOMPARE(password->echoMode(),QLineEdit::Password);
+        QCOMPARE(request.first().first().toString(),QString("user")); QCOMPARE(request.first().last().toString(),QString(" secret "));
+        submit->click(); QCOMPARE(request.count(),1);
+        login.setError("认证服务不可用"); QVERIFY(!login.isBusy()); QVERIFY(submit->isEnabled());
+        login.clearPassword(); QVERIFY(password->text().isEmpty());
+    }
+    void statusBarExplicitStateAndClock()
+    {
+        StatusBar status; auto* indicator=status.addIndicator("演示 · 未连接设备");
+        QCOMPARE(indicator->tone(),FeedbackTone::Neutral); indicator->setText("连接失败"); indicator->setTone(FeedbackTone::Danger);
+        status.setVersionText("v1.0.1"); status.setClockVisible(true);
+        QVERIFY(!status.findChild<QLabel*>("StatusClock")->text().isEmpty());
+        QCOMPARE(status.findChild<QLabel*>("StatusVersion")->text(),QString("v1.0.1"));
+        status.setClockVisible(false); QVERIFY(status.findChild<QLabel*>("StatusClock")->isHidden());
+        status.setVersionText(""); QVERIFY(status.findChild<QLabel*>("StatusVersion")->isHidden());
+    }
     void notificationModelBoundsAndSharedUnreadState()
     {
         NotificationModel model; QAbstractItemModelTester check(&model,QAbstractItemModelTester::FailureReportingMode::QtTest);
@@ -520,7 +687,7 @@ private slots:
         const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR"); auto* manager=StyleManagerAdapter::instance();
         for(const auto& theme:manager->themes()) {
             QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
-            const QRect available=window.screen()->availableGeometry(); window.move(available.bottomRight()-QPoint(240,100)); QApplication::processEvents();
+            const QRect available=WindowPlacement::screenFor(&window)->availableGeometry(); window.move(available.bottomRight()-QPoint(240,100)); QApplication::processEvents();
             popup.popup(bell); QApplication::processEvents(); QVERIFY(popup.isVisible()); QVERIFY2(available.contains(popup.frameGeometry()),qPrintable(QString("available=%1,%2 %3x%4; popup=%5,%6 %7x%8; min=%9x%10").arg(available.x()).arg(available.y()).arg(available.width()).arg(available.height()).arg(popup.x()).arg(popup.y()).arg(popup.width()).arg(popup.height()).arg(popup.minimumWidth()).arg(popup.minimumHeight()))); QCOMPARE(model.unreadCount(),2);
             if(!directory.isEmpty()) { QDir().mkpath(directory); QVERIFY(popup.grab().save(directory+"/notifications-"+theme+".png")); }
             QTest::keyClick(&popup,Qt::Key_Escape); QVERIFY(!popup.isVisible());
@@ -874,7 +1041,7 @@ private slots:
         CustomTitleBar title; title.resize(600,48); title.setTitle("水声数据管理"); title.setSettingsVisible(true); title.setUserVisible(true);
         title.setUserInfo("演示用户"); title.show(); QCoreApplication::processEvents();
         auto* label=title.findChild<QLabel*>("TitleIcon"); QVERIFY(label);
-        QCOMPARE(label->size(),QSize(20,20)); QCOMPARE(title.settingsButton()->iconSize(),QSize(18,18)); QCOMPARE(title.userButton()->iconSize(),QSize(22,22));
+        QCOMPARE(label->size(),QSize(20,20)); QCOMPARE(title.settingsButton()->iconSize(),QSize(20,20)); QCOMPARE(title.userButton()->iconSize(),QSize(20,20));
         const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
         for(qreal scale:{1.,1.25,1.5,2.}) {
             QImage image(QSize(qRound(title.width()*scale),qRound(title.height()*scale)),QImage::Format_ARGB32_Premultiplied);
@@ -899,8 +1066,51 @@ private slots:
             const auto color=image.pixelColor(x,y); if(color.red()>200&&color.green()<50)red=red.united(QRect(x,y,1,1));
         }
         QVERIFY(qAbs(red.width()-2*red.height())<=2); QVERIFY(qAbs(red.center().y()-19)<=1);
-        for(const auto& icon:{"settings","search","more","user"})
+        for(const auto& icon:{"settings","search","more","user","bell"})
             QVERIFY(QFile::exists(QString(":/styles/themes/common/icons/titlebar/%1.svg").arg(icon)));
+    }
+    void titleActionOpticalSizesAcrossThemesAndScales()
+    {
+        CustomTitleBar title; title.resize(1100,48); title.setSearchVisible(false);
+        title.setTitle("分析工作台"); title.setSettingsVisible(true); title.setUserVisible(true);
+        title.setNotificationsVisible(true); title.setUserInfo("演示用户");
+        QAction tasks("任务中心",&title); title.addTitleAction(&tasks);
+        QMenu userMenu; userMenu.addAction("用户信息"); title.userButton()->setMenu(&userMenu);
+        title.show();
+        const QString directory=qEnvironmentVariable("BW_NATIVE_CAPTURE_DIR");
+        for(const QString theme:{QString("dark"),QString("light"),QString("sg-blue")}) {
+            auto* manager=StyleManagerAdapter::instance(); QVERIFY(manager->setCurrentTheme(theme)); QVERIFY(manager->updateTheme());
+            QCoreApplication::processEvents();
+            const QList<QToolButton*> controls{title.notificationButton(),title.settingsButton(),title.userButton()};
+            for(auto* control:controls) { QCOMPARE(control->iconSize(),QSize(20,20)); QVERIFY(!control->icon().isNull()); }
+            QCOMPARE(controls[0]->geometry().center().y(),controls[1]->geometry().center().y());
+            QCOMPARE(controls[1]->geometry().center().y(),controls[2]->geometry().center().y());
+            for(qreal scale:{1.,1.25,1.5,2.}) {
+                QList<QRect> bounds;
+                for(auto* control:controls) {
+                    QImage icon(QSize(qRound(20*scale),qRound(20*scale)),QImage::Format_ARGB32_Premultiplied);
+                    icon.setDevicePixelRatio(scale); icon.fill(Qt::transparent);
+                    { QPainter painter(&icon); control->icon().paint(&painter,QRect(0,0,20,20)); }
+                    QRect ink;
+                    for(int y=0;y<icon.height();++y)for(int x=0;x<icon.width();++x)
+                        if(icon.pixelColor(x,y).alpha()>80)ink=ink.united(QRect(x,y,1,1));
+                    QVERIFY(!ink.isEmpty()); QVERIFY(ink.height()>=15*scale); QVERIFY(ink.height()<=20*scale);
+                    QVERIFY(qAbs(ink.center().y()-icon.rect().center().y())<=qCeil(scale));
+                    bounds.append(ink);
+                }
+                for(const QRect& ink:bounds)QVERIFY(qAbs(ink.height()-bounds.first().height())<=qCeil(2*scale));
+                if(!directory.isEmpty()) {
+                    QImage full(QSize(qRound(title.width()*scale),qRound(title.height()*scale)),QImage::Format_ARGB32_Premultiplied);
+                    full.setDevicePixelRatio(scale); full.fill(Qt::transparent); title.render(&full);
+                    QRect crop=controls.first()->geometry().united(controls.last()->geometry());
+                    for(auto* button:title.findChildren<QToolButton*>())if(button->defaultAction()==&tasks)crop=crop.united(button->geometry());
+                    crop=crop.adjusted(-8,-6,8,6).intersected(title.rect());
+                    const QRect physical(qFloor(crop.x()*scale),qFloor(crop.y()*scale),qCeil(crop.width()*scale),qCeil(crop.height()*scale));
+                    QDir().mkpath(directory);
+                    QVERIFY(full.copy(physical).save(directory+QString("/title-actions-%1-%2.png").arg(theme).arg(scale)));
+                }
+            }
+        }
     }
     void screenWorkspaceRolesAndSharedModel()
     {
@@ -912,9 +1122,9 @@ private slots:
             ++created; auto* table=new AdvancedTable; table->setSourceModel(&model); window->setContentWidget(table);
             window->setContextText("采集源 A / 子屏独立状态");
         });
-        QVERIFY(!workspace.openSecondary("",primary.screen())); QVERIFY(!workspace.openSecondary("invalid",nullptr));
-        auto* direction=workspace.openSecondary("direction",primary.screen(),"测向子屏");
-        auto* data=workspace.openSecondary("data",primary.screen(),"数据管理子屏");
+        QVERIFY(!workspace.openSecondary("",WindowPlacement::screenFor(&primary))); QVERIFY(!workspace.openSecondary("invalid",nullptr));
+        auto* direction=workspace.openSecondary("direction",WindowPlacement::screenFor(&primary),"测向子屏");
+        auto* data=workspace.openSecondary("data",WindowPlacement::screenFor(&primary),"数据管理子屏");
         QVERIFY(direction&&data); QCOMPARE(created,2); QVERIFY(direction!=data);
         QVERIFY(!direction->parentWidget()); QVERIFY(!direction->testAttribute(Qt::WA_QuitOnClose));
         QCOMPARE(primary.role(),ScreenWindow::Role::Primary); QCOMPARE(direction->role(),ScreenWindow::Role::Secondary);
@@ -933,10 +1143,10 @@ private slots:
         primary.showMinimized(); QCoreApplication::processEvents(); QVERIFY(direction->isVisible()); QVERIFY(!direction->isMinimized());
         direction->findChild<QToolButton*>("ReturnToPrimaryButton")->click(); QVERIFY(!primary.isMinimized());
         workspace.closeSecondary("direction"); QVERIFY(!direction->isVisible()); QVERIFY(data->isVisible());
-        QCOMPARE(workspace.openSecondary("direction",primary.screen()),direction); QCOMPARE(created,2); QVERIFY(direction->isVisible());
-        QVERIFY(!workspace.setPrimaryScreen(nullptr)); QVERIFY(workspace.setPrimaryScreen(primary.screen()));
+        QCOMPARE(workspace.openSecondary("direction",WindowPlacement::screenFor(&primary)),direction); QCOMPARE(created,2); QVERIFY(direction->isVisible());
+        QVERIFY(!workspace.setPrimaryScreen(nullptr)); QVERIFY(workspace.setPrimaryScreen(WindowPlacement::screenFor(&primary)));
         primary.close(); QVERIFY(!direction->isVisible()); QVERIFY(!data->isVisible());
-        QVERIFY(!workspace.openSecondary("after shutdown",primary.screen()));
+        QVERIFY(!workspace.openSecondary("after shutdown",WindowPlacement::screenFor(&primary)));
     }
     void screenWorkspaceTopologyAndOwnership()
     {
@@ -947,10 +1157,10 @@ private slots:
         QVERIFY(MultiScreenWorkspace::secondaryScreenIndexes(3,-1).isEmpty());
         ScreenWindow primary;
         auto* workspace=new MultiScreenWorkspace(&primary);
-        QPointer<ScreenWindow> a=workspace->openSecondary("view-a",primary.screen());
-        QPointer<ScreenWindow> b=workspace->openSecondary("view-b",primary.screen());
-        QVERIFY(a&&b); QVERIFY(!MultiScreenWorkspace::screenKey(primary.screen()).isEmpty());
-        QCOMPARE(workspace->targetScreen("view-a"),primary.screen());
+        QPointer<ScreenWindow> a=workspace->openSecondary("view-a",WindowPlacement::screenFor(&primary));
+        QPointer<ScreenWindow> b=workspace->openSecondary("view-b",WindowPlacement::screenFor(&primary));
+        QVERIFY(a&&b); QVERIFY(!MultiScreenWorkspace::screenKey(WindowPlacement::screenFor(&primary)).isEmpty());
+        QCOMPARE(workspace->targetScreen("view-a"),WindowPlacement::screenFor(&primary));
         workspace->setAutomaticSecondaryWindows(true); QVERIFY(workspace->automaticSecondaryWindows());
         workspace->setAutomaticSecondaryWindows(false); QVERIFY(a->isVisible()); // manually assigned views remain open
         delete a; QVERIFY(!workspace->secondaryIds().contains("view-a"));
@@ -958,14 +1168,14 @@ private slots:
         // A window-created hook may reject/delete a window without leaving a dangling entry.
         MultiScreenWorkspace rejecting(&primary);
         connect(&rejecting,&MultiScreenWorkspace::windowCreated,&primary,[](const QString&,ScreenWindow* window) { delete window; });
-        QVERIFY(!rejecting.openSecondary("rejected",primary.screen())); QVERIFY(rejecting.secondaryIds().isEmpty());
+        QVERIFY(!rejecting.openSecondary("rejected",WindowPlacement::screenFor(&primary))); QVERIFY(rejecting.secondaryIds().isEmpty());
     }
     void screenWorkspaceSimulatedDisconnect()
     {
         // Exercise only controller signal handling; QGuiApplication's real screen inventory
         // is unchanged. This does not claim a physical hotplug or compositor test.
         ScreenWindow primary; MultiScreenWorkspace workspace(&primary);
-        auto* screen=primary.screen(); auto* child=workspace.openSecondary("preview",screen); QVERIFY(child);
+        auto* screen=WindowPlacement::screenFor(&primary); auto* child=workspace.openSecondary("preview",screen); QVERIFY(child);
         QSignalSpy available(&workspace,&MultiScreenWorkspace::secondaryAvailabilityChanged);
         QVERIFY(QMetaObject::invokeMethod(qGuiApp,"screenRemoved",Qt::DirectConnection,Q_ARG(QScreen*,screen)));
         QVERIFY(!child->isVisible()); QVERIFY(workspace.isSuspended("preview"));
@@ -1445,6 +1655,9 @@ private slots:
         const auto spinners = table.findChildren<QSpinBox*>();
         QVERIFY(!spinners.isEmpty());
         for (auto* spinner : spinners) QCOMPARE(spinner->value(),3);
+        table.setFilterRegularExpression(QRegularExpression("^1")); QCOMPARE(table.sortFilterProxy()->rowCount(),11);
+        table.sortFilterProxy()->setFilterFixedString("99"); QCOMPARE(table.sortFilterProxy()->rowCount(),1);
+        table.setFilterRegularExpression(QRegularExpression("^2$")); QCOMPARE(table.sortFilterProxy()->rowCount(),1);
     }
     void copySortedPagedRow()
     {
@@ -1604,17 +1817,17 @@ private slots:
         auto* guard=WindowPlacement::watch(&window); QVERIFY(guard); QCOMPARE(WindowPlacement::watch(&window),guard);
         const auto saved=WindowPlacement::save(&window); QVERIFY(!saved.isEmpty());
         window.move(4000,4000); QVERIFY(WindowPlacement::restore(&window,saved));
-        QCOMPARE(window.size(),QSize(360,260)); QVERIFY(window.screen()->availableGeometry().contains(window.geometry()));
+        QCOMPARE(window.size(),QSize(360,260)); QVERIFY(WindowPlacement::screenFor(&window)->availableGeometry().contains(window.geometry()));
         const QRect before=window.geometry(); QVERIFY(!WindowPlacement::restore(&window,"bad json")); QCOMPARE(window.geometry(),before);
         auto object=QJsonDocument::fromJson(saved).object();
         object["screenName"]="disconnected-screen"; object["serial"]="missing";
         object["normal"]=QJsonArray{9999,-9999,900,700};
         QVERIFY(WindowPlacement::restore(&window,QJsonDocument(object).toJson()));
-        QVERIFY(window.screen()->availableGeometry().contains(window.geometry()));
+        QVERIFY(WindowPlacement::screenFor(&window)->availableGeometry().contains(window.geometry()));
         object["normal"]=QJsonArray{0,0,-10,10};
         QVERIFY(!WindowPlacement::restore(&window,QJsonDocument(object).toJson()));
         QCOMPARE(WindowPlacement::moveToScreen(&window,nullptr),WindowPlacement::MoveResult::InvalidTarget);
-        QVERIFY(WindowPlacement::moveToScreen(&window,window.screen())!=WindowPlacement::MoveResult::InvalidTarget);
+        QVERIFY(WindowPlacement::moveToScreen(&window,WindowPlacement::screenFor(&window))!=WindowPlacement::MoveResult::InvalidTarget);
         QVERIFY(!window.isVisible()); // moving an auxiliary window must not show it
         QWidget child(&window); QVERIFY(!WindowPlacement::watch(&child));
         window.setWindowState(Qt::WindowMaximized);
@@ -2062,7 +2275,11 @@ private slots:
         QTest::qWait(20); QCOMPARE(frames.count(),0); QTest::qWait(130); QCOMPARE(frames.count(),1);
         const QPointF point=plot.axisRect()->rect().center();
         for(int i=0;i<50;++i) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
             QWheelEvent wheel(point,plot.mapToGlobal(point.toPoint()),QPoint(),QPoint(0,i%2?120:-120),Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);
+#else
+            QWheelEvent wheel(point,plot.mapToGlobal(point.toPoint()),QPoint(),QPoint(0,i%2?120:-120),0,Qt::Vertical,Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,Qt::MouseEventNotSynthesized,false);
+#endif
             QApplication::sendEvent(&plot,&wheel);
         }
         QCOMPARE(frames.count(),1); QTest::qWait(130); QCOMPARE(frames.count(),2);
@@ -2086,7 +2303,11 @@ private slots:
         for(int i=0;i<80;++i) {
             QElapsedTimer frame; frame.start();
             const QPointF center=wave->axisRect()->rect().center();
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
             QWheelEvent wheel(center,wave->mapToGlobal(center.toPoint()),QPoint(),QPoint(0,i<40?-120:120),Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);
+#else
+            QWheelEvent wheel(center,wave->mapToGlobal(center.toPoint()),QPoint(),QPoint(0,i<40?-120:120),0,Qt::Vertical,Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,Qt::MouseEventNotSynthesized,false);
+#endif
             QApplication::sendEvent(wave,&wheel); QVERIFY(QMetaObject::invokeMethod(producer,"timeout",Qt::DirectConnection));
             if(i%4==0) {
                 QMouseEvent press(QEvent::MouseButtonPress,center,Qt::LeftButton,Qt::LeftButton,Qt::NoModifier); QApplication::sendEvent(wave,&press);

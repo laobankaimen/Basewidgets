@@ -4,7 +4,7 @@
 
 ## 构建选择
 
-根 `CMakeLists.txt` 要求 CMake 3.16、C++14。Linux 固定使用 Qt5 5.15 和 X11Extras/X11；其他平台先查找 Qt5，再查找 Qt6。公共依赖为 Core、Gui、Widgets、PrintSupport、Svg。
+根 `CMakeLists.txt` 要求 CMake 3.16、C++14。Linux 使用 Qt5 5.11+ 和 X11Extras/X11；其他平台先查找 Qt5，再查找 Qt6。公共依赖为 Core、Gui、Widgets、PrintSupport、Svg。
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

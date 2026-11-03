@@ -57,3 +57,6 @@
 4. 历史结论保留时间和范围，不把 offscreen 检查扩写为 Windows、真实硬件或多屏已验收。
 5. 截图统一放在 `images/`，资源许可证继续跟随 `assets/` 中的原文件。
 6. 新文档加入本索引；移动文件后同步更新源码树与安装树中的相对链接。
+
+- [UI 与交互审查（2026-11-03）：问题清单、修复和验证边界](development/ui-interaction-review-2026-11-03.md)
+- [登录控件与状态栏](components/login-and-status.md)

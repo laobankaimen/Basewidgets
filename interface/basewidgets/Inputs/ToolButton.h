@@ -31,6 +31,7 @@ public:
     acss::QtAdvancedStylesheet* styleManager() const { return m_manager; }
 
 protected:
+    bool event(QEvent* event) override;
     void applyStylesheet();
 
 private:

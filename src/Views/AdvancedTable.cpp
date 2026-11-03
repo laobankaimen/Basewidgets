@@ -40,6 +40,44 @@
 
 namespace basewidgets {
 
+// Preserve PCRE semantics on Qt 5.11, before QSortFilterProxyModel gained
+// setFilterRegularExpression. Legacy QRegExp callers still use Qt's own path.
+class TableFilterProxy : public QSortFilterProxyModel {
+public:
+    using QSortFilterProxyModel::QSortFilterProxyModel;
+    void setExpression(const QRegularExpression& expression) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+        setFilterRegularExpression(expression);
+#else
+        m_expression=expression; m_regular=true;
+        m_legacySnapshot=QRegExp(expression.pattern(),expression.patternOptions().testFlag(QRegularExpression::CaseInsensitiveOption)?Qt::CaseInsensitive:Qt::CaseSensitive);
+        setFilterRegExp(m_legacySnapshot); invalidateFilter();
+#endif
+    }
+    void useLegacyFilter() { m_regular=false; invalidateFilter(); }
+protected:
+    bool filterAcceptsRow(int row,const QModelIndex& parent) const override {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+        return QSortFilterProxyModel::filterAcceptsRow(row,parent);
+#else
+        // Honor clients using the exposed proxy's fixed-string/legacy setter.
+        if(!m_regular || filterRegExp()!=m_legacySnapshot)return QSortFilterProxyModel::filterAcceptsRow(row,parent);
+        if(m_expression.pattern().isEmpty())return true;
+        const int column=filterKeyColumn();
+        const int begin=column<0?0:column, end=column<0?sourceModel()->columnCount(parent):column+1;
+        for(int c=begin;c<end;++c)
+            if(m_expression.match(sourceModel()->index(row,c,parent).data(filterRole()).toString()).hasMatch())return true;
+        return false;
+#endif
+    }
+private:
+#if QT_VERSION < QT_VERSION_CHECK(5, 12, 0)
+    QRegExp m_legacySnapshot;
+#endif
+    QRegularExpression m_expression;
+    bool m_regular=false;
+};
+
 static QString escapeCsvField(const QString& v, const QString& delim)
 {
     const bool needsQuote = v.contains('"') || v.contains('\n') || v.contains('\r') || (!delim.isEmpty() && v.contains(delim));
@@ -98,7 +136,7 @@ void AdvancedTable::initUi()
     topRow->addStretch();
 
     // 模型链
-    m_sortFilter = new QSortFilterProxyModel(this);
+    m_sortFilter = new TableFilterProxy(this);
     m_sortFilter->setFilterCaseSensitivity(m_filterCs);
     m_sortFilter->setFilterKeyColumn(-1);
     m_sortFilter->setDynamicSortFilter(true);
@@ -133,8 +171,8 @@ void AdvancedTable::initUi()
     auto* bottomRow = new QVBoxLayout();
     auto* summaryRow = new QHBoxLayout();
     auto* navigationRow = new QHBoxLayout();
-    m_prevBtn = new PushButton("上一页", this);
-    m_nextBtn = new PushButton("下一页", this);
+    m_prevBtn = new PushButton(QString::fromUtf8("‹"), this);
+    m_nextBtn = new PushButton(QString::fromUtf8("›"), this);
     m_exportBtn = new PushButton("导出CSV", this);
     m_prevBtn->setObjectName("PrevPageBtn");
     m_nextBtn->setObjectName("NextPageBtn");
@@ -150,19 +188,23 @@ void AdvancedTable::initUi()
     m_totalLabel->setText("共0条数据");
     m_totalLabel->setWordWrap(true);
 
-    m_firstBtn = new PushButton("首页", this);
-    m_lastBtn = new PushButton("尾页", this);
+    m_firstBtn = new PushButton(QString::fromUtf8("«"), this);
+    m_lastBtn = new PushButton(QString::fromUtf8("»"), this);
     m_firstBtn->setObjectName("FirstPageBtn");
     m_lastBtn->setObjectName("LastPageBtn");
-    for (auto* nav : {m_firstBtn, m_lastBtn}) {
+    m_firstBtn->setToolTip(tr("首页")); m_lastBtn->setToolTip(tr("尾页"));
+    m_prevBtn->setToolTip(tr("上一页")); m_nextBtn->setToolTip(tr("下一页"));
+    for (auto* nav : {m_firstBtn, m_prevBtn, m_nextBtn, m_lastBtn}) {
+        nav->setFixedWidth(32); nav->setAccessibleName(nav->toolTip());
+        nav->setAppearance(ButtonAppearance::Subtle);
         nav->setProperty("page", true);
     }
 
     m_pageNumbers = new QWidget(this);
     auto* numsLayout = new QHBoxLayout(m_pageNumbers);
     numsLayout->setContentsMargins(0,0,0,0);
-    numsLayout->setSpacing(6);
-    numsLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    numsLayout->setSpacing(4);
+    numsLayout->setAlignment(Qt::AlignCenter);
     m_pageScroll = new QScrollArea(this);
     m_pageScroll->setObjectName("PageScroll");
     m_pageScroll->setWidgetResizable(true);
@@ -176,8 +218,11 @@ void AdvancedTable::initUi()
 
     m_pageJumpBottom = new SpinBox(this);
     m_pageJumpBottom->setMinimum(1);
-    QObject::connect(m_pageJumpBottom, static_cast<void(SpinBox::*)(int)>(&SpinBox::valueChanged), [this](int val){
-        m_paged->setCurrentPage(qMax(0, val - 1));
+    m_pageJumpBottom->setObjectName("PageJump");
+    m_pageJumpBottom->setAccessibleName(tr("跳转到页码"));
+    m_pageJumpBottom->setKeyboardTracking(false);
+    QObject::connect(m_pageJumpBottom,&QAbstractSpinBox::editingFinished,this,[this] {
+        m_paged->setCurrentPage(qMax(0,m_pageJumpBottom->value()-1));
     });
 
     bottomRow->setContentsMargins(6, 6, 6, 6);
@@ -356,6 +401,7 @@ void AdvancedTable::updatePageInfo()
     m_totalLabel->setToolTip(tr("当前显示 %1 条，含 %2 条固定记录；每页普通记录数 %3。")
         .arg(m_paged->rowCount()).arg(m_paged->pinnedRowCount()).arg(m_paged->pageSize()));
     const QSignalBlocker block(m_pageJumpBottom);
+    m_pageJumpBottom->setEnabled(m_paged->pageCount()>0);
     m_pageJumpBottom->setMaximum(qMax(1,m_paged->pageCount()));
     m_pageJumpBottom->setValue(m_paged->currentPage()+1);
     m_prevBtn->setEnabled(m_paged->currentPage()>0);
@@ -368,30 +414,13 @@ void AdvancedTable::rebuildPaginationUi()
     if (!m_pageNumbers) return;
     auto* layout = qobject_cast<QHBoxLayout*>(m_pageNumbers->layout());
     if (!layout) return;
+    const bool pageHadFocus=m_pageNumbers->isAncestorOf(QApplication::focusWidget());
+    for(auto* button:m_pageButtons) { button->hide(); m_pageButtonPool.append(button); }
     m_pageButtons.clear();
-    for (auto* b : m_pageButtonPool) { if (b) b->setVisible(false); }
-    for (auto* l : m_ellipsisPool) { if (l) l->setVisible(false); }
-
-    while (layout->count() > 0) {
-        auto* item = layout->takeAt(0);
-        if (!item) continue;
-        QWidget* w = item->widget();
+    while(auto* item=layout->takeAt(0)) {
+        if(auto* label=qobject_cast<Label*>(item->widget())) { label->hide(); m_ellipsisPool.append(label); }
         delete item;
-        if (!w) continue;
-
-        if (auto* btn = qobject_cast<PushButton*>(w)) {
-            btn->setVisible(false);
-            m_pageButtonPool.append(btn);
-            continue;
-        }
-        if (auto* lbl = qobject_cast<Label*>(w)) {
-            lbl->setVisible(false);
-            m_ellipsisPool.append(lbl);
-            continue;
-        }
-        w->deleteLater();
     }
-
     int pc = m_paged ? m_paged->pageCount() : 0;
     pc = qMax(1, pc);
     int cur = m_paged ? m_paged->currentPage() + 1 : 1;
@@ -400,7 +429,7 @@ void AdvancedTable::rebuildPaginationUi()
     if (!m_paginationCfg.windowSize) m_paginationCfg.windowSize = 7;
     if (!m_paginationCfg.sideCount) m_paginationCfg.sideCount = 2;
     const int window = qMax(3, m_paginationCfg.windowSize);
-    const int side = qMax(1, m_paginationCfg.sideCount);
+    const int side = width()<700?1:qMax(1, m_paginationCfg.sideCount);
 
     m_firstBtn->setEnabled(cur > 1);
     m_lastBtn->setEnabled(cur < pc);
@@ -419,7 +448,7 @@ void AdvancedTable::rebuildPaginationUi()
                 if (!m_paged) return;
                 bool ok = false;
                 int n = btn->property("pageNumber").toInt(&ok);
-                if (ok) m_paged->setCurrentPage(n - 1);
+                if (ok) { if(m_paged->currentPage()==n-1)rebuildPaginationUi(); else m_paged->setCurrentPage(n - 1); }
             });
         }
         return btn;
@@ -442,7 +471,10 @@ void AdvancedTable::rebuildPaginationUi()
     auto addBtn = [this, layout, &takePageBtn](int n, bool active){
         auto* btn = takePageBtn();
         btn->setText(QString::number(n));
-        btn->setFixedWidth(btn->fontMetrics().horizontalAdvance(btn->text())+24);
+        btn->setFixedWidth(qMax(32,btn->fontMetrics().horizontalAdvance(btn->text())+16));
+        btn->setAccessibleName(active?tr("第 %1 页，当前页").arg(n):tr("第 %1 页").arg(n));
+        btn->setAppearance(active?ButtonAppearance::Primary:ButtonAppearance::Subtle);
+        btn->setEnabled(m_paged->pageCount()>0);
         btn->setProperty("pageNumber", n);
         btn->setProperty("active", active);
         btn->setCheckable(true); btn->setChecked(active);
@@ -457,7 +489,9 @@ void AdvancedTable::rebuildPaginationUi()
         layout->addWidget(ellipsis);
     };
 
-    if (pc <= window) {
+    if(width()<580) {
+        addBtn(cur,true);
+    } else if (pc <= window) {
         for (int i = 1; i <= pc; ++i) addBtn(i, i == cur);
     } else {
         addBtn(1, cur == 1);
@@ -469,17 +503,15 @@ void AdvancedTable::rebuildPaginationUi()
         addBtn(pc, cur == pc);
     }
 
-    // 将当前页居中到滚动区域
-    if (m_pageScroll) {
-        // 查找active按钮
-        PushButton* activeBtn = nullptr;
-        for (auto* b : m_pageButtons) { if (b->property("active").toBool()) { activeBtn = b; break; } }
-        if (activeBtn) {
-            auto* hsb = m_pageScroll->horizontalScrollBar();
-            int target = activeBtn->x() + activeBtn->width()/2 - m_pageScroll->viewport()->width()/2;
-            hsb->setValue(qBound(0, target, hsb->maximum()));
-        }
-    }
+    layout->activate();
+    if(pageHadFocus)for(auto* button:m_pageButtons)if(button->isChecked()) { button->setFocus(Qt::OtherFocusReason); break; }
+
+}
+
+void AdvancedTable::resizeEvent(QResizeEvent* event)
+{
+    StyledWidget::resizeEvent(event);
+    rebuildPaginationUi();
 }
 
 void AdvancedTable::applyFilter()
@@ -492,7 +524,7 @@ void AdvancedTable::applyFilter()
         m_filterEdit->setToolTip(candidate.errorString()); emit filterRejected(candidate.errorString()); return;
     }
     m_filterRe=candidate; m_filterEdit->setToolTip(QString());
-    m_sortFilter->setFilterRegularExpression(candidate);
+    static_cast<TableFilterProxy*>(m_sortFilter)->setExpression(candidate);
     emit filterChanged(text,m_sortFilter->filterKeyColumn());
 }
 
@@ -592,11 +624,22 @@ void AdvancedTable::setFilterRegExp(const QRegExp& exp)
     m_filterCs=exp.caseSensitivity(); m_filterTimer->stop();
     { const QSignalBlocker block(m_filterEdit); m_filterEdit->setText(exp.pattern()); }
     m_filterEdit->setToolTip(QString());
+    static_cast<TableFilterProxy*>(m_sortFilter)->useLegacyFilter();
     m_sortFilter->setFilterRegExp(exp);
     QString pattern=exp.pattern();
     if(exp.patternSyntax()==QRegExp::FixedString)pattern=QRegularExpression::escape(pattern);
     else if(exp.patternSyntax()==QRegExp::Wildcard || exp.patternSyntax()==QRegExp::WildcardUnix)
+    {
+        // Qt 5.11 has no wildcardToRegularExpression. This representation is only
+        // for the public getter; filtering above retains QRegExp's exact dialect.
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
         pattern=QRegularExpression::wildcardToRegularExpression(pattern);
+#else
+        QString converted;
+        for(QChar c:pattern)converted+=c=='*'?QString(".*"):c=='?'?QString("."):QRegularExpression::escape(QString(c));
+        pattern=QString("\\A(?:%1)\\z").arg(converted);
+#endif
+    }
     m_filterRe=QRegularExpression(pattern,m_filterCs==Qt::CaseInsensitive?QRegularExpression::CaseInsensitiveOption:QRegularExpression::NoPatternOption);
     emit filterChanged(exp.pattern(),m_sortFilter->filterKeyColumn());
 }
@@ -622,7 +665,7 @@ void AdvancedTable::setFilterRegularExpression(const QRegularExpression& re)
     m_filterTimer->stop();
     { const QSignalBlocker block(m_filterEdit); m_filterEdit->setText(re.pattern()); }
     m_filterEdit->setToolTip(QString());
-    m_sortFilter->setFilterRegularExpression(re);
+    static_cast<TableFilterProxy*>(m_sortFilter)->setExpression(re);
     emit filterChanged(re.pattern(),m_sortFilter->filterKeyColumn());
 }
 

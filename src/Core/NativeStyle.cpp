@@ -44,13 +44,12 @@ QColor buttonFill(const QStyleOption* option, const QWidget* widget)
     const auto* tokens = ThemeTokens::instance();
     QColor color = appearance(widget)==ButtonAppearance::Danger
         ? tokens->dangerButton() : tokens->primaryButton();
-    if (option->state & QStyle::State_Sunken) color = color.darker(115);
-    else if (option->state & QStyle::State_MouseOver) color = color.darker(105);
     auto linear = [](double value) { return value<=.04045 ? value/12.92 : std::pow((value+.055)/1.055,2.4); };
     const QColor ink = option->palette.color(QPalette::BrightText);
     const double inkLuminance = .2126*linear(ink.redF())+.7152*linear(ink.greenF())+.0722*linear(ink.blueF());
     // Custom themes may choose dark button text. Move the surface toward the
-    // opposite luminance after applying hover/pressed, keeping every state readable.
+    // opposite luminance first. Derive interaction states from this corrected base
+    // so contrast correction cannot collapse normal and hover to the same color.
     const int target = inkLuminance > .179 ? 0 : 255;
     for (int i=0;i<64;++i) {
         const double luminance = .2126*linear(color.redF())+.7152*linear(color.greenF())+.0722*linear(color.blueF());
@@ -58,6 +57,12 @@ QColor buttonFill(const QStyleOption* option, const QWidget* widget)
         auto step = [target](int value) { return target == 0 ? qMax(0,value-qMax(1,qRound(value*.08)))
                                                            : qMin(255,value+qMax(1,qRound((255-value)*.08))); };
         color.setRgb(step(color.red()),step(color.green()),step(color.blue()));
+    }
+    if(option->state & QStyle::State_Enabled) {
+        const qreal amount=(option->state & QStyle::State_Sunken)?0.30:
+                           (option->state & QStyle::State_MouseOver)?0.16:0.0;
+        auto shift=[target,amount](int channel) { return qRound(channel+(target-channel)*amount); };
+        color.setRgb(shift(color.red()),shift(color.green()),shift(color.blue()));
     }
     return color;
 }
@@ -276,6 +281,13 @@ void NativeStyle::drawPrimitive(PrimitiveElement element, const QStyleOption* op
         if (enabled && down) fill = strong ? buttonFill(option,widget) : pal.color(QPalette::Dark);
         else if (hover) fill = strong ? buttonFill(option,widget) : pal.color(QPalette::Light);
         QColor border(Qt::transparent);
+        if(strong && (hover || down)) {
+            const QColor ink=pal.color(QPalette::BrightText);
+            const qreal amount=down?.22:.38;
+            border=QColor(qRound(fill.red()+(ink.red()-fill.red())*amount),
+                          qRound(fill.green()+(ink.green()-fill.green())*amount),
+                          qRound(fill.blue()+(ink.blue()-fill.blue())*amount));
+        }
         if (appearance(widget)==ButtonAppearance::Outline) border=pal.color(QPalette::Mid);
         if (checked) border=pal.color(QPalette::Highlight);
         // Mouse clicks do not leave every button outlined. Keyboard focus must remain visible.
@@ -408,7 +420,7 @@ void NativeStyle::drawControl(ControlElement element, const QStyleOption* option
                     const int textWidth=copy.fontMetrics.size(Qt::TextShowMnemonic,copy.text).width();
                     const int total=qMin(copy.rect.width(),iconSize.width()+gap+textWidth);
                     const int left=copy.rect.left()+(copy.rect.width()-total)/2;
-                    const QRect logicalIcon(left,copy.rect.center().y()-iconSize.height()/2,iconSize.width(),iconSize.height());
+                    const QRect logicalIcon(left,copy.rect.top()+(copy.rect.height()-iconSize.height())/2,iconSize.width(),iconSize.height());
                     const QRect logicalText(left+iconSize.width()+gap,copy.rect.top(),qMax(0,total-iconSize.width()-gap),copy.rect.height());
                     copy.icon.paint(p,visualRect(copy.direction,copy.rect,logicalIcon),Qt::AlignCenter,mode,state);
                     p->save(); p->setFont(copy.font);
@@ -535,7 +547,7 @@ void NativeStyle::drawComplexControl(ComplexControl control, const QStyleOptionC
             // Bound work for very large ranges and keep ticks distinct in logical pixels.
             qint64 interval = slider->tickInterval > 0 ? slider->tickInterval : qMax(1, slider->singleStep);
             interval = qMax(interval, (range + qMax(1, span/4) - 1) / qMax(1, span/4));
-            p->save(); p->setPen(pal.color(QPalette::PlaceholderText));
+            p->save(); p->setPen(ThemeTokens::instance()->textPlaceholder());
             for (qint64 value = slider->minimum; value <= slider->maximum; value += interval) {
                 QStyleOptionSlider tick(*slider); tick.sliderPosition = int(value);
                 const QPoint c = subControlRect(control, &tick, SC_SliderHandle, widget).center();
@@ -629,15 +641,16 @@ void NativeStyle::drawComplexControl(ComplexControl control, const QStyleOptionC
                 p->drawLine(glyph.topLeft(),glyph.bottomRight());
                 p->drawLine(glyph.topRight(),glyph.bottomLeft());
             } else if (windowControl=="minimize") {
-                p->drawLine(QPointF(glyph.left(),center.y()+3),QPointF(glyph.right(),center.y()+3));
+                p->drawLine(QPointF(glyph.left(),center.y()),QPointF(glyph.right(),center.y()));
             } else if (windowControl=="restore") {
                 // Draw only the exposed part of the rear window. An opaque erase
                 // rectangle would leave a patch on a gradient title-bar surface.
-                const QRectF rear=glyph.adjusted(2,-1,1,-2);
-                QPainterPath outline; outline.moveTo(rear.left(),glyph.top());
+                const QRectF front=glyph.translated(-.5,.5);
+                const QRectF rear=front.adjusted(2,-1,1,-2);
+                QPainterPath outline; outline.moveTo(rear.left(),front.top());
                 outline.lineTo(rear.topLeft()); outline.lineTo(rear.topRight());
-                outline.lineTo(rear.bottomRight()); outline.lineTo(glyph.right(),rear.bottom());
-                p->drawPath(outline); p->drawRect(glyph);
+                outline.lineTo(rear.bottomRight()); outline.lineTo(front.right(),rear.bottom());
+                p->drawPath(outline); p->drawRect(front);
             } else p->drawRect(glyph);
             if ((tool->state & State_HasFocus) && (tool->state & State_KeyboardFocusChange))
                 rounded(p,option->rect.adjusted(2,2,-2,-2),Qt::transparent,foreground,1);

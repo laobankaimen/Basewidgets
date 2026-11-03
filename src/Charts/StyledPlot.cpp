@@ -24,7 +24,7 @@ StyledPlot::StyledPlot(QWidget* parent) : QCustomPlot(parent)
     plotLayout()->insertRow(0);
     m_title=new QCPTextElement(this,QString(),font()); plotLayout()->addElement(0,0,m_title);
     setInteractions(QCP::iRangeDrag|QCP::iRangeZoom);
-    setNavigationAxes(Qt::Horizontal|Qt::Vertical);
+    setNavigationAxes(Qt::Orientations(Qt::Horizontal)|Qt::Vertical);
     setCursor(Qt::CrossCursor); setFocusPolicy(Qt::StrongFocus); setMouseTracking(true);
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this,&QWidget::customContextMenuRequested,this,[this](const QPoint& position) {
@@ -110,7 +110,7 @@ void StyledPlot::replot(QCustomPlot::RefreshPriority priority)
 }
 void StyledPlot::setNavigationAxes(Qt::Orientations axes)
 {
-    m_navigationAxes=axes & (Qt::Horizontal|Qt::Vertical);
+    m_navigationAxes=axes & (Qt::Orientations(Qt::Horizontal)|Qt::Vertical);
     axisRect()->setRangeDrag(m_navigationAxes); axisRect()->setRangeZoom(m_navigationAxes);
 }
 bool StyledPlot::setResetRanges(const QCPRange& x,const QCPRange& y)

@@ -20,3 +20,13 @@ cmake --build build --target widgets_demo --parallel 4
 - [文档首页](../../docs/README.md)：全部控件与开发文档索引。
 
 模拟数据不代表设备实测结果；所有功能检查继续在本 demo 内，不建立独立 test 工程。
+
+## Linux 桌面图标与可选安装
+
+设置 `-DUI_INSTALL_DEMO=ON` 后，安装会包含 `bin/widgets_demo`、
+`share/applications/org.basewidgets.demo.desktop` 和 hicolor 应用图标。
+应用设置同名 desktop identity，X11 WM_CLASS 为 `widgets_demo`。
+安装到自定义前缀时，需把 bin 加入 PATH，并让桌面搜索该前缀的 share
+（或安装到桌面已有的用户/系统应用目录）。共享库和 Qt 运行时仍由部署方提供。
+
+新增登录控件示例位于“常用组件”；它不连接认证后端。

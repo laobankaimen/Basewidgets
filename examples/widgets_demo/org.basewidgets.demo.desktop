@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=BaseWidgets Demo
+Name[zh_CN]=BaseWidgets 组件演示
+Exec=widgets_demo
+Icon=org.basewidgets.demo
+StartupWMClass=widgets_demo
+Terminal=false
+Categories=Development;GUIDesigner;

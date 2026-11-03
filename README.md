@@ -12,7 +12,7 @@ cmake --build build --target widgets_demo --parallel 4
 ./build/bin/widgets_demo
 ```
 
-要求 CMake 3.16+、C++14。Linux 当前构建选择 Qt 5.15，并依赖 Svg、PrintSupport、X11Extras 和 X11；非 Linux 构建可选择 Qt5/Qt6。Windows 多配置生成器使用 `--config Debug`，可执行文件位于 `build/bin/Debug/`。具体依赖和安装接入见[快速入门](docs/guides/getting-started.md)。
+要求 CMake 3.16+、C++14。Linux 构建选择 Qt 5.11+，并依赖 Svg、PrintSupport、X11Extras 和 X11；非 Linux 构建可选择 Qt5/Qt6。Windows 多配置生成器使用 `--config Debug`，可执行文件位于 `build/bin/Debug/`。具体依赖和安装接入见[快速入门](docs/guides/getting-started.md)。
 
 ## 文档
 

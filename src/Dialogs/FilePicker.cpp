@@ -25,7 +25,9 @@
 #include <QSplitter>
 #include <QPushButton>
 #include <QMessageBox>
-#include <QStorageInfo>
+#include <QFileIconProvider>
+#include <QItemSelectionModel>
+#include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QDate>
 #include <QDateTime>
@@ -37,6 +39,17 @@
 
 namespace basewidgets {
 
+class PickerFileModel : public QFileSystemModel {
+public:
+    using QFileSystemModel::QFileSystemModel;
+    QVariant headerData(int section,Qt::Orientation orientation,int role) const override {
+        if(orientation==Qt::Horizontal && role==Qt::DisplayRole) {
+            switch(section) { case 0:return tr("名称"); case 1:return tr("大小"); case 2:return tr("类型"); case 3:return tr("修改时间"); }
+        }
+        return QFileSystemModel::headerData(section,orientation,role);
+    }
+};
+
 static QStringList parseNameFilter(const QString& filter)
 {
     // Format: "Images (*.png *.jpg)" or "*.txt"
@@ -45,7 +58,11 @@ static QStringList parseNameFilter(const QString& filter)
     int r = f.indexOf(')');
     if (l >= 0 && r > l) f = f.mid(l + 1, r - l - 1);
     f = f.replace(';', ' ');
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+    QStringList tokens = f.split(' ', Qt::SkipEmptyParts);
+#else
     QStringList tokens = f.split(' ', QString::SkipEmptyParts);
+#endif
     for (QString& t : tokens) t = t.trimmed();
     return tokens;
 }
@@ -56,7 +73,8 @@ FilePickerWidget::FilePickerWidget(QWidget* parent,
                                    Mode mode)
     : QWidget(parent), m_mode(mode)
 {
-    // Initialize the UI components for the Ubuntu-style file picker
+    setObjectName("FilePicker");
+    // Construct controls before filesystem callbacks can reach them.
     setupUi(initialDir, filter);
 }
 
@@ -67,7 +85,7 @@ QString FilePickerWidget::selectedPath() const
     if (m_mode == SaveFile) {
         name = name.trimmed();
     }
-    if (name.isEmpty()) return m_selectedPath;
+    if (name.isEmpty()) return m_mode==OpenDirectory?m_model->rootPath():m_selectedPath;
     
     QFileInfo fi(name);
     if (fi.isAbsolute()) return name;
@@ -97,7 +115,7 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     // The top bar contains navigation buttons (Back, Forward, Up, Home) and address bar
     m_topBar = new QFrame(this);
     m_topBar->setObjectName("FilePickerTopBar");
-    m_topBar->setFixedHeight(50);
+    m_topBar->setFixedHeight(qMax(40,fontMetrics().height()+16));
 
     auto* topLayout = new QHBoxLayout(m_topBar);
     topLayout->setContentsMargins(5, 5, 5, 5);
@@ -127,11 +145,13 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
 
     btnRefresh = createNavBtn("R", "arrow_refresh");
     btnRefresh->setToolTip(tr("刷新"));
+    btnRefresh->setObjectName("FilePickerRefresh");
 
     // Address Bar
     addrEdit = new QLineEdit(this);
-    addrEdit->setPlaceholderText(tr("Enter location..."));
+    addrEdit->setPlaceholderText(tr("输入文件夹路径…"));
     addrEdit->setFixedHeight(30);
+    addrEdit->setMinimumWidth(80);
 
     btnGo = createNavBtn("跳转", "arrow_right");
     
@@ -158,26 +178,34 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     // Sidebar
     m_sidebar = new QListWidget(m_splitter);
     m_sidebar->setFrameShape(QFrame::NoFrame);
-    m_sidebar->setFixedWidth(150);
+    m_sidebar->setFixedWidth(136);
     m_sidebar->setIconSize(QSize(20, 20));
 
     // Views
     m_viewStack = new QStackedWidget(m_splitter);
     
-    m_model = new QFileSystemModel(this);
+    m_model = new PickerFileModel(this);
     m_model->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::AllDirs);
-    m_model->setRootPath(QDir::rootPath());
+    m_model->iconProvider()->setOptions(QFileIconProvider::DontUseCustomDirectoryIcons);
+    if(m_mode==OpenDirectory)m_model->setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
 
     // Tree View (List Mode)
     m_treeView = new QTreeView(m_viewStack);
     m_treeView->setModel(m_model);
+    m_treeView->setObjectName("FilePickerList");
+    m_treeView->setAccessibleName(tr("文件列表"));
+    m_treeView->setRootIsDecorated(false);
+    m_treeView->setUniformRowHeights(true);
+    m_treeView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_treeView->setFrameShape(QFrame::NoFrame);
     m_treeView->setSelectionMode(m_mode == OpenFiles ? QAbstractItemView::ExtendedSelection : QAbstractItemView::SingleSelection);
     m_treeView->setSortingEnabled(true);
     m_treeView->setColumnWidth(0, 250); // Name
     m_treeView->setColumnWidth(1, 80);  // Size
-    m_treeView->setColumnWidth(2, 80);  // Type
-    m_treeView->header()->setStretchLastSection(true);
+    m_treeView->setColumnWidth(2, 72);  // Type
+    m_treeView->header()->setStretchLastSection(false);
+    m_treeView->header()->setSectionResizeMode(0,QHeaderView::Stretch);
+    m_treeView->setColumnWidth(3,125);
     
     // Icon View (Grid Mode)
     m_iconView = new QListView(m_viewStack);
@@ -192,6 +220,9 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     m_iconView->setWordWrap(true);
     m_iconView->setTextElideMode(Qt::ElideMiddle);
     m_iconView->setSelectionMode(m_treeView->selectionMode());
+    auto* unusedSelection=m_iconView->selectionModel();
+    m_iconView->setSelectionModel(m_treeView->selectionModel());
+    unusedSelection->deleteLater();
     // Ensure item text is centered and has padding
 
     m_viewStack->addWidget(m_treeView);
@@ -199,7 +230,8 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
 
     m_splitter->addWidget(m_sidebar);
     m_splitter->addWidget(m_viewStack);
-    //m_splitter->setStretchFactor(1, 1);
+    m_splitter->setChildrenCollapsible(false);
+    m_splitter->setStretchFactor(1, 1);
 
     mainLayout->addWidget(m_splitter, 1);
 
@@ -208,23 +240,27 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     m_bottomBar = new QFrame(this);
     m_bottomBar->setObjectName("FilePickerBottomBar");
     // Allow natural height expansion
-    m_bottomBar->setMinimumHeight(80);
+    m_bottomBar->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
     
     // Use Grid Layout for better alignment and height control
     auto* bottomLayout = new QGridLayout(m_bottomBar);
-    bottomLayout->setContentsMargins(15, 15, 15, 15);
-    bottomLayout->setVerticalSpacing(12);
+    bottomLayout->setContentsMargins(8, 6, 8, 4);
+    bottomLayout->setVerticalSpacing(4);
     bottomLayout->setHorizontalSpacing(10);
     
     QLabel* lblName = new QLabel(tr("文件名:"), this);
     
     m_nameEdit = new QLineEdit(this);
-    m_nameEdit->setFixedHeight(34);
+    m_nameEdit->setObjectName("FilePickerName");
+    lblName->setBuddy(m_nameEdit);
+    m_nameEdit->setFixedHeight(qMax(28,fontMetrics().height()+8));
 
     QLabel* lblType = new QLabel(tr("文件类型:"), this);
 
     m_filterCombo = new QComboBox(this);
-    m_filterCombo->setFixedHeight(34);
+    m_filterCombo->setObjectName("FilePickerFilter");
+    lblType->setBuddy(m_filterCombo);
+    m_filterCombo->setFixedHeight(qMax(28,fontMetrics().height()+8));
     // Remove fixed width constraints to let it expand in grid
     m_filterCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
@@ -234,29 +270,7 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
         filters = filter.split(";;");
     }
 
-    // Add common default filters if not present (helps user discover types)
-    auto addFilterIfMissing = [&](const QString& name, const QString& ext) {
-        bool found = false;
-        for (const auto& f : filters) {
-            if (f.contains(ext, Qt::CaseInsensitive) || f.contains(name, Qt::CaseInsensitive)) {
-                found = true; 
-                break;
-            }
-        }
-        if (!found) filters << QString("%1 (%2)").arg(name, ext);
-    };
-
-    // Always add these common types for better UX
-    addFilterIfMissing(tr("Images"), "*.png *.jpg *.jpeg *.bmp *.gif *.svg *.webp");
-    addFilterIfMissing(tr("Documents"), "*.txt *.pdf *.doc *.docx *.md *.json *.xml");
-    addFilterIfMissing(tr("Code"), "*.cpp *.h *.c *.hpp *.py *.js *.ts *.html *.css");
-    
-    // Ensure "All Files" is at the end
-    bool hasAll = false;
-    for (const auto& f : filters) {
-        if (f.contains("(*)") || f.contains("*.*")) hasAll = true;
-    }
-    if (!hasAll) filters << tr("All Files (*)");
+    if(filters.isEmpty())filters << tr("所有文件 (*)");
 
     m_filterCombo->addItems(filters);
 
@@ -271,11 +285,18 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     bottomLayout->addWidget(m_nameEdit, 0, 1);
     
     // Row 1: Type Label | Type Combo
-    bottomLayout->addWidget(lblType, 1, 0);
-    bottomLayout->addWidget(m_filterCombo, 1, 1);
+    lblType->hide();
+    m_filterCombo->setToolTip(tr("文件类型"));
+    bottomLayout->addWidget(m_filterCombo, 0, 2);
+    bottomLayout->setColumnStretch(1,2);
+    bottomLayout->setColumnStretch(2,1);
+    m_filterCombo->setMinimumWidth(80);
+    m_filterCombo->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
     
     m_statusLabel = new QLabel(this);
-    bottomLayout->addWidget(m_statusLabel, 2, 0, 1, 2, Qt::AlignLeft);
+    m_statusLabel->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
+    m_statusLabel->setFixedHeight(fontMetrics().height()+4);
+    bottomLayout->addWidget(m_statusLabel, 1, 0, 1, 3);
 
     if (m_mode == OpenDirectory) {
         m_filterCombo->setVisible(false);
@@ -312,8 +333,7 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
         onPathChanged(QDir::homePath());
     });
     connect(btnRefresh, &QToolButton::clicked, [this](){
-        // Refresh model
-        m_model->setRootPath(m_model->rootPath()); // Trigger re-scan
+        reloadDirectory();
     });
     connect(btnGo, &QToolButton::clicked, [this](){
         QString p = addrEdit->text();
@@ -342,7 +362,7 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     connect(m_iconView, &QListView::clicked, this, &FilePickerWidget::onViewClicked);
 
     // Filter
-    connect(m_filterCombo, QOverload<const QString&>::of(&QComboBox::currentIndexChanged), [this](const QString& text){
+    connect(m_filterCombo, &QComboBox::currentTextChanged, this, [this](const QString& text){
         QStringList tokens = parseNameFilter(text);
         m_model->setNameFilters(tokens);
     });
@@ -350,7 +370,7 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     // --- Init ---
     
     // Set a reasonable minimum size for the widget
-    setMinimumSize(850, 550);
+    setMinimumSize(320, 160);
 
     // Populate Sidebar
     auto addPlace = [this](const QString& name, const QString& path, QStyle::StandardPixmap icon){
@@ -360,13 +380,13 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
         item->setIcon(style()->standardIcon(icon));
     };
     
-    addPlace(tr("Home"), QDir::homePath(), QStyle::SP_DirHomeIcon);
-    addPlace(tr("Desktop"), QStandardPaths::writableLocation(QStandardPaths::DesktopLocation), QStyle::SP_DesktopIcon);
-    addPlace(tr("Documents"), QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation), QStyle::SP_DirIcon);
-    addPlace(tr("Downloads"), QStandardPaths::writableLocation(QStandardPaths::DownloadLocation), QStyle::SP_DirIcon);
-    addPlace(tr("Music"), QStandardPaths::writableLocation(QStandardPaths::MusicLocation), QStyle::SP_DirIcon);
-    addPlace(tr("Pictures"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation), QStyle::SP_DirIcon);
-    addPlace(tr("Videos"), QStandardPaths::writableLocation(QStandardPaths::MoviesLocation), QStyle::SP_DirIcon);
+    addPlace(tr("主目录"), QDir::homePath(), QStyle::SP_DirHomeIcon);
+    addPlace(tr("桌面"), QStandardPaths::writableLocation(QStandardPaths::DesktopLocation), QStyle::SP_DesktopIcon);
+    addPlace(tr("文档"), QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation), QStyle::SP_DirIcon);
+    addPlace(tr("下载"), QStandardPaths::writableLocation(QStandardPaths::DownloadLocation), QStyle::SP_DirIcon);
+    addPlace(tr("音乐"), QStandardPaths::writableLocation(QStandardPaths::MusicLocation), QStyle::SP_DirIcon);
+    addPlace(tr("图片"), QStandardPaths::writableLocation(QStandardPaths::PicturesLocation), QStyle::SP_DirIcon);
+    addPlace(tr("视频"), QStandardPaths::writableLocation(QStandardPaths::MoviesLocation), QStyle::SP_DirIcon);
     
     // Separator
     QListWidgetItem* separator = new QListWidgetItem(m_sidebar);
@@ -378,28 +398,65 @@ void FilePickerWidget::setupUi(const QString& initialDir, const QString& filter)
     line->setEnabled(false);
     m_sidebar->setItemWidget(separator, line);
     
-    // Drives
-    foreach (const QStorageInfo &storage, QStorageInfo::mountedVolumes()) {
-        if (storage.isValid() && storage.isReady()) {
-            QListWidgetItem* item = new QListWidgetItem(m_sidebar);
-            QString label = storage.name();
-            if (label.isEmpty()) label = storage.rootPath();
-            item->setText(label);
-            item->setData(Qt::UserRole, storage.rootPath());
-            item->setIcon(style()->standardIcon(QStyle::SP_DriveHDIcon));
-        }
-    }
+    // Avoid synchronous mountedVolumes(): disconnected/network mounts can block
+    // the GUI for seconds. Drives remain reachable through the editable location.
+    addPlace(tr("文件系统"),QDir::rootPath(),QStyle::SP_DriveHDIcon);
+    connectModelSignals();
+    connect(m_nameEdit,&QLineEdit::textEdited,this,[this] { m_selectedPaths.clear(); m_selectedPath.clear(); });
+    addrEdit->setAccessibleName(tr("当前位置"));
+    m_nameEdit->setAccessibleName(tr("文件名"));
+    m_filterCombo->setAccessibleName(tr("文件类型"));
+    btnGo->setToolTip(tr("转到输入的位置"));
+    for(auto* button:{btnBack,btnForward,btnUp,btnHome,btnRefresh,btnGo,btnViewMode})button->setAccessibleName(button->toolTip());
 
     // Set Initial Dir
     QString startDir = initialDir;
     if (startDir.isEmpty()) startDir = QDir::homePath();
-    onPathChanged(startDir);
+    QFileInfo initial(startDir);
+    if(initial.isFile() || (!initial.exists() && m_mode==SaveFile)) {
+        onPathChanged(initial.absolutePath()); m_nameEdit->setText(initial.fileName());
+    } else onPathChanged(initial.isDir()?initial.absoluteFilePath():QDir::homePath());
+}
+
+void FilePickerWidget::connectModelSignals()
+{
+    connect(m_model,&QFileSystemModel::directoryLoaded,this,[this](const QString& path) {
+        if(path==m_model->rootPath())m_statusLabel->setText(tr("%1 个项目").arg(m_model->rowCount(m_treeView->rootIndex())));
+    });
+    connect(m_treeView->selectionModel(),&QItemSelectionModel::selectionChanged,this,[this] {
+        const auto rows=m_treeView->selectionModel()->selectedRows(0);
+        if(rows.isEmpty()) { m_selectedPaths.clear(); m_selectedPath.clear(); if(m_mode!=SaveFile)m_nameEdit->clear(); return; }
+        onViewClicked(rows.first());
+    });
+}
+
+void FilePickerWidget::reloadDirectory()
+{
+    const QString path=m_model->rootPath();
+    auto* oldModel=m_model;
+    auto* oldSelection=m_treeView->selectionModel();
+    disconnect(oldModel,nullptr,this,nullptr);
+    disconnect(oldSelection,nullptr,this,nullptr);
+    m_model=new PickerFileModel(this);
+    m_model->iconProvider()->setOptions(QFileIconProvider::DontUseCustomDirectoryIcons);
+    m_model->setFilter(oldModel->filter());
+    m_model->setNameFilters(oldModel->nameFilters());
+    m_model->setNameFilterDisables(false);
+    m_treeView->setModel(m_model); m_iconView->setModel(m_model);
+    auto* unusedSelection=m_iconView->selectionModel();
+    m_iconView->setSelectionModel(m_treeView->selectionModel());
+    unusedSelection->deleteLater(); oldSelection->deleteLater();
+    connectModelSignals(); setRoot(path);
+    m_statusLabel->setText(tr("正在刷新…"));
+    oldModel->deleteLater();
 }
 
 void FilePickerWidget::onPathChanged(const QString& path)
 {
     // Normalize path separators to native format (e.g., backslashes on Windows)
-    QString cleanPath = QDir::toNativeSeparators(path);
+    const QFileInfo target(path);
+    if(!target.exists()||!target.isDir()) { m_statusLabel->setText(tr("文件夹不存在：%1").arg(path)); return; }
+    QString cleanPath = QDir::cleanPath(target.absoluteFilePath());
     
     // Check if we are navigating to the current path; if so, just refresh without adding to history
     if (m_histIndex >= 0 && m_histIndex < m_history.size() && m_history[m_histIndex] == cleanPath) {
@@ -434,16 +491,17 @@ void FilePickerWidget::updateView()
     btnBack->setEnabled(m_histIndex > 0);
     btnForward->setEnabled(m_histIndex < m_history.size() - 1);
     
-    // Update Status Bar with item count
-    QDir d(path);
-    int count = d.entryList(QDir::AllEntries | QDir::NoDotAndDotDot).count();
-    if (m_statusLabel) m_statusLabel->setText(tr("%1 个项目").arg(count));
+    m_statusLabel->setText(tr("%1 个项目").arg(m_model->rowCount(m_treeView->rootIndex())));
+    btnUp->setEnabled(!QDir(path).isRoot());
 }
 
 void FilePickerWidget::setRoot(const QString& path)
 {
     // Map the file system path to the model index
-    QModelIndex index = m_model->index(path);
+    m_treeView->selectionModel()->clearSelection();
+    m_selectedPath.clear(); m_selectedPaths.clear();
+    if(m_mode!=SaveFile)m_nameEdit->clear();
+    QModelIndex index = m_model->setRootPath(path);
     if (index.isValid()) {
         // Update both views to show the content of the new root directory
         m_treeView->setRootIndex(index);
@@ -468,8 +526,9 @@ void FilePickerWidget::onViewDoubleClicked(const QModelIndex& index)
     if (m_model->isDir(index)) {
         QString path = m_model->filePath(index);
         onPathChanged(path);
-    } else {
+    } else if(m_mode!=OpenDirectory) {
         // Activate file
+        onViewClicked(index);
         m_selectedPath = m_model->filePath(index);
         emit selectionChanged(m_selectedPath);
         emit fileActivated(m_selectedPath);
@@ -490,12 +549,14 @@ void FilePickerWidget::onViewClicked(const QModelIndex& index)
         // Filter out columns other than 0 for tree view
         QSet<QString> uniquePaths;
         for (const auto& idx : list) {
-             uniquePaths.insert(m_model->filePath(idx));
+             if(idx.column()==0 && !m_model->isDir(idx))uniquePaths.insert(m_model->filePath(idx));
         }
         m_selectedPaths = uniquePaths.values();
         
         emit selectionChanged(path);
     } else {
+        m_selectedPaths.clear(); m_selectedPath.clear();
+        if(m_mode!=SaveFile)m_nameEdit->clear();
         // Directory selected logic if needed
         if (m_mode == OpenDirectory) {
             m_nameEdit->setText(m_model->fileName(index));
@@ -503,6 +564,33 @@ void FilePickerWidget::onViewClicked(const QModelIndex& index)
             emit selectionChanged(path);
         }
     }
+}
+
+void FilePickerWidget::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    const bool compact=width()<600;
+    m_sidebar->setVisible(!compact);
+    m_splitter->setSizes({compact?0:136,qMax(1,width()-(compact?0:137))});
+    btnHome->setVisible(!compact); btnForward->setVisible(!compact);
+    btnViewMode->setVisible(width()>=450);
+    m_treeView->setColumnHidden(2,width()<700);
+    m_treeView->setColumnHidden(3,width()<500);
+}
+
+bool FilePickerWidget::validateSelection()
+{
+    const QStringList paths=m_mode==OpenFiles?selectedPaths():QStringList{selectedPath()};
+    bool valid=!paths.isEmpty();
+    for(const auto& path:paths) {
+        const QFileInfo info(path);
+        valid=valid && !path.trimmed().isEmpty();
+        if(m_mode==OpenDirectory)valid=valid && info.isDir();
+        else if(m_mode==SaveFile)valid=valid && !info.isDir() && QFileInfo(info.absolutePath()).isDir();
+        else valid=valid && info.isFile();
+    }
+    if(!valid) { m_statusLabel->setText(tr("请选择有效的%1").arg(m_mode==OpenDirectory?tr("文件夹"):tr("文件"))); m_nameEdit->setFocus(); }
+    return valid;
 }
 
 void FilePickerWidget::toggleViewMode()

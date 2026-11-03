@@ -2,7 +2,11 @@
 
 include(CMakeFindDependencyMacro)
 
-find_dependency(Qt@QT_VERSION_MAJOR@ REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
+if("@QT_VERSION_MAJOR@" STREQUAL "5")
+    find_dependency(Qt5 5.11 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
+else()
+    find_dependency(Qt6 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
+endif()
 
 if("@CMAKE_SYSTEM_NAME@" STREQUAL "Linux")
     find_dependency(Qt5 REQUIRED COMPONENTS X11Extras)

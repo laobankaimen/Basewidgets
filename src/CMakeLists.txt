@@ -2,6 +2,7 @@
 
 # Sources
 set(UI_PUBLIC_HEADERS
+    ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/LoginWidget.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Views/NotificationModel.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Inputs/NotificationBell.h
     ${CMAKE_SOURCE_DIR}/interface/basewidgets/Containers/NotificationPanel.h
@@ -101,6 +102,7 @@ set(UI_PUBLIC_HEADERS
 )
 
 set(UI_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/Containers/LoginWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Views/NotificationModel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Inputs/NotificationBell.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Containers/NotificationPanel.cpp

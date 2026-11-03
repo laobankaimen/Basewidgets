@@ -19,6 +19,9 @@ public:
 protected:
     void paintEvent(QPaintEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
+    void mousePressEvent(QMouseEvent*) override;
+    void mouseDoubleClickEvent(QMouseEvent*) override;
+    void hideEvent(QHideEvent*) override;
 private:
     NotificationPanel* m_panel=nullptr;
     QPointer<QWidget> m_anchor;

@@ -18,6 +18,8 @@ public:
     /** 安装热插拔/可用区域变化恢复保护，重复调用返回同一个实例。窗口持有其生命周期。
      * 不在日常拖动时强制限制窗口，也不更改最大化/全屏状态。 */
     static WindowPlacement* watch(QWidget* window);
+    /** Qt 5.11-compatible screen lookup, including widgets without a native handle. */
+    static QScreen* screenFor(const QWidget* widget);
     void setRecoveryEnabled(bool enabled) { m_enabled=enabled; }
     bool recoveryEnabled() const { return m_enabled; }
     /** 选择交叠面积最大的屏；没有交叠时优先 fallback，否则选最近的有效屏。空列表返回 -1。

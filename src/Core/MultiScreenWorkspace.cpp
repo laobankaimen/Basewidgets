@@ -6,7 +6,7 @@
 #include <QCryptographicHash>
 namespace basewidgets {
 MultiScreenWorkspace::MultiScreenWorkspace(ScreenWindow* primary,QObject* controllerParent)
-    : QObject(controllerParent?controllerParent:primary),m_primary(primary),m_primaryScreen(primary?primary->screen():nullptr)
+    : QObject(controllerParent?controllerParent:primary),m_primary(primary),m_primaryScreen(primary?WindowPlacement::screenFor(primary):nullptr)
 {
     if(primary) {
         connect(primary,&ScreenWindow::closeAccepted,this,[this] {

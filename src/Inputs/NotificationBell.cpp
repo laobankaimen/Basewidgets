@@ -1,15 +1,21 @@
 #include <basewidgets/Inputs/NotificationBell.h>
 #include <basewidgets/Views/NotificationModel.h>
 #include <basewidgets/Core/ThemeTokens.h>
+#include <basewidgets/Core/StyleManagerAdapter.h>
 #include <QPainter>
-#include <QPainterPath>
 #include <cmath>
 namespace basewidgets {
 NotificationBell::NotificationBell(QWidget* parent) : ToolButton(parent)
 {
     setAutoRaise(true); setAppearance(ButtonAppearance::Subtle); setFocusPolicy(Qt::StrongFocus); setToolButtonStyle(Qt::ToolButtonIconOnly);
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed); setToolTip(tr("消息：暂无未读")); setAccessibleName(toolTip());
-    connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,this,[this] { update(); });
+    setIconSize(QSize(20,20));
+    auto refreshIcon=[this] {
+        setIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/common/icons/titlebar/bell.svg"));
+        update();
+    };
+    connect(ThemeTokens::instance(),&ThemeTokens::tokensChanged,this,refreshIcon);
+    refreshIcon();
 }
 NotificationModel* NotificationBell::model() const { return m_model; }
 void NotificationBell::setModel(NotificationModel* model)
@@ -28,15 +34,10 @@ void NotificationBell::setUnreadCount(int count)
     setToolTip(count?tr("消息：%1 条未读").arg(count):tr("消息：暂无未读")); setAccessibleName(toolTip()); update(); emit unreadCountChanged(count);
 }
 void NotificationBell::setDotOnly(bool enabled) { m_dotOnly=enabled; update(); }
-QSize NotificationBell::sizeHint() const { const int side=qMax(36,fontMetrics().height()+14); return QSize(side+4,side); }
+QSize NotificationBell::sizeHint() const { const int side=qMax(36,fontMetrics().height()+14); return QSize(side,side); }
 void NotificationBell::paintEvent(QPaintEvent* event)
 {
     ToolButton::paintEvent(event); auto* t=ThemeTokens::instance(); QPainter p(this); p.setRenderHint(QPainter::Antialiasing);
-    const QPointF center=QRectF(rect()).center()+QPointF(0,2);
-    p.setPen(QPen(isEnabled()?t->textPrimary():t->textDisabled(),1.6,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin)); p.setBrush(Qt::NoBrush);
-    QPainterPath bell; bell.moveTo(center+QPointF(-8,5)); bell.cubicTo(center+QPointF(-5,1),center+QPointF(-6,-1),center+QPointF(-5,-5));
-    bell.cubicTo(center+QPointF(-4,-11),center+QPointF(4,-11),center+QPointF(5,-5)); bell.cubicTo(center+QPointF(6,-1),center+QPointF(5,1),center+QPointF(8,5)); bell.closeSubpath(); p.drawPath(bell);
-    p.drawArc(QRectF(center.x()-2.5,center.y()+4,5,5),180*16,180*16);
     if(!m_unread)return;
     const QString text=m_unread>99?QStringLiteral("99+"):QString::number(m_unread);
     QFont badge=font(); badge.setPixelSize(10); badge.setBold(true); p.setFont(badge);

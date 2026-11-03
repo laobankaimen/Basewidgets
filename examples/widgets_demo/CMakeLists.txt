@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
+set(BASEWIDGETS_DEMO_VERSION "${QtAdvancedUI_VERSION}")
 project(widgets_demo)
 
 # Qt dependencies are selected by the root CMakeLists.txt.
@@ -51,4 +52,15 @@ if(UI_DEMO_CHECKS)
     target_sources(widgets_demo PRIVATE DemoChecks.cpp)
     target_link_libraries(widgets_demo PRIVATE Qt${QT_VERSION_MAJOR}::Test)
     target_compile_definitions(widgets_demo PRIVATE UI_DEMO_CHECKS BASEWIDGETS_SOURCE_DIR="${CMAKE_SOURCE_DIR}" BASEWIDGETS_GENERATED_RCC="${BASEWIDGETS_GENERATED_RCC}")
+endif()
+
+target_compile_definitions(widgets_demo PRIVATE BASEWIDGETS_DEMO_VERSION="${BASEWIDGETS_DEMO_VERSION}")
+option(UI_INSTALL_DEMO "Install the demo and Linux desktop integration" OFF)
+if(UI_INSTALL_DEMO)
+    install(TARGETS widgets_demo RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        install(FILES org.basewidgets.demo.desktop DESTINATION share/applications)
+        install(FILES ${CMAKE_SOURCE_DIR}/assets/styles/themes/logo/logo.svg
+            DESTINATION share/icons/hicolor/scalable/apps RENAME org.basewidgets.demo.svg)
+    endif()
 endif()

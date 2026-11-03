@@ -108,6 +108,8 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     QCoreApplication::setOrganizationName("BaseWidgets");
     QCoreApplication::setApplicationName("widgets_demo");
+    QCoreApplication::setApplicationVersion(BASEWIDGETS_DEMO_VERSION);
+    QGuiApplication::setDesktopFileName("org.basewidgets.demo");
     if (app.arguments().contains("--verify")) {
 #ifdef UI_DEMO_CHECKS
         extern int runDemoChecks();
@@ -139,7 +141,13 @@ int main(int argc, char *argv[])
     window->setObjectName("WidgetsDemoMainWindow");
     window->setTitle("basewidgets 组件全面展示");
     // 设置窗口图标（会自动同步到标题栏）
-    window->setWindowIcon(StyleManagerAdapter::instance()->loadThemeAwareSvgIcon(":/styles/themes/logo/logo.svg"));
+    // Window managers request concrete raster sizes; a paint-only icon engine may
+    // advertise no availableSizes and produce an empty _NET_WM_ICON on X11.
+    QIcon applicationIcon;
+    const QIcon logo(":/styles/themes/logo/logo.svg");
+    for(int size:{16,24,32,48,64,128,256})applicationIcon.addPixmap(logo.pixmap(size,size));
+    QApplication::setWindowIcon(applicationIcon);
+    window->setWindowIcon(applicationIcon);
 
     // 创建菜单栏
     auto* contentRoot = new StyledWidget();
@@ -240,16 +248,10 @@ int main(int argc, char *argv[])
     auto* statusBar = new StatusBar(window);
     statusBar->showMessage("basewidgets 组件展示 - 就绪");
     
-    // 添加永久控件
-    auto* networkLabel = new Label("主控 · 演示会话", statusBar);
-    statusBar->addPermanentWidget(networkLabel);
-    
-    auto* progressBar = new ProgressBar(statusBar);
-    progressBar->setRange(0, 100);
-    progressBar->setValue(85);
-    progressBar->setMaximumWidth(150);
-    statusBar->addPermanentWidget(progressBar);
-    
+    statusBar->addIndicator("演示 · 未连接设备",FeedbackTone::Neutral);
+    statusBar->setVersionText("v"+QCoreApplication::applicationVersion());
+    statusBar->setClockVisible(true);
+
     // 状态栏置于底部
     // 先占位，稍后在设置中央内容后再添加
 
@@ -463,7 +465,7 @@ int main(int argc, char *argv[])
     }
     window->show();
     if(!smoke) {
-        workspace->setPrimaryScreen(window->screen());
+        workspace->setPrimaryScreen(WindowPlacement::screenFor(window));
         workspace->setAutomaticSecondaryWindows(true);
     }
     // Reproducible headless smoke test of the real composite pages.
@@ -563,7 +565,7 @@ int main(int argc, char *argv[])
             auto* workspace=window->findChild<MultiScreenWorkspace*>("DemoMultiScreenWorkspace");
             if(workspace) {
                 const QString id="smoke-secondary";
-                auto* auxiliary=workspace->openSecondary(id,window->screen(),"子屏 · 测向 / 数据监控");
+                auto* auxiliary=workspace->openSecondary(id,WindowPlacement::screenFor(window),"子屏 · 测向 / 数据监控");
                 ok=auxiliary && auxiliary->role()==ScreenWindow::Role::Secondary && auxiliary->parentWidget()==nullptr && ok;
                 if(auxiliary) {
                     QApplication::processEvents();
@@ -572,9 +574,9 @@ int main(int argc, char *argv[])
                     auto* source=window->findChild<AdvancedTable*>("RecordingAdvancedTable");
                     ok=shared && source && shared->sourceModel()==source->sourceModel() && ok;
                     if(!captureDir.isEmpty())ok=auxiliary->grab().save(QDir(captureDir).filePath("secondary-workspace.png")) && ok;
-                    ok=workspace->openSecondary(id,window->screen())==auxiliary && ok;
+                    ok=workspace->openSecondary(id,WindowPlacement::screenFor(window))==auxiliary && ok;
                     workspace->closeSecondary(id); ok=!auxiliary->isVisible() && ok;
-                    workspace->openSecondary(id,window->screen()); ok=auxiliary->isVisible() && ok;
+                    workspace->openSecondary(id,WindowPlacement::screenFor(window)); ok=auxiliary->isVisible() && ok;
                     workspace->closeSecondary(id);
                 }
             } else ok=false;

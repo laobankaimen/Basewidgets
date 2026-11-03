@@ -99,13 +99,12 @@ void FramelessDialog::changeEvent(QEvent* event)
 
 void FramelessDialog::showEvent(QShowEvent* event)
 {
+    if (!m_centeredOnce) {
+        m_centeredOnce=true;
+        if(layout())layout()->activate();
+        WindowPlacement::centerOnParent(this);
+    }
     QDialog::showEvent(event);
-    if (m_centeredOnce) return;
-    m_centeredOnce=true;
-    QPointer<FramelessDialog> self(this);
-    QTimer::singleShot(0,this,[self] {
-        if (self && self->isVisible()) WindowPlacement::centerOnParent(self);
-    });
 }
 
 void FramelessDialog::initUI()
@@ -151,7 +150,7 @@ void FramelessDialog::initUI()
         QObject::connect(btnBox, &QDialogButtonBox::accepted, this, &FramelessDialog::okButtonClicked);
         QObject::connect(btnBox, &QDialogButtonBox::rejected, this, &FramelessDialog::cancelButtonClicked);
         auto* btnLayout = new QVBoxLayout(btnWidget);
-        btnLayout->setContentsMargins(16, 12, 16, 16);
+        btnLayout->setContentsMargins(12, 8, 12, 8);
         btnLayout->addWidget(btnBox);
         mainLayout->addWidget(btnWidget);
     }
@@ -232,11 +231,16 @@ bool FramelessDialog::nativeEvent(const QByteArray &eventType, void *message, Na
     {
     case WM_NCCALCSIZE:
     {
-        NCCALCSIZE_PARAMS& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam);
-        if (params.rgrc[0].top != 0)
-            params.rgrc[0].top -= 1;
-
-        *result = WVR_REDRAW;
+        // wParam==FALSE supplies RECT, not NCCALCSIZE_PARAMS.
+        RECT* client=msg->wParam
+            ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam)->rgrc[0]
+            : reinterpret_cast<RECT*>(msg->lParam);
+        if(IsZoomed(msg->hwnd) && !isFullScreen()) {
+            MONITORINFO monitor = {}; monitor.cbSize=sizeof(monitor);
+            if(GetMonitorInfo(MonitorFromWindow(msg->hwnd,MONITOR_DEFAULTTONEAREST),&monitor))
+                *client=monitor.rcWork;
+        }
+        *result = 0;
         return true;
     }
     case WM_NCLBUTTONDBLCLK:

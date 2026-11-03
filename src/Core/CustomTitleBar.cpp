@@ -1,3 +1,4 @@
+#include <basewidgets/Core/WindowPlacement.h>
 #include <basewidgets/Core/CustomTitleBar.h>
 #include <basewidgets/Core/StyleManagerAdapter.h>
 #include <basewidgets/Core/ThemeTokens.h>
@@ -69,19 +70,19 @@ public:
     QIconEngine* clone() const override { return new AvatarIconEngine(m_name,m_image,m_font); }
     void paint(QPainter* painter,const QRect& rectangle,QIcon::Mode mode,QIcon::State) override {
         painter->save(); painter->setRenderHint(QPainter::Antialiasing); painter->setRenderHint(QPainter::SmoothPixmapTransform);
-        const int side=qMin(rectangle.width(),rectangle.height());
+        const int side=qRound(qMin(rectangle.width(),rectangle.height())*.9);
         const QRectF target(rectangle.center().x()-side/2.+.5,rectangle.center().y()-side/2.+.5,side,side);
         QPainterPath clip; clip.addEllipse(target.adjusted(.6,.6,-.6,-.6)); painter->setClipPath(clip,Qt::IntersectClip);
         auto* tokens=ThemeTokens::instance();
         if(mode==QIcon::Disabled)painter->setOpacity(.45);
-        painter->fillRect(target,tokens->primary());
+        painter->fillRect(target,tokens->bg2());
         if(!m_image.isNull()) {
             const int sourceSide=qMin(m_image.width(),m_image.height());
             painter->drawPixmap(target,m_image,QRectF((m_image.width()-sourceSide)/2.,(m_image.height()-sourceSide)/2.,sourceSide,sourceSide));
         } else {
             QTextBoundaryFinder boundary(QTextBoundaryFinder::Grapheme,m_name); const int end=boundary.toNextBoundary();
             QFont font=m_font; font.setPixelSize(qMax(8,qRound(side*.48))); font.setBold(false); painter->setFont(font);
-            painter->setPen(tokens->palette().color(QPalette::HighlightedText));
+            painter->setPen(tokens->textSecondary());
             painter->drawText(target,Qt::AlignCenter,m_name.left(end>0?end:1));
         }
         painter->restore();
@@ -207,14 +208,14 @@ void CustomTitleBar::initUI()
     m_titleLabel->setProperty("title",true);
     auto button=[this](const QString& name,const QString& tooltip) {
         auto* result=new TitleToolButton(this); result->setObjectName(name); result->setToolTip(tooltip); result->setAccessibleName(tooltip);
-        result->setAutoRaise(true); result->setAppearance(ButtonAppearance::Subtle); result->setIconSize(QSize(18,18));
+        result->setAutoRaise(true); result->setAppearance(ButtonAppearance::Subtle); result->setIconSize(QSize(20,20));
         result->setToolButtonStyle(Qt::ToolButtonIconOnly); result->setFocusPolicy(Qt::StrongFocus); return result;
     };
     m_btnMin=button("TitleBarMinButton",tr("最小化")); m_btnMin->setProperty("bwWindowControl","minimize");
     m_btnMax=button("TitleBarMaxButton",tr("最大化")); m_btnMax->setProperty("bwWindowControl","maximize");
     m_btnClose=button("TitleBarCloseButton",tr("关闭")); m_btnClose->setProperty("bwWindowControl","close"); m_btnClose->setAppearance(ButtonAppearance::Danger);
     m_settings=button("TitleBarSettingsButton",tr("设置")); m_settings->setPopupMode(QToolButton::InstantPopup);
-    m_user=button("TitleBarUserButton",tr("用户")); m_user->setPopupMode(QToolButton::InstantPopup); m_user->setIconSize(QSize(22,22));
+    m_user=button("TitleBarUserButton",tr("用户")); m_user->setPopupMode(QToolButton::InstantPopup); m_user->setIconSize(QSize(20,20));
     m_notifications=new NotificationBell(this); m_notifications->setObjectName("TitleBarNotificationButton"); m_notifications->installEventFilter(this);
     m_notificationsOverflow=new QAction(tr("消息中心"),this);
     connect(m_notifications,&QToolButton::clicked,this,&CustomTitleBar::notificationsRequested);
@@ -260,7 +261,7 @@ void CustomTitleBar::addTitleAction(QAction* action,ActionPosition position)
         item.position=position; layoutChildren(); return;
     }
     auto* button=new TitleToolButton(this); button->setAutoRaise(true); button->setAppearance(ButtonAppearance::Subtle);
-    button->setFocusPolicy(Qt::StrongFocus); button->setDefaultAction(action); button->setIconSize(QSize(18,18));
+    button->setFocusPolicy(Qt::StrongFocus); button->setDefaultAction(action); button->setIconSize(QSize(20,20));
     button->setObjectName("TitleBarCustomAction"); m_actions.append({action,button,position});
     connect(action,&QAction::changed,this,[this] { layoutChildren(); });
     connect(action,&QObject::destroyed,this,[this] {
@@ -309,10 +310,10 @@ void CustomTitleBar::layoutChildren()
     m_userOverflow->setMenu(m_user->menu()); m_userOverflow->setEnabled(m_user->isEnabled());
     m_userOverflow->setText(m_userName.isEmpty()?tr("用户"):tr("用户：%1").arg(m_userName));
     m_user->setText(m_userName); m_user->setToolButtonStyle(compact?Qt::ToolButtonIconOnly:Qt::ToolButtonTextBesideIcon);
-    const int userWidth=compact?38:qMin(180,qMax(38,m_user->sizeHint().width()));
+    const int userWidth=compact?36:qMin(180,qMax(36,m_user->sizeHint().width()));
     placeRight(m_user,userWidth,user&&!overflowUser);
     placeRight(m_settings,36,settings&&!overflowSettings);
-    placeRight(m_notifications,40,notifications&&!overflowNotifications);
+    placeRight(m_notifications,36,notifications&&!overflowNotifications);
     // Reserve identity/drag space and an overflow entry before allocating actions.
     // Left actions remain visible with a centered title whenever they fit; right
     // actions keep the existing compact behavior for global search/user controls.
@@ -396,7 +397,7 @@ void CustomTitleBar::focusSearch()
 {
     if(!m_searchVisible || m_profile!=Profile::MainWindow || !isVisible() || !isEnabled())return;
     if(!m_searchEdit->isHidden()) { m_searchEdit->setFocus(Qt::ShortcutFocusReason); m_searchEdit->selectAll(); return; }
-    QScreen* target=m_window?m_window->screen():screen();
+    QScreen* target=m_window?WindowPlacement::screenFor(m_window):WindowPlacement::screenFor(this);
     const QRect available=target?target->availableGeometry():QRect(mapToGlobal(QPoint()),QSize(360,100));
     m_searchPopup->resize(qMin(360,available.width()),m_popupSearchEdit->sizeHint().height()+20);
     QWidget* anchor=m_searchButton->isHidden()?static_cast<QWidget*>(m_more):static_cast<QWidget*>(m_searchButton);
