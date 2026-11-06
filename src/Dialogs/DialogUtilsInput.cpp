@@ -26,10 +26,28 @@ QWidget* createInputBody(QWidget* parent)
     return body;
 }
 
+QLabel* createInputLabel(const QString& text, QWidget* input, QWidget* parent)
+{
+    auto* label = new QLabel(text, parent);
+    label->setObjectName("DialogInputLabel");
+    label->setTextFormat(Qt::PlainText);
+    label->setWordWrap(true);
+    label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    label->setBuddy(input);
+    input->setAccessibleName(text);
+    return label;
+}
+
 } // namespace
 
 QString DialogUtils::inputText(QWidget* parent, const QString& title, const QString& label, const QString& text)
 {
+    return inputText(parent, title, label, text, nullptr);
+}
+
+QString DialogUtils::inputText(QWidget* parent, const QString& title, const QString& label, const QString& text, bool* accepted)
+{
+    if (accepted) *accepted = false;
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
@@ -38,8 +56,8 @@ QString DialogUtils::inputText(QWidget* parent, const QString& title, const QStr
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(8);
 
-    auto* lbl = new QLabel(label, body);
     auto* edit = new QLineEdit(text, body);
+    auto* lbl = createInputLabel(label, edit, body);
     layout->addWidget(lbl);
     layout->addWidget(edit);
 
@@ -47,12 +65,19 @@ QString DialogUtils::inputText(QWidget* parent, const QString& title, const QStr
     dlg.setCustomDialogBtn(true, true);
     QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
     QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
-    if (dlg.exec() == QDialog::Accepted) return edit->text();
-    return QString();
+    const bool submitted = dlg.exec() == QDialog::Accepted;
+    if (accepted) *accepted = submitted;
+    return submitted ? edit->text() : QString();
 }
 
 int DialogUtils::inputInt(QWidget* parent, const QString& title, const QString& label, int value, int min, int max, int step)
 {
+    return inputInt(parent, title, label, value, min, max, step, nullptr);
+}
+
+int DialogUtils::inputInt(QWidget* parent, const QString& title, const QString& label, int value, int min, int max, int step, bool* accepted)
+{
+    if (accepted) *accepted = false;
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
@@ -61,8 +86,8 @@ int DialogUtils::inputInt(QWidget* parent, const QString& title, const QString& 
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(8);
 
-    auto* lbl = new QLabel(label, body);
     auto* spin = new QSpinBox(body);
+    auto* lbl = createInputLabel(label, spin, body);
     spin->setRange(min, max);
     spin->setSingleStep(step);
     spin->setValue(value);
@@ -73,12 +98,19 @@ int DialogUtils::inputInt(QWidget* parent, const QString& title, const QString& 
     dlg.setCustomDialogBtn(true, true);
     QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
     QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
-    if (dlg.exec() == QDialog::Accepted) return spin->value();
-    return value;
+    const bool submitted = dlg.exec() == QDialog::Accepted;
+    if (accepted) *accepted = submitted;
+    return submitted ? spin->value() : value;
 }
 
 double DialogUtils::inputDouble(QWidget* parent, const QString& title, const QString& label, double value, double min, double max, int decimals)
 {
+    return inputDouble(parent, title, label, value, min, max, decimals, nullptr);
+}
+
+double DialogUtils::inputDouble(QWidget* parent, const QString& title, const QString& label, double value, double min, double max, int decimals, bool* accepted)
+{
+    if (accepted) *accepted = false;
     FramelessDialog dlg(true, parent);
     dlg.setTitle(title);
 
@@ -87,8 +119,8 @@ double DialogUtils::inputDouble(QWidget* parent, const QString& title, const QSt
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(8);
 
-    auto* lbl = new QLabel(label, body);
     auto* spin = new QDoubleSpinBox(body);
+    auto* lbl = createInputLabel(label, spin, body);
     spin->setRange(min, max);
     spin->setDecimals(decimals);
     spin->setValue(value);
@@ -99,8 +131,9 @@ double DialogUtils::inputDouble(QWidget* parent, const QString& title, const QSt
     dlg.setCustomDialogBtn(true, true);
     QObject::connect(&dlg, &FramelessDialog::okButtonClicked, &dlg, &QDialog::accept);
     QObject::connect(&dlg, &FramelessDialog::cancelButtonClicked, &dlg, &QDialog::reject);
-    if (dlg.exec() == QDialog::Accepted) return spin->value();
-    return value;
+    const bool submitted = dlg.exec() == QDialog::Accepted;
+    if (accepted) *accepted = submitted;
+    return submitted ? spin->value() : value;
 }
 
 } // namespace basewidgets

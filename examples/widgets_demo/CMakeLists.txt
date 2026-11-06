@@ -46,7 +46,6 @@ set_target_properties(widgets_demo PROPERTIES
     CXX_STANDARD_REQUIRED YES
 )
 
-option(UI_DEMO_CHECKS "Enable widgets_demo --verify (requires Qt Test)" OFF)
 if(UI_DEMO_CHECKS)
     find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Test)
     target_sources(widgets_demo PRIVATE DemoChecks.cpp)

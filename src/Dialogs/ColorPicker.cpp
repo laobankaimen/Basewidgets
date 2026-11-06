@@ -4,6 +4,7 @@
  */
 
 #include "ColorPicker.h"
+#include <basewidgets/Dialogs/ColorPicker.h>
 
 #include <basewidgets/Core/StyleManagerAdapter.h>
 
@@ -826,14 +827,19 @@ void ColorPickerWidget::createPresetColors(QWidget* parent, QVBoxLayout* layout)
     layout->addLayout(grid);
 }
 
-QWidget* ColorPicker::makeColorPickerBody(QWidget* parent, const QColor& initial, QColor* currentOut)
+QWidget* makeColorPickerBody(QWidget* parent, const QColor& initial, QColor* currentOut)
 {
     auto* w = new ColorPickerWidget(parent, initial);
     if (currentOut) *currentOut = w->currentColor();
-    QObject::connect(w, &ColorPickerWidget::colorChanged, [currentOut](const QColor& c){
+    QObject::connect(w, &ColorPickerWidget::colorChanged, w, [currentOut](const QColor& c){
         if (currentOut) *currentOut = c;
     });
     return w;
+}
+
+QWidget* ColorPicker::makeColorPickerBody(QWidget* parent, const QColor& initial, QColor* currentOut)
+{
+    return basewidgets::makeColorPickerBody(parent, initial, currentOut);
 }
 
 } // namespace basewidgets

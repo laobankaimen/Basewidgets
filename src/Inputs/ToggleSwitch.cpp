@@ -55,6 +55,10 @@ void ToggleSwitch::paintEvent(QPaintEvent* e)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
 
+    // Keep the glyph inside and centered in an explicitly enlarged/shrunken widget.
+    const qreal scale=qMin(1.,qMin(width()/qreal(m_w),height()/qreal(m_h)));
+    p.translate((width()-m_w*scale)/2.,(height()-m_h*scale)/2.);
+    p.scale(scale,scale);
     QRectF track(0, 0, m_w, m_h);
     qreal radius = m_h / 2.0;
     QColor trackColor = isEnabled() ? (isChecked() ? m_on : m_off) : ThemeTokens::instance()->borderLight();
@@ -96,7 +100,8 @@ void ToggleSwitch::initSwitch() {
     setCheckable(true);
     setOffset(isChecked() ? 1.0 : 0.0);
     setCursor(Qt::PointingHandCursor);
-    m_anim = new QPropertyAnimation(this, "offset");
+    setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+    m_anim = new QPropertyAnimation(this, "offset", this);
     m_anim->setDuration(120);
     setFocusPolicy(Qt::StrongFocus);
     connect(this, &QAbstractButton::toggled, this, &ToggleSwitch::animateTo);

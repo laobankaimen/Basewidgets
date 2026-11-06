@@ -1,3 +1,7 @@
+#include <basewidgets/Dialogs/ColorPicker.h>
+#include <basewidgets/Inputs/MultiSelectComboBox.h>
+#include <QListView>
+#include <QDoubleSpinBox>
 #include <basewidgets/Containers/LoginWidget.h>
 // 可选的 demo 验证入口（-DUI_DEMO_CHECKS=ON，运行 widgets_demo --verify）。
 // 检查渲染/交互/生命周期，不作为独立测试工程或应用安装依赖。
@@ -839,6 +843,294 @@ private slots:
         { QPainter p(&checked); qApp->style()->drawPrimitive(QStyle::PE_IndicatorCheckBox, &opt, &p); }
         QVERIFY(partial != checked);
         QVERIFY(contrastRatio(partial.pixelColor(8,7), partial.pixelColor(8,4)) >= 3.0);
+    }
+    void publicColorPickerFactoryUpdatesBorrowedOutputAndRespectsOwnership()
+    {
+        QColor current;
+        QPointer<QWidget> body;
+        {
+            QWidget owner;
+            body = basewidgets::makeColorPickerBody(&owner, QColor(17,34,51), &current);
+            QVERIFY(body);
+            QCOMPARE(body->parentWidget(), &owner);
+            QCOMPARE(current.rgba(), QColor(17,34,51).rgba());
+
+            // Drive public Qt child editors, without including the private picker class.
+            const auto editors = body->findChildren<QSpinBox*>();
+            QCOMPARE(editors.size(), 3);
+            editors.at(0)->setValue(64);
+            editors.at(1)->setValue(96);
+            editors.at(2)->setValue(128);
+            QCOMPARE(current, QColor(64,96,128));
+        }
+        QVERIFY(body.isNull()); // The parent owns and destroys the returned body.
+        current = QColor(12,23,34);
+        QApplication::processEvents();
+        QCOMPARE(current, QColor(12,23,34)); // No retained callback after body destruction.
+
+        // No output pointer is required; unparented bodies remain caller-owned.
+        QScopedPointer<QWidget> withoutOutput(
+            basewidgets::makeColorPickerBody(nullptr, QColor(22,44,66), nullptr));
+        QVERIFY(withoutOutput);
+        QVERIFY(!withoutOutput->parentWidget());
+        const auto editors = withoutOutput->findChildren<QSpinBox*>();
+        QCOMPARE(editors.size(), 3);
+        editors.at(0)->setValue(99);
+        withoutOutput.reset();
+        QApplication::processEvents();
+    }
+    void libraryInputDialogsReportAcceptedAndPreserveCancellation()
+    {
+        // 0: unchanged acceptance, 1: cancel button, 2: Escape, 3: window close,
+        // 4: changed acceptance. No business/application service is involved.
+        for (int kind=0; kind<3; ++kind) {
+            for (int finish=0; finish<5; ++finish) {
+                bool accepted=true, inspected=false, labelContract=false, clearedBeforeExec=false;
+                const QString prompt=QStringLiteral("<b>参数(&N)</b> ")+QStringLiteral("长标签用于检查自动换行 ").repeated(16);
+                QTimer::singleShot(0,[&] {
+                    auto* dialog=qobject_cast<FramelessDialog*>(QApplication::activeModalWidget());
+                    if (!dialog) return;
+                    inspected=true; clearedBeforeExec=!accepted;
+                    auto* label=dialog->findChild<QLabel*>("DialogInputLabel");
+                    auto* buttons=dialog->findChild<QDialogButtonBox*>("dialogBtnBox");
+                    QWidget* input=label ? label->buddy() : nullptr;
+                    labelContract=label && input && label->text()==prompt
+                        && label->textFormat()==Qt::PlainText && label->wordWrap()
+                        && label->sizePolicy().horizontalPolicy()==QSizePolicy::Ignored
+                        && input->accessibleName()==prompt
+                        && label->heightForWidth(180)>label->heightForWidth(360);
+                    // Change the draft even when cancelling: it must not escape.
+                    if (finish!=0 && input) {
+                        if (kind==0) qobject_cast<QLineEdit*>(input)->setText("updated");
+                        else if (kind==1) qobject_cast<QSpinBox*>(input)->setValue(23);
+                        else qobject_cast<QDoubleSpinBox*>(input)->setValue(2.5);
+                    }
+                    if (!buttons) { dialog->reject(); return; }
+                    if (finish==1) buttons->button(QDialogButtonBox::Cancel)->click();
+                    else if (finish==2) QTest::keyClick(dialog,Qt::Key_Escape);
+                    else if (finish==3) dialog->close();
+                    else buttons->button(QDialogButtonBox::Ok)->click();
+                });
+                if (kind==0) {
+                    const QString result=DialogUtils::inputText(nullptr,"Input",prompt,QString(),&accepted);
+                    QCOMPARE(result,finish==4 ? QString("updated") : QString());
+                } else if (kind==1) {
+                    const int result=DialogUtils::inputInt(nullptr,"Input",prompt,7,0,100,1,&accepted);
+                    QCOMPARE(result,finish==4 ? 23 : 7);
+                } else {
+                    const double result=DialogUtils::inputDouble(nullptr,"Input",prompt,1.25,0.0,100.0,2,&accepted);
+                    QCOMPARE(result,finish==4 ? 2.5 : 1.25);
+                }
+                QVERIFY(inspected); QVERIFY(labelContract); QVERIFY(clearedBeforeExec);
+                QCOMPARE(accepted,finish==0 || finish==4);
+            }
+        }
+        // Compile and exercise each unchanged legacy overload.
+        const auto cancel=[] {
+            QTimer::singleShot(0,[] {
+                if (auto* dialog=qobject_cast<QDialog*>(QApplication::activeModalWidget())) dialog->reject();
+            });
+        };
+        cancel(); QCOMPARE(DialogUtils::inputText(nullptr,"Input","Value","old"),QString());
+        cancel(); QCOMPARE(DialogUtils::inputInt(nullptr,"Input","Value",7),7);
+        cancel(); QCOMPARE(DialogUtils::inputDouble(nullptr,"Input","Value",1.25),1.25);
+    }
+    void libraryInputDialogBuddyMovesFocus()
+    {
+        bool inspected=false, focused=false, accepted=false;
+        QTimer::singleShot(0,[&] {
+            auto* dialog=qobject_cast<FramelessDialog*>(QApplication::activeModalWidget());
+            if (!dialog) return;
+            inspected=true;
+            auto* label=dialog->findChild<QLabel*>("DialogInputLabel");
+            auto* buttons=dialog->findChild<QDialogButtonBox*>("dialogBtnBox");
+            if (label && label->buddy() && buttons) {
+                dialog->activateWindow();
+                buttons->button(QDialogButtonBox::Cancel)->setFocus();
+                QTest::qWait(1);
+                QTest::keyClick(dialog,Qt::Key_N,Qt::AltModifier);
+                focused=label->buddy()->hasFocus();
+            }
+            dialog->reject();
+        });
+        DialogUtils::inputText(nullptr,"Input",QStringLiteral("名称(&N)"),QString(),&accepted);
+        QVERIFY(inspected); QVERIFY(focused); QVERIFY(!accepted);
+    }
+    void libraryLoginFieldErrorsClearOnRetry()
+    {
+        LoginWidget login;
+        auto* account=login.findChild<QLineEdit*>("LoginAccount");
+        auto* password=login.findChild<QLineEdit*>("LoginPassword");
+        auto* error=login.findChild<QLabel*>("LoginError");
+        auto* submit=login.findChild<QPushButton*>("LoginSubmit");
+        QVERIFY(account); QVERIFY(password); QVERIFY(error); QVERIFY(submit);
+        QSignalSpy request(&login,&LoginWidget::authenticationRequested);
+        submit->click();
+        QCOMPARE(account->accessibleDescription(),error->text());
+        QVERIFY(!account->accessibleDescription().isEmpty());
+        QVERIFY(password->accessibleDescription().isEmpty());
+        login.setAccount("user"); submit->click();
+        QVERIFY(account->accessibleDescription().isEmpty());
+        QCOMPARE(password->accessibleDescription(),error->text());
+        QVERIFY(!password->accessibleDescription().isEmpty());
+        password->setText("secret"); submit->click();
+        QCOMPARE(request.count(),1); QVERIFY(login.isBusy()); QVERIFY(error->isHidden());
+        QVERIFY(account->accessibleDescription().isEmpty());
+        QVERIFY(password->accessibleDescription().isEmpty());
+        login.setError("Authentication service unavailable");
+        QVERIFY(!login.isBusy()); QVERIFY(account->accessibleDescription().isEmpty());
+        QCOMPARE(password->accessibleDescription(),QString("Authentication service unavailable"));
+        submit->click(); QCOMPARE(request.count(),2); QVERIFY(password->accessibleDescription().isEmpty());
+        login.setError("Another failure"); login.setError(QString());
+        QVERIFY(error->isHidden()); QVERIFY(account->accessibleDescription().isEmpty());
+        QVERIFY(password->accessibleDescription().isEmpty());
+    }
+    void multiSelectKeepsDataWhenSelectAllVisibilityChanges()
+    {
+        MultiSelectComboBox combo;
+        combo.setOptions({"Alpha","Beta","Gamma"});
+        combo.setSelectedOptions({"Beta"});
+        QPixmap image(12,12); image.fill(Qt::red);
+        combo.setOptionIcons({{"Beta",QIcon(image)}});
+        combo.setDisabledOptions({"Gamma"});
+        auto* model=qobject_cast<QStandardItemModel*>(combo.model()); QVERIFY(model);
+        auto* beta=model->item(2); beta->setData("business-id",Qt::UserRole+3);
+        QSignalSpy changed(&combo,&MultiSelectComboBox::selectionChanged);
+        combo.setShowSelectAll(false);
+        QCOMPARE(combo.options(),QStringList({"Alpha","Beta","Gamma"}));
+        QCOMPARE(combo.selectedOptions(),QStringList({"Beta"}));
+        QCOMPARE(model->item(1),beta); QVERIFY(!beta->icon().isNull());
+        QCOMPARE(beta->data(Qt::UserRole+3).toString(),QString("business-id"));
+        QVERIFY(!(model->item(2)->flags()&Qt::ItemIsEnabled));
+        combo.setShowSelectAll(true);
+        QCOMPARE(combo.options(),QStringList({"Alpha","Beta","Gamma"}));
+        QCOMPARE(combo.selectedOptions(),QStringList({"Beta"}));
+        QCOMPARE(model->item(2),beta); QVERIFY(!(model->item(3)->flags()&Qt::ItemIsEnabled));
+        QCOMPARE(changed.count(),0);
+        combo.setDisabledOptions({}); QVERIFY(model->item(3)->flags()&Qt::ItemIsEnabled);
+        // Programmatic assignment intentionally bypasses interaction-only limits.
+        combo.setMaxSelection(1); combo.setSelectedOptions({"Alpha","Beta"});
+        QCOMPARE(combo.selectedOptions(),QStringList({"Alpha","Beta"}));
+        combo.setMaxSelection(0); QCOMPARE(combo.selectedOptions().size(),2);
+    }
+    void multiSelectMouseKeyboardAndLimit()
+    {
+        class TestMultiSelect : public MultiSelectComboBox { public: using MultiSelectComboBox::showPopup; using MultiSelectComboBox::hidePopup; };
+        TestMultiSelect combo; combo.setSearchEnabled(false);
+        combo.setOptions({"Alpha","Beta","Disabled"}); combo.setDisabledOptions({"Disabled"});
+        combo.resize(240,36); combo.show(); combo.activateWindow(); combo.showPopup();
+        QTRY_VERIFY(combo.view()->isVisible());
+        auto* model=qobject_cast<QStandardItemModel*>(combo.model()); QVERIFY(model);
+        QSignalSpy changed(&combo,&MultiSelectComboBox::selectionChanged),limit(&combo,&MultiSelectComboBox::selectionLimitReached);
+        auto* popup=combo.view()->window(); QVERIFY(popup->windowHandle());
+        const auto clickRow=[&](int row) {
+            const QPoint position=combo.view()->viewport()->mapTo(popup,combo.view()->visualRect(model->index(row,0)).center());
+            QTest::mouseClick(popup->windowHandle(),Qt::LeftButton,Qt::NoModifier,position);
+        };
+        clickRow(1); QCOMPARE(combo.selectedOptions(),QStringList({"Alpha"}));
+        QCOMPARE(changed.count(),1); QVERIFY(combo.view()->isVisible());
+        clickRow(2); QCOMPARE(combo.selectedOptions(),QStringList({"Alpha","Beta"}));
+        QCOMPARE(changed.count(),2); QVERIFY(combo.view()->isVisible());
+        clickRow(3); QCOMPARE(changed.count(),2); QVERIFY(combo.view()->isVisible());
+        combo.view()->setCurrentIndex(model->index(2,0)); combo.view()->setFocus();
+        QTest::keyClick(combo.view(),Qt::Key_Space);
+        QCOMPARE(combo.selectedOptions(),QStringList({"Alpha"})); QCOMPARE(changed.count(),3);
+        combo.setMaxSelection(1); QTest::keyClick(combo.view(),Qt::Key_Space);
+        QCOMPARE(changed.count(),3); QCOMPARE(limit.count(),1); QVERIFY(combo.view()->isVisible());
+        combo.setDisabledOptions({}); combo.setMaxSelection(0);
+        clickRow(3); QCOMPARE(combo.selectedOptions(),QStringList({"Alpha","Disabled"})); QCOMPARE(changed.count(),4);
+        QTest::keyClick(combo.view(),Qt::Key_Return); QVERIFY(!combo.view()->isVisible()); QVERIFY(combo.lineEdit()->isReadOnly());
+        QCOMPARE(combo.lineEdit()->text(),QString("Alpha, Disabled"));
+        combo.showPopup(); QTRY_VERIFY(combo.view()->isVisible());
+        QTest::keyClick(combo.view(),Qt::Key_Escape); QVERIFY(!combo.view()->isVisible());
+        QCOMPARE(combo.selectedOptions(),QStringList({"Alpha","Disabled"}));
+        combo.showPopup(); QTRY_VERIFY(combo.view()->isVisible());
+        const QPoint outside=popup->mapFromGlobal(combo.mapToGlobal(QPoint(-20,-20)));
+        QTest::mouseClick(popup->windowHandle(),Qt::LeftButton,Qt::NoModifier,outside);
+        QVERIFY(!combo.view()->isVisible()); QVERIFY(combo.lineEdit()->isReadOnly());
+        QCOMPARE(combo.lineEdit()->text(),QString("Alpha, Disabled"));
+    }
+    void multiSelectSearchKeepsKeyboardTargetVisibleAndEnabled()
+    {
+        class TestMultiSelect : public MultiSelectComboBox { public: using MultiSelectComboBox::showPopup; using MultiSelectComboBox::hidePopup; };
+        TestMultiSelect combo; combo.setOptions({"Alpha","Beta","Bravo"});
+        combo.setDisabledOptions({"Beta"}); combo.resize(240,36); combo.show(); combo.showPopup();
+        QTRY_VERIFY(combo.view()->isVisible());
+        auto* model=qobject_cast<QStandardItemModel*>(combo.model()); QVERIFY(model);
+        QCOMPARE(combo.view()->currentIndex().data().toString(),QString("Alpha"));
+        QSignalSpy changed(&combo,&MultiSelectComboBox::selectionChanged);
+        combo.lineEdit()->setText("B");
+        QCOMPARE(combo.view()->currentIndex().data().toString(),QString("Bravo"));
+        combo.view()->setFocus(); QTest::keyClick(combo.view(),Qt::Key_Space);
+        QCOMPARE(combo.selectedOptions(),QStringList({"Bravo"})); QCOMPARE(changed.count(),1);
+        combo.lineEdit()->setText("no matching option"); QVERIFY(!combo.view()->currentIndex().isValid());
+        combo.view()->setFocus(); QTest::keyClick(combo.view(),Qt::Key_Space);
+        QCOMPARE(combo.selectedOptions(),QStringList({"Bravo"})); QCOMPARE(changed.count(),1);
+        combo.lineEdit()->setText("Beta"); QVERIFY(!combo.view()->currentIndex().isValid());
+        combo.setDisabledOptions({}); QCOMPARE(combo.view()->currentIndex().data().toString(),QString("Beta"));
+        combo.view()->setFocus(); QTest::keyClick(combo.view(),Qt::Key_Space);
+        QCOMPARE(combo.selectedOptions(),QStringList({"Beta","Bravo"})); QCOMPARE(changed.count(),2);
+        combo.hidePopup(); combo.setDisabledOptions({"Alpha","Beta","Bravo"});
+        combo.setSelectedOptions({"Alpha","Beta","Bravo"});
+        QCOMPARE(model->item(0)->checkState(),Qt::Unchecked); // No enabled options do not imply "all selected".
+        combo.setSearchEnabled(false); combo.showPopup(); QTRY_VERIFY(combo.view()->isVisible());
+        QVERIFY(!combo.view()->currentIndex().isValid()); changed.clear();
+        combo.view()->setFocus(); QTest::keyClick(combo.view(),Qt::Key_Space); QCOMPARE(changed.count(),0);
+        combo.hidePopup();
+    }
+    void multiSelectSearchModeRestoresAfterClose()
+    {
+        class TestMultiSelect : public MultiSelectComboBox { public: using MultiSelectComboBox::showPopup; using MultiSelectComboBox::hidePopup; };
+        TestMultiSelect combo; combo.setOptions({"Alpha","Beta"}); combo.setSelectedOptions({"Beta"});
+        combo.resize(240,36); combo.show(); combo.showPopup(); QTRY_VERIFY(combo.view()->isVisible());
+        auto* list=qobject_cast<QListView*>(combo.view()); QVERIFY(list);
+        QVERIFY(!combo.lineEdit()->isReadOnly()); combo.lineEdit()->setText("Alpha");
+        QVERIFY(list->isRowHidden(0)); QVERIFY(!list->isRowHidden(1)); QVERIFY(list->isRowHidden(2));
+        // Toggling the special row preserves the active query and selected item.
+        combo.setShowSelectAll(false); QCOMPARE(combo.lineEdit()->text(),QString("Alpha"));
+        QCOMPARE(combo.selectedOptions(),QStringList({"Beta"})); QVERIFY(!list->isRowHidden(0)); QVERIFY(list->isRowHidden(1));
+        combo.setShowSelectAll(true); QCOMPARE(combo.lineEdit()->text(),QString("Alpha"));
+        combo.setSearchEnabled(false); QVERIFY(combo.lineEdit()->isReadOnly()); QCOMPARE(combo.lineEdit()->text(),QString("Beta"));
+        for(int row=0;row<combo.count();++row)QVERIFY(!list->isRowHidden(row));
+        combo.hidePopup(); QVERIFY(combo.lineEdit()->isReadOnly()); QCOMPARE(combo.lineEdit()->text(),QString("Beta"));
+        combo.setSearchEnabled(true); combo.showPopup(); QTRY_VERIFY(combo.view()->isVisible());
+        QVERIFY(!combo.lineEdit()->isReadOnly()); QVERIFY(combo.lineEdit()->text().isEmpty());
+        combo.lineEdit()->setText("Beta"); QVERIFY(list->isRowHidden(1));
+        QTest::keyClick(combo.lineEdit(),Qt::Key_Escape); QVERIFY(!combo.view()->isVisible());
+        QCOMPARE(combo.lineEdit()->text(),QString("Beta")); QVERIFY(combo.lineEdit()->isReadOnly());
+        for(int row=0;row<combo.count();++row)QVERIFY(!list->isRowHidden(row));
+        combo.showPopup(); QTRY_VERIFY(combo.view()->isVisible());
+        combo.lineEdit()->setText("Alpha");
+        QTest::keyClick(combo.lineEdit(),Qt::Key_Return); QVERIFY(!combo.view()->isVisible());
+        QCOMPARE(combo.lineEdit()->text(),QString("Beta")); QVERIFY(combo.lineEdit()->isReadOnly());
+    }
+    void toggleSwitchOwnsAnimationAndCentersInAllocatedSpace()
+    {
+        auto* toggle=new ToggleSwitch;
+        QPointer<QPropertyAnimation> animation=toggle->findChild<QPropertyAnimation*>();
+        QVERIFY(animation); QCOMPARE(animation->parent(),toggle);
+        QCOMPARE(toggle->sizePolicy().horizontalPolicy(),QSizePolicy::Fixed);
+        toggle->resize(120,60); toggle->setOffColor(QColor("#ff0000"));
+        toggle->setKnobColor(QColor("#ff0000")); toggle->show();
+        QTest::qWait(10);
+        auto redBounds=[](const QImage& image) {
+            QRect result;
+            for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x) {
+                const auto c=image.pixelColor(x,y);
+                if(c.red()>220 && c.green()<30 && c.blue()<30)result=result.united(QRect(x,y,1,1));
+            }
+            return result;
+        };
+        const auto first=render(*toggle); const QRect glyph=redBounds(first);
+        QVERIFY(!glyph.isEmpty()); QVERIFY(qAbs(glyph.center().x()-first.rect().center().x())<=1);
+        QVERIFY(qAbs(glyph.center().y()-first.rect().center().y())<=1);
+        // An explicit color setter must repaint even when the state stays unchecked.
+        toggle->setOffColor(Qt::green); toggle->setKnobColor(Qt::green);
+        QTest::qWait(10); QVERIFY(redBounds(render(*toggle)).isEmpty());
+        toggle->setChecked(true); QTRY_VERIFY(toggle->property("offset").toReal()>.99);
+        toggle->setLayoutDirection(Qt::RightToLeft); QVERIFY(!render(*toggle).isNull());
+        toggle->resize(22,12); QVERIFY(!render(*toggle).isNull());
+        delete toggle; QVERIFY(animation.isNull());
     }
     void buttonAndSwitchKeyboard()
     {

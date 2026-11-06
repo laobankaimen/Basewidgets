@@ -2,7 +2,7 @@
 
 [文档首页](../README.md) · [快速入门](getting-started.md)
 
-要求 CMake 3.16+、C++14、Qt 5.11+。公共模块为 Core、Gui、Widgets、PrintSupport、Svg；Linux 固定使用 Qt5，并依赖 X11Extras/X11。非 Linux 可选择 Qt5/Qt6，应用与库须采用兼容的 Qt 版本和工具链。
+要求 CMake 3.16+、C++14、Qt ≥ 5.11 且 < 6。公共模块为 Core、Gui、Widgets、PrintSupport、Svg；所有平台固定使用 Qt5；Linux 依赖 X11Extras/X11。目标为 Windows 10/11、Ubuntu/KylinOS/UOS，Wayland 非必需。应用与库须采用兼容的 Qt 版本和工具链。
 
 ## 构建选项
 
@@ -22,9 +22,11 @@ cmake --build build --parallel 4
 | `BASEWIDGETS_HOST_RESOURCE_BUILDER` | 空 | 交叉编译时指定宿主资源生成器 |
 | `BASEWIDGETS_INSTALL_TO_SYSTEM_PREFIX` | OFF | 允许配置默认系统安装前缀；默认改用构建目录安装树 |
 
-当前库目标为 SHARED，`ACSS_BUILD_STATIC` 不切换该目标。检查开关为 `UI_DEMO_CHECKS`，不是 `UI_BUILD_TESTS`。可选 `UI_ENABLE_PLUGIN_RELEASE` 依赖仓库外的插件发布工程，常规接入保持 OFF。
+导出目标传播 `cxx_std_14`，消费端自动继承所需语言标准。安装包要求不低于构建库时的 Qt 版本，并拒绝不兼容的预加载 Qt Core target；源码支持 5.11 不表示用 5.15 编译的二进制可运行于 5.11。
 
-Qt 差异通过 `QT_VERSION_CHECK` 处理：5.12 正则/占位色、5.14 split 枚举/DPI 策略、5.15 系统拖动/缩放以及 Qt6 返回类型/编码。5.11 屏幕查询使用 `WindowPlacement::screenFor`。构建不同 Qt 版本时使用独立构建目录，避免缓存混用；不能因 Linux 构建成功而假定 Windows/Qt6 行为一致。
+当前库目标为 SHARED，`ACSS_BUILD_STATIC` 不切换该目标。检查开关为 `UI_DEMO_CHECKS`，不是 `UI_BUILD_TESTS`；它要求 `UI_BUILD_EXAMPLES=ON`，无效组合在配置期报错。可选 `UI_ENABLE_PLUGIN_RELEASE` 依赖仓库外的插件发布工程，常规接入保持 OFF。
+
+Qt 差异通过 `QT_VERSION_CHECK` 处理：5.12 正则/占位色、5.14 split 枚举/DPI 策略、5.15 系统拖动/缩放；源文件中的 Qt6 兼容分支不表示支持矩阵包含 Qt6。5.11 屏幕查询使用 `WindowPlacement::screenFor`。构建不同 Qt 版本时使用独立构建目录，避免缓存混用；不能因 Linux 构建成功而假定 其他目标桌面行为一致。
 
 ## 自动资源构建
 

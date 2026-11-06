@@ -52,10 +52,16 @@ public:
     static void messageSuccess(QWidget* parent, const QString& title, const QString& text);
     static bool askQuestion(QWidget* parent, const QString& title, const QString& text);
 
-    // Input dialogs
+    // Input dialogs: labels are plain text and support keyboard buddies.
+    // Existing overloads preserve their cancellation values: empty text or the
+    // original numeric value. Use accepted to distinguish cancellation from a
+    // successful empty/unchanged value; it is false for Escape/window close too.
     static QString inputText(QWidget* parent, const QString& title, const QString& label, const QString& text = QString());
+    static QString inputText(QWidget* parent, const QString& title, const QString& label, const QString& text, bool* accepted);
     static int inputInt(QWidget* parent, const QString& title, const QString& label, int value = 0, int min = 0, int max = 100, int step = 1);
+    static int inputInt(QWidget* parent, const QString& title, const QString& label, int value, int min, int max, int step, bool* accepted);
     static double inputDouble(QWidget* parent, const QString& title, const QString& label, double value = 0.0, double min = 0.0, double max = 100.0, int decimals = 2);
+    static double inputDouble(QWidget* parent, const QString& title, const QString& label, double value, double min, double max, int decimals, bool* accepted);
 };
 
 } // namespace basewidgets

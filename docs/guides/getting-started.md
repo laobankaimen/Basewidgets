@@ -8,11 +8,11 @@
 |---|---|
 | CMake | 3.16+，以根 CMakeLists.txt 为准 |
 | C++ | C++14 |
-| Linux | 构建选择 Qt 5.11+；Core、Gui、Widgets、PrintSupport、Svg、X11Extras 和 X11 开发依赖 |
-| 非 Linux | CMake 尝试 Qt5，再尝试 Qt6；Windows 的原生窗口代码仍需对应编译器/Qt 组合验证 |
+| Linux | Ubuntu/KylinOS/UOS，Qt 5.11～5.15，X11 优先；Core、Gui、Widgets、PrintSupport、Svg、X11Extras 和 X11 开发依赖 |
+| Windows | Windows 10/11、Qt 5.11～5.15；原生窗口代码按对应编译器/Qt 组合验证 |
 | Qt Test | 普通构建不需要；只有 `UI_DEMO_CHECKS=ON` 时使用 |
 
-配置时通过 `-DCMAKE_PREFIX_PATH=/path/to/Qt` 指定 Qt 安装前缀。Linux 不会因旧的 Qt6 缓存而切到 Qt6，完整选项见[构建与发布](installation.md)。
+配置时通过 `-DCMAKE_PREFIX_PATH=/path/to/Qt` 指定 Qt 安装前缀。根工程固定查找 Qt5，不自动回退 Qt6，完整选项见[构建与发布](installation.md)。
 
 ## 构建与运行
 

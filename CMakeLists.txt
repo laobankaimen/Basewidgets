@@ -12,29 +12,35 @@ set(CMAKE_AUTOUIC ON)
 # Options
 option(ACSS_BUILD_STATIC "Build ACSS as static library" OFF)
 option(UI_BUILD_EXAMPLES "Build Qt Advanced UI examples" ON)
+option(UI_DEMO_CHECKS "Enable widgets_demo --verify (requires Qt Test)" OFF)
 option(UI_ENABLE_PLUGIN_RELEASE "Enable legacy plugin release workflow" OFF)
 option(UI_ENABLE_CPACK "Enable CPack packaging targets" ON)
+
+if(UI_DEMO_CHECKS AND NOT UI_BUILD_EXAMPLES)
+    message(FATAL_ERROR "UI_DEMO_CHECKS requires UI_BUILD_EXAMPLES=ON.")
+endif()
 
 # MSVC UTF-8 source encoding
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
-# Select Qt once for the library, examples, tools, and exported package.
-# Linux window integration uses QX11Info from Qt5 X11Extras. A cached QT_DIR
-# may still point to Qt6, so do not use the versionless lookup on Linux.
+# The public support matrix is Qt >= 5.11 and < 6 on Windows/Linux.
 set(_basewidgets_qt_components Core Gui Widgets PrintSupport Svg)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(Qt5 5.11 REQUIRED COMPONENTS ${_basewidgets_qt_components} X11Extras)
-    set(QT_VERSION_MAJOR 5)
-    find_package(X11 REQUIRED)
-else()
-    find_package(QT NAMES Qt5 Qt6 REQUIRED COMPONENTS ${_basewidgets_qt_components})
-    if(QT_VERSION_MAJOR EQUAL 5)
-        find_package(Qt5 5.11 REQUIRED COMPONENTS ${_basewidgets_qt_components})
-    else()
-        find_package(Qt6 REQUIRED COMPONENTS ${_basewidgets_qt_components})
-    endif()
+    list(APPEND _basewidgets_qt_components X11Extras)
 endif()
-message(STATUS "BaseWidgets: Using Qt${QT_VERSION_MAJOR} (${Qt${QT_VERSION_MAJOR}_DIR})")
+find_package(Qt5 5.11 REQUIRED COMPONENTS ${_basewidgets_qt_components})
+set(QT_VERSION_MAJOR 5)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(X11 REQUIRED)
+endif()
+set(BASEWIDGETS_QT_VERSION "${Qt5Core_VERSION}")
+if(NOT BASEWIDGETS_QT_VERSION)
+    set(BASEWIDGETS_QT_VERSION "${Qt5Core_VERSION_STRING}")
+endif()
+if(NOT BASEWIDGETS_QT_VERSION)
+    message(FATAL_ERROR "Cannot determine the build-time Qt Core version for the installed package.")
+endif()
+message(STATUS "BaseWidgets: Using Qt5 ${BASEWIDGETS_QT_VERSION} (${Qt5_DIR})")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 if(UI_ENABLE_PLUGIN_RELEASE)

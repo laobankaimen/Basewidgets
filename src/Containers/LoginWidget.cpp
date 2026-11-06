@@ -32,19 +32,21 @@ void LoginWidget::setBusy(bool busy)
     m_busy=busy; m_account->setEnabled(!busy); m_password->setEnabled(!busy); m_reveal->setEnabled(!busy); m_submit->setEnabled(!busy); m_submit->setText(busy?tr("正在登录…"):tr("登录"));
     if(busy)m_reveal->setChecked(false);
 }
-void LoginWidget::setError(const QString& message)
+void LoginWidget::setError(const QString& message) { showError(message,m_password); }
+void LoginWidget::showError(const QString& message,QLineEdit* field)
 {
     setBusy(false); m_error->setText(message); m_error->setVisible(!message.isEmpty());
-    m_password->setAccessibleDescription(message);
-    if(!message.isEmpty()) { m_password->setFocus(); m_password->selectAll(); }
+    m_account->setAccessibleDescription(QString());
+    m_password->setAccessibleDescription(QString());
+    if(!message.isEmpty()) { field->setAccessibleDescription(message); field->setFocus(); field->selectAll(); }
 }
 void LoginWidget::clearPassword() { m_reveal->setChecked(false); m_password->clear(); }
 void LoginWidget::submit()
 {
     if(m_busy)return;
-    if(account().isEmpty()) { setError(tr("请输入账号。")); m_account->setFocus(); return; }
+    if(account().isEmpty()) { showError(tr("请输入账号。"),m_account); return; }
     if(m_password->text().isEmpty()) { setError(tr("请输入密码。")); return; }
-    m_error->clear(); m_error->hide(); setBusy(true);
+    setError(QString()); setBusy(true);
     emit authenticationRequested(account(),m_password->text());
 }
 }

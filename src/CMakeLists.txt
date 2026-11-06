@@ -238,6 +238,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     )
 endif()
 
+# Public headers require C++14, including installed consumers.
+target_compile_features(BaseWidgets PUBLIC cxx_std_14)
+
 # C++ standard
 set_target_properties(BaseWidgets PROPERTIES
     CXX_STANDARD 14

@@ -174,7 +174,7 @@ QObject::connect(empty, &basewidgets::EmptyState::actionRequested,
 
 ## 登录与状态栏
 
-`LoginWidget` 是可嵌入页面或对话框的 Qt Widgets 控件，最低 Qt 5.11。必填校验后发出 `authenticationRequested(account, password)`，同时进入 busy 状态；账号去除两端空白，密码原样传递。等待期间防止再次提交并恢复密码隐藏。
+`LoginWidget` 是可嵌入页面或对话框的 Qt Widgets 控件，最低 Qt 5.11。必填校验后发出 `authenticationRequested(account, password)`，同时进入 busy 状态；账号去除两端空白，密码原样传递。等待期间防止再次提交并恢复密码隐藏。空账号或密码的本地错误关联对应字段；有效提交及清空错误时同步清除可见错误和辅助描述。`setError` 保留将业务错误关联密码并聚焦该框的兼容行为。
 
 ```cpp
 #include <basewidgets/Containers/LoginWidget.h>

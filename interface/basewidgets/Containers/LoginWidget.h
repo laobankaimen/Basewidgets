@@ -17,12 +17,15 @@ public:
     QString account() const;
     void setBusy(bool busy);
     bool isBusy() const { return m_busy; }
+    /** Show a caller-provided error and focus the password; empty text clears
+     * the visible error and field descriptions without moving focus. */
     void setError(const QString& message);
     void clearPassword();
 signals:
     void authenticationRequested(const QString& account,const QString& password);
 private:
     void submit();
+    void showError(const QString& message, QLineEdit* field);
     QLineEdit* m_account=nullptr;
     QLineEdit* m_password=nullptr;
     QLabel* m_error=nullptr;

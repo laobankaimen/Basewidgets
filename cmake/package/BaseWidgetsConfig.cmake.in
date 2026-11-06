@@ -2,14 +2,25 @@
 
 include(CMakeFindDependencyMacro)
 
-if("@QT_VERSION_MAJOR@" STREQUAL "5")
-    find_dependency(Qt5 5.11 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
-else()
-    find_dependency(Qt6 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
+# Qt config files can silently reuse existing imported targets. Do not accept
+# an older preloaded Qt for a binary built with a newer Qt.
+if(TARGET Qt5::Core)
+    set(_basewidgets_loaded_qt "${Qt5Core_VERSION}")
+    if(NOT _basewidgets_loaded_qt)
+        set(_basewidgets_loaded_qt "${Qt5Core_VERSION_STRING}")
+    endif()
+    if(NOT _basewidgets_loaded_qt OR _basewidgets_loaded_qt VERSION_LESS "@BASEWIDGETS_QT_VERSION@")
+        set(BaseWidgets_FOUND FALSE)
+        set(BaseWidgets_NOT_FOUND_MESSAGE
+            "BaseWidgets requires Qt5 >= @BASEWIDGETS_QT_VERSION@; the existing Qt5::Core target reports '${_basewidgets_loaded_qt}'. Select a matching Qt first.")
+        unset(_basewidgets_loaded_qt)
+        return()
+    endif()
+    unset(_basewidgets_loaded_qt)
 endif()
-
+find_dependency(Qt5 @BASEWIDGETS_QT_VERSION@ REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg)
 if("@CMAKE_SYSTEM_NAME@" STREQUAL "Linux")
-    find_dependency(Qt5 REQUIRED COMPONENTS X11Extras)
+    find_dependency(Qt5 @BASEWIDGETS_QT_VERSION@ REQUIRED COMPONENTS X11Extras)
     find_dependency(X11 REQUIRED)
 endif()
 

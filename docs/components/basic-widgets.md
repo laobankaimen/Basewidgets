@@ -25,7 +25,7 @@ toggle->setCheckable(true);
 
 ![按钮状态](../images/button-states.png)
 
-CheckBox 支持三态；RadioButton 保留 Qt 排他逻辑。ToggleSwitch 使用 toggled 驱动动画，键盘和程序设置均生效。BusyIndicator 隐藏时停止内部动画计时，显式颜色不会被主题切换覆盖。
+CheckBox 支持三态；RadioButton 保留 Qt 排他逻辑。ToggleSwitch 使用 toggled 驱动由控件持有的动画，键盘和程序设置均生效。默认固定尺寸策略，分配更大区域时居中、较小区域时缩入边界；整个控件区域可点击。颜色 setter 立即请求重绘，覆盖在下一次主题切换/`updateColors()` 时恢复。BusyIndicator 隐藏时停止内部动画计时，显式颜色不会被主题切换覆盖。
 
 ToolButton 保留 InstantPopup、DelayedPopup 和 MenuButtonPopup；文字按钮预留菜单箭头，分离按钮共用绘制/命中几何。标题栏的紧凑纯图标菜单入口有专门绘制，见[标题栏](title-bar.md)。
 
@@ -34,6 +34,14 @@ ToolButton 保留 InstantPopup、DelayedPopup 和 MenuButtonPopup；文字按钮
 DateRangePicker 默认“今天”，可选择时间和时区。`setRange` 无效输入保持原值，反序规范为 start≤end，批量更新只发一次 rangeChanged。改变时区按显示的当地墙钟时间解释；`includeTime=false` 返回午夜时间，不代表自动覆盖一整天的结束边界。
 
 LineEdit、TextEdit、PlainTextEdit、ComboBox、SpinBox 等沿用 Qt 输入/编辑行为；不要再为局部控件注入 QSS。
+
+## 多选下拉框
+
+`MultiSelectComboBox` 内部持有选项模型。`setOptions` 替换选项并清除选择；`setShowSelectAll` 只增删“全选”入口，保留已有项目、选择、图标、禁用状态和自定义数据。`setDisabledOptions` 双向更新可操作状态，解除禁用后可再次选择。
+
+鼠标点击或列表 Space 切换选择并保持弹层打开；Enter、Escape 或外点关闭，保留已立即作出的选择。搜索只过滤展示，关闭弹层或关闭搜索会清除过滤、恢复只读选择摘要。用户实际选择变化发一次 `selectionChanged`；禁用项或上限阻止的操作不误发变更。
+
+`setSelectedOptions` 是程序恢复值入口，可包含禁用项且不受交互选择上限限制，每次调用发 `selectionChanged`。`setMaxSelection(0)` 表示不限制；改变上限不会截断已有选择。不要替换该复合控件的内部 model/view/lineEdit，设置选项使用公开 API。
 
 ## 视图与布局
 
@@ -69,7 +77,20 @@ bool accepted = false;
 const QFont font = basewidgets::DialogUtils::pickFont(parent, QFont(), &accepted);
 ```
 
-取消约定：文件/目录/文本返回空值，多文件返回空列表；pickColor 取消时返回有效初始色或最近选择色；pickFont 通过 bool* 区分。inputInt/inputDouble 取消时返回输入默认值，因此无法仅用返回值区分“取消”和“确认默认值”；颜色/文本/数值输入若需要明确接受状态，应使用自建 FramelessDialog。
+取消约定：文件/目录/文本返回空值，多文件返回空列表；pickColor 返回有效初始色或最近选择色；pickFont 使用 bool* 区分。原 inputInt/inputDouble 重载取消时返回输入默认值，原签名继续有效。需要区分“取消”“确认空值”“确认原值”时使用新增末尾 `bool* accepted` 的重载：
+
+```cpp
+bool accepted = false;
+const QString value = basewidgets::DialogUtils::inputText(
+    parent, "编辑名称", "名称(&N)", QString(), &accepted);
+if (accepted) { /* 空字符串也是有效提交，应用自行校验。 */ }
+const int count = basewidgets::DialogUtils::inputInt(
+    parent, "数量", "数量(&C)", 10, 0, 100, 1, &accepted);
+```
+
+Escape、取消按钮、标题关闭均返回 `accepted=false`；标签按纯文本显示、自动换行，支持 buddy 和输入框辅助名称。需要业务校验后才关闭时，使用下方 FramelessDialog。
+
+可嵌入颜色选择器使用公开 `Dialogs/ColorPicker.h` 的 `makeColorPickerBody(parent, initial, currentOut)`，返回 QWidget，父对象管理生命周期。`currentOut` 可为空；非空时先写入初始颜色，再随编辑实时更新，存储必须活到控件销毁以后。颜色可能以 RGB/HSV 形式返回，比较显示色时使用 `rgba()`/`toRgb()`；这是实时预览，不提供确认/取消，回滚由调用方负责。
 
 最近颜色与颜色历史保留在进程内静态状态，不自动持久化到下一次启动。需要跨启动保存时由应用负责。
 

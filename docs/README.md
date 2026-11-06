@@ -2,13 +2,13 @@
 
 [项目首页](../README.md)
 
-文档只维护当前设计与使用方法。函数签名以 `interface/basewidgets/` 为准；组件示例位于 `examples/widgets_demo/`。
+本项目以对外控件和组件为核心，demo 仅示例与自检。文档只维护当前设计与使用方法。函数签名以 `interface/basewidgets/` 为准；组件示例位于 `examples/widgets_demo/`。
 
 ## 设计与接入
 
 | 文档 | 内容 |
 |---|---|
-| [界面设计规范](design.md) | 视觉层级、交互状态、布局、数据反馈与组件边界 |
+| [组件库 UI 设计规范](design.md) | 支持范围、接口契约、状态矩阵、视觉尺寸及验收入口 |
 | [快速入门](guides/getting-started.md) | 环境、最小应用、线程与所有权 |
 | [构建、安装与接入](guides/installation.md) | 构建选项、Qt 兼容、find_package、Linux 桌面入口和打包 |
 | [主题与资源](guides/themes-and-resources.md) | 配色角色、切换/外部覆盖、SVG 与 DPI |

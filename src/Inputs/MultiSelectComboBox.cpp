@@ -11,6 +11,10 @@
 #include <QEvent>
 #include <QKeyEvent>
 #include <QTimer>
+#include <QMouseEvent>
+#include <QPointer>
+#include <QSignalBlocker>
+#include <QCoreApplication>
 
 using namespace acss;
 
@@ -38,19 +42,9 @@ MultiSelectComboBox::MultiSelectComboBox(QWidget* parent)
     setInsertPolicy(QComboBox::NoInsert);
     setStyleManager(StyleManagerAdapter::instance());
     initModel();
-    // Toggle item check state when pressed；保持弹层不关闭
-    QObject::connect(view(), &QAbstractItemView::pressed, [this](const QModelIndex& idx){
-        toggleItem(idx.row());
-        // 弹层开启期间不刷新文本，避免搜索框被覆盖
-        if (!m_popupOpen) updateDisplayText();
-        emit selectionChanged(selectedOptions());
-    });
-    // 防止选择行为改变当前索引导致关闭：禁用选择、禁用编辑
-    /*if (view()) {
-        view()->setSelectionMode(QAbstractItemView::NoSelection);
-        view()->setEditTriggers(QAbstractItemView::NoEditTriggers);
-        if (view()->viewport()) view()->viewport()->installEventFilter(this);
-    }*/
+    view()->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    view()->installEventFilter(this);
+    view()->viewport()->installEventFilter(this);
 }
 
 MultiSelectComboBox::~MultiSelectComboBox() = default;
@@ -73,10 +67,8 @@ void MultiSelectComboBox::setOptions(const QStringList& options)
 {
     auto* m = ensureModel(this);
     // preserve select-all at row 0 if enabled
-    int startRow = 0;
     if (m_showSelectAll) {
         m->removeRows(1, m->rowCount() - 1);
-        startRow = 1;
     } else {
         m->clear();
     }
@@ -123,12 +115,7 @@ void MultiSelectComboBox::setSelectedOptions(const QStringList& selected)
         QStandardItem* it = m->item(r);
         it->setCheckState(selected.contains(it->text()) ? Qt::Checked : Qt::Unchecked);
     }
-    if (m_showSelectAll) {
-        // update Select All state
-        bool allChecked = true;
-        for (int r = 1; r < m->rowCount(); ++r) allChecked &= (m->item(r)->checkState() == Qt::Checked);
-        if (m->rowCount() > 0) m->item(0)->setCheckState(allChecked ? Qt::Checked : Qt::Unchecked);
-    }
+    updateSelectAllState();
     updateDisplayText();
     emit selectionChanged(selectedOptions());
 }
@@ -143,8 +130,51 @@ void MultiSelectComboBox::setJoinSelectedText(bool join, const QString& delim)
 void MultiSelectComboBox::setShowSelectAll(bool show)
 {
     if (m_showSelectAll == show) return;
+    auto* m = ensureModel(this);
+    const QString query = lineEdit() ? lineEdit()->text() : QString();
     m_showSelectAll = show;
-    initModel();
+    // Only alter the special row; retained items keep their data, icons and checks.
+    {
+        const QSignalBlocker blocker(lineEdit());
+        if (show) {
+            auto* all = new QStandardItem(tr("全选"));
+            all->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsUserCheckable);
+            all->setCheckable(true);
+            m->insertRow(0, all);
+            updateSelectAllState();
+        } else if (m->rowCount() > 0) {
+            m->removeRow(0);
+        }
+        if (m_popupOpen && m_searchEnabled && lineEdit()) lineEdit()->setText(query);
+        else updateDisplayText();
+    }
+    filterOptions(m_popupOpen && m_searchEnabled ? query : QString());
+}
+
+void MultiSelectComboBox::updateSelectAllState()
+{
+    auto* m = qobject_cast<QStandardItemModel*>(model());
+    if (!m || !m_showSelectAll || m->rowCount() == 0) return;
+    bool anyEnabled = false;
+    bool allChecked = true;
+    for (int r = 1; r < m->rowCount(); ++r) {
+        auto* item = m->item(r);
+        if (!item || !(item->flags() & Qt::ItemIsEnabled)) continue;
+        anyEnabled = true;
+        allChecked &= item->checkState() == Qt::Checked;
+    }
+    m->item(0)->setCheckState(anyEnabled && allChecked ? Qt::Checked : Qt::Unchecked);
+}
+
+void MultiSelectComboBox::activateItem(int row)
+{
+    const QStringList before = selectedOptions();
+    const QPointer<MultiSelectComboBox> guard(this);
+    toggleItem(row);
+    if (!guard) return; // A selectionLimitReached receiver may destroy the widget.
+    const QStringList after = selectedOptions();
+    if (!m_popupOpen || !m_searchEnabled) updateDisplayText();
+    if (after != before) emit selectionChanged(after);
 }
 
 void MultiSelectComboBox::toggleItem(int row)
@@ -152,7 +182,7 @@ void MultiSelectComboBox::toggleItem(int row)
     auto* m = qobject_cast<QStandardItemModel*>(model());
     if (!m || row < 0 || row >= m->rowCount()) return;
     QStandardItem* it = m->item(row);
-    if (!it->isCheckable()) return;
+    if (!it || !it->isCheckable() || !(it->flags() & Qt::ItemIsEnabled)) return;
     // 禁用项不允许切换
     if (m_disabledOptions.contains(it->text())) return;
     // Select All row
@@ -173,20 +203,13 @@ void MultiSelectComboBox::toggleItem(int row)
                     child->setCheckState(Qt::Unchecked);
                 }
             }
-            emit selectionLimitReached(m_maxSelection);
         } else {
             setAllChecked(target);
         }
-        // 根据实际是否全部（非禁用项）被选中来设置“全选”的勾选状态
-        bool allChecked = true;
-        for (int r = 1; r < m->rowCount(); ++r) {
-            QStandardItem* child = m->item(r);
-            if (m_disabledOptions.contains(child->text())) continue;
-            allChecked &= (child->checkState() == Qt::Checked);
-        }
-        it->setCheckState(allChecked ? Qt::Checked : Qt::Unchecked);
+        updateSelectAllState();
         // 取消全选时，若开启搜索则显示所有行
         if (m_searchEnabled && !target) filterOptions("");
+        if (target && m_maxSelection > 0) emit selectionLimitReached(m_maxSelection);
         return;
     }
     // 选择上限控制
@@ -199,11 +222,7 @@ void MultiSelectComboBox::toggleItem(int row)
     } else {
         it->setCheckState(Qt::Unchecked);
     }
-    if (m_showSelectAll && m->rowCount() > 1) {
-        bool allChecked = true;
-        for (int r = 1; r < m->rowCount(); ++r) allChecked &= (m->item(r)->checkState() == Qt::Checked);
-        m->item(0)->setCheckState(allChecked ? Qt::Checked : Qt::Unchecked);
-    }
+    updateSelectAllState();
 }
 
 void MultiSelectComboBox::setAllChecked(bool checked)
@@ -241,10 +260,10 @@ void MultiSelectComboBox::applyIconsAndDisabled()
         } else {
             it->setIcon(QIcon()); // 纯文字展示时清空图标
         }
-        if (m_disabledOptions.contains(it->text())) {
-            it->setFlags((it->flags() & ~Qt::ItemIsEnabled) | Qt::ItemIsSelectable);
-        }
+        it->setEnabled(!m_disabledOptions.contains(it->text()));
     }
+    updateSelectAllState();
+    filterOptions(m_popupOpen && m_searchEnabled && lineEdit() ? lineEdit()->text() : QString());
 }
 
 void MultiSelectComboBox::filterOptions(const QString& text)
@@ -252,14 +271,11 @@ void MultiSelectComboBox::filterOptions(const QString& text)
     auto* listView = qobject_cast<QListView*>(view());
     auto* m = qobject_cast<QStandardItemModel*>(model());
     if (!listView || !m) return;
-    const int startRow = (m_showSelectAll ? 1 : 0);
-    int matched = 0;
     for (int r = 0; r < m->rowCount(); ++r) {
         if (m_showSelectAll && r == 0) { continue; }
         const QString t = m->item(r)->text();
         const bool visible = t.contains(text, Qt::CaseInsensitive);
         listView->setRowHidden(r, !visible);
-        if (visible) ++matched;
     }
     // 仅在未输入搜索内容时显示“全选”；搜索期间隐藏
     if (m_showSelectAll && m->rowCount() > 0) {
@@ -269,12 +285,24 @@ void MultiSelectComboBox::filterOptions(const QString& text)
             it0->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsUserCheckable);
         }
     }
+    // A hidden current row must never remain the target of a subsequent Space.
+    // The special "select all" row is available by navigation, not the default target.
+    QModelIndex current;
+    for (int r = m_showSelectAll ? 1 : 0; r < m->rowCount(); ++r) {
+        const QModelIndex index = m->index(r, 0);
+        if (!listView->isRowHidden(r) && (index.flags() & Qt::ItemIsEnabled)) {
+            current = index;
+            break;
+        }
+    }
+    listView->setCurrentIndex(current);
 }
 
 void MultiSelectComboBox::setSearchEnabled(bool enabled)
 {
+    if (m_searchEnabled == enabled) return;
     m_searchEnabled = enabled;
-    // 由 showPopup/hidePopup 控制只读状态，避免关闭弹层时可编辑造成误解
+    if (m_popupOpen) setSearchEditorActive(enabled);
 }
 
 void MultiSelectComboBox::setDisabledOptions(const QStringList& options)
@@ -300,89 +328,109 @@ void MultiSelectComboBox::setMaxSelection(int max)
     m_maxSelection = qMax(0, max);
 }
 
+void MultiSelectComboBox::setSearchEditorActive(bool active)
+{
+    if (!lineEdit()) return;
+    QObject::disconnect(lineEdit(), &QLineEdit::textChanged, this, &MultiSelectComboBox::filterOptions);
+    const QSignalBlocker blocker(lineEdit());
+    lineEdit()->setReadOnly(!active);
+    lineEdit()->setPlaceholderText(active ? tr("搜索...") : QString());
+    filterOptions(QString());
+    if (active) {
+        lineEdit()->clear();
+        QObject::connect(lineEdit(), &QLineEdit::textChanged, this, &MultiSelectComboBox::filterOptions, Qt::UniqueConnection);
+    } else {
+        updateDisplayText();
+    }
+}
+
 void MultiSelectComboBox::showPopup()
 {
+    if (m_popupOpen) return;
     ComboBox::showPopup();
-    m_popupOpen = true;
+    m_popupOpen = view() && view()->isVisible();
+    if (!m_popupOpen) return;
+    m_pressedIndex = QPersistentModelIndex();
+    // Install last so our multi-selection behavior precedes QComboBox's close-on-release filter.
+    view()->installEventFilter(this);
+    view()->viewport()->installEventFilter(this);
+    setSearchEditorActive(m_searchEnabled);
     if (m_searchEnabled && lineEdit()) {
-        lineEdit()->setReadOnly(false); // 弹层期间允许输入以进行搜索
-        lineEdit()->clear();
-        lineEdit()->setPlaceholderText(tr("搜索..."));
         lineEdit()->setFocus(Qt::OtherFocusReason);
-        QTimer::singleShot(0, this, [this]{ if (lineEdit()) lineEdit()->setFocus(Qt::OtherFocusReason); });
-        QObject::connect(lineEdit(), &QLineEdit::textChanged, this, &MultiSelectComboBox::filterOptions);
-    }
-    if (view() && model()) {
-        int startRow = (m_showSelectAll ? 1 : 0);
-        if (model()->rowCount() > startRow) {
-            QModelIndex idx = model()->index(startRow, 0);
-            view()->setCurrentIndex(idx);
-        }
+        QTimer::singleShot(0, this, [this] {
+            if (m_popupOpen && m_searchEnabled && lineEdit()) lineEdit()->setFocus(Qt::OtherFocusReason);
+        });
     }
 }
 
 void MultiSelectComboBox::hidePopup()
 {
-    if (m_searchEnabled && lineEdit()) {
-        QObject::disconnect(lineEdit(), &QLineEdit::textChanged, this, &MultiSelectComboBox::filterOptions);
-        // 取消过滤并恢复文本
-        filterOptions("");
-        lineEdit()->setReadOnly(true);
-        lineEdit()->setPlaceholderText("");
-        updateDisplayText();
-    }
     m_popupOpen = false;
+    m_pressedIndex = QPersistentModelIndex();
+    // Cleanup must also run if search was disabled while the popup was open.
+    setSearchEditorActive(false);
     ComboBox::hidePopup();
 }
 
 bool MultiSelectComboBox::eventFilter(QObject* obj, QEvent* e)
 {
-    // 双击输入框进入搜索模式；键盘输入即进入搜索
     if (lineEdit() && obj == lineEdit()) {
-        if (e->type() == QEvent::MouseButtonDblClick) {
-            if (m_searchEnabled) {
-                if (!m_popupOpen) showPopup();
-                return true; // 消费双击，避免默认行为
+        if (e->type() == QEvent::MouseButtonDblClick && m_searchEnabled) {
+            if (!m_popupOpen) showPopup();
+            return true;
+        }
+        if (e->type() == QEvent::KeyPress) {
+            auto* key = static_cast<QKeyEvent*>(e);
+            if (m_popupOpen && (key->key() == Qt::Key_Escape || key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter)) {
+                hidePopup();
+                return true;
             }
-        } else if (e->type() == QEvent::KeyPress) {
-            if (m_searchEnabled) {
-                auto* ke = static_cast<QKeyEvent*>(e);
-                // Esc 直接退出搜索并关闭弹层
-                if (ke->key() == Qt::Key_Escape) {
-                    if (m_popupOpen) hidePopup();
-                    return true;
-                }
-                // 打开弹层并允许编辑，交由 QLineEdit 默认处理插入文本
-                if (!m_popupOpen) showPopup();
-                if (lineEdit()->isReadOnly()) lineEdit()->setReadOnly(false);
-                return false; // 让 QLineEdit 自身处理字符输入与 textChanged 触发
+            if (m_popupOpen && (key->key() == Qt::Key_Down || key->key() == Qt::Key_Up)) {
+                view()->setFocus(Qt::OtherFocusReason);
+                QKeyEvent forwarded(key->type(), key->key(), key->modifiers(), key->text(), key->isAutoRepeat(), key->count());
+                QCoreApplication::sendEvent(view(), &forwarded);
+                return true;
+            }
+            const bool printable = !key->text().isEmpty() && key->text().at(0).isPrint();
+            if (m_searchEnabled && !m_popupOpen && printable && !(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
+                showPopup();
+                return false; // Let QLineEdit insert the first search character.
             }
         }
     }
-    // 阻止点击列表项导致 QComboBox 选择并关闭弹层
-    if (view() && obj == view()->viewport()) {
-        switch (e->type()) {
-        case QEvent::MouseButtonRelease:
-            return true; // 阻止默认在释放时触发的关闭逻辑
-        case QEvent::MouseButtonDblClick:
-            return true; // 消费事件，不让默认处理关闭弹层
-        case QEvent::KeyPress: {
-            auto* ke = static_cast<QKeyEvent*>(e);
-            if (ke->key() == Qt::Key_Space) {
-                QModelIndex idx = view()->currentIndex();
-                if (idx.isValid()) toggleItem(idx.row());
-                return true;
-            } else if (ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter) {
-                if (m_popupOpen) hidePopup();
-                return true;
-            } else if (ke->key() == Qt::Key_Escape) {
-                if (m_popupOpen) hidePopup();
+    if (view() && (obj == view() || obj == view()->viewport())) {
+        if (e->type() == QEvent::KeyPress) {
+            auto* key = static_cast<QKeyEvent*>(e);
+            if (key->key() == Qt::Key_Space) {
+                if (!key->isAutoRepeat()) {
+                    const QModelIndex index = view()->currentIndex();
+                    if (index.isValid()) activateItem(index.row());
+                }
                 return true;
             }
-            break;
+            if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter || key->key() == Qt::Key_Escape) {
+                hidePopup();
+                return true;
+            }
         }
-        default:
-            break;
+        if (obj == view()->viewport()) {
+            if (e->type() == QEvent::MouseButtonPress || e->type() == QEvent::MouseButtonDblClick) {
+                auto* mouse = static_cast<QMouseEvent*>(e);
+                if (mouse->button() == Qt::LeftButton) {
+                    m_pressedIndex = view()->indexAt(mouse->pos());
+                    if (m_pressedIndex.isValid() && (m_pressedIndex.flags() & Qt::ItemIsEnabled)) view()->setCurrentIndex(m_pressedIndex);
+                    return true;
+                }
+            } else if (e->type() == QEvent::MouseButtonRelease) {
+                auto* mouse = static_cast<QMouseEvent*>(e);
+                if (mouse->button() == Qt::LeftButton) {
+                    const QModelIndex index = view()->indexAt(mouse->pos());
+                    const bool activate = index.isValid() && index == m_pressedIndex;
+                    m_pressedIndex = QPersistentModelIndex();
+                    if (activate) activateItem(index.row());
+                    return true;
+                }
+            }
         }
     }
     return ComboBox::eventFilter(obj, e);
